@@ -1,1 +1,18 @@
-<Solution />
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/QuizApp.Api/QuizApp.Api.csproj" />
+    <Project Path="src/QuizApp.Application/QuizApp.Application.csproj" />
+    <Project Path="src/QuizApp.Domain/QuizApp.Domain.csproj" />
+    <Project Path="src/QuizApp.Infrastructure/QuizApp.Infrastructure.csproj" />
+    <Project Path="src/QuizApp.Modules.Buzzer/QuizApp.Modules.Buzzer.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/QuizApp.Api.IntegrationTests/QuizApp.Api.IntegrationTests.csproj" />
+    <Project Path="tests/QuizApp.Application.Tests/QuizApp.Application.Tests.csproj" />
+    <Project Path="tests/QuizApp.Architecture.Tests/QuizApp.Architecture.Tests.csproj" />
+    <Project Path="tests/QuizApp.Domain.Tests/QuizApp.Domain.Tests.csproj" />
+  </Folder>
+  <Folder Name="/tools/">
+    <Project Path="tools/QuizApp.BuzzerAgent/QuizApp.BuzzerAgent.csproj" />
+  </Folder>
+</Solution>

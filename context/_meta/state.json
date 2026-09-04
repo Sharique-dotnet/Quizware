@@ -2,19 +2,20 @@
   "context_version": 1,
   "spec": "context/_meta/SPEC.md",
   "last_save": "2026-09-04T00:00:00Z",
-  "last_session_id": "S-2026-09-04-01",
+  "last_session_id": "S-2026-09-04-02",
   "sessions_by_date": {
-    "2026-09-04": 1
+    "2026-09-04": 2
   },
   "counters": {
-    "decision": 8,
-    "task": 4,
-    "question": 3,
+    "decision": 14,
+    "task": 7,
+    "question": 4,
     "lesson": 3,
     "verification": 5
   },
   "saved_by": [
-    "Claude Opus 5 (Claude Code)"
+    "Claude Opus 5 (Claude Code)",
+    "Claude Sonnet 5 (Claude Code)"
   ],
   "notes": "Counters are high-water marks. Allocate the next ID as counter+1 and never reuse a number, even if an entry is dropped. On a collision, take the next free number rather than rewriting another agent's ID."
 }

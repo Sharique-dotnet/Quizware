@@ -3,7 +3,7 @@
 Slow-changing orientation. Read `CURRENT.md` first; come here when you need the
 stack, the map, or the conventions.
 
-**Last updated:** 2026-09-04 (S-2026-09-04-01)
+**Last updated:** 2026-09-04 (S-2026-09-04-02)
 
 ---
 
@@ -37,7 +37,7 @@ the wrong codebase.
 
 | Name | What it is |
 |---|---|
-| **QuizApp** | The **new** system. Solution `QuizApp/QuizApp.slnx`. Projects will be `QuizApp.Domain`, `.Application`, `.Infrastructure`, `.Api`. |
+| **QuizApp** | The **new** system. Solution `QuizApp/QuizApp.slnx`. `[FACT]` 10 projects exist: `src/QuizApp.{Domain,Application,Infrastructure,Modules.Buzzer,Api}`, `tests/QuizApp.{Domain,Application}.Tests`, `tests/QuizApp.Api.IntegrationTests`, `tests/QuizApp.Architecture.Tests`, `tools/QuizApp.BuzzerAgent`. |
 | **QuizApp-9AMM** | The **existing** ASP.NET MVC 4 system being replaced. Read-only reference. |
 | **QuickBuzz** | The **existing** buzzer application, to be absorbed as the optional `QuizApp.Modules.Buzzer`. |
 
@@ -63,16 +63,29 @@ why this file points rather than duplicates.
 C:\Sharique\Projects\Personal\QuizApp\      <- context root (outer git repo)
 ├── context/                 AI-session continuity. Start at CURRENT.md.
 ├── docs/
-│   ├── new-system/          Design docs 01-06, read in numbered order (~5.5k lines)
+│   ├── new-system/          Design docs 01-06 + README, read in numbered order (~6,000 lines)
+│   ├── Implementation-Plan.md              Phased task list, 658 lines, 185 tasks (P0-P17)
 │   ├── QuizApp-9AMM-Technical-Analysis.md   Legacy audit (1,492 lines)
 │   └── QuickBuzz-Technical-Analysis.md      Legacy audit (123 lines)
-├── QuizApp/                 NEW system. Currently only QuizApp.slnx: "<Solution />"
+├── QuizApp/                 NEW system. `[FACT]` Solution scaffolded, 10 projects:
+│   ├── QuizApp.slnx
+│   ├── src/QuizApp.Domain/            no project references
+│   ├── src/QuizApp.Application/       -> Domain
+│   ├── src/QuizApp.Infrastructure/    -> Application, Domain
+│   ├── src/QuizApp.Modules.Buzzer/    -> Application, Domain (optional module)
+│   ├── src/QuizApp.Api/               -> all four above
+│   ├── tests/QuizApp.{Domain,Application}.Tests/, Api.IntegrationTests/, Architecture.Tests/
+│   └── tools/QuizApp.BuzzerAgent/     console tray app; no project refs yet (T-006)
 ├── QuizApp-9AMM/            LEGACY MVC 4. Nested git repo.
 ├── QuickBuzz/               LEGACY buzzer. Nested git repo.
 ├── AGENTS.md                Cross-tool AI instructions
 ├── CLAUDE.md                Claude Code entry point
 └── .claude/, .cursor/       Tool adapters for the context system
 ```
+
+`[FACT]` Only project/reference/subfolder scaffolding exists in `QuizApp/` so far
+(Phase 3 skeleton, partial). No domain model, no DI wiring beyond framework
+defaults, no Identity/JWT, no EF Core context, no migrations. See `TASKS.md` T-005.
 
 **Nested git repositories.** `QuizApp-9AMM/` and `QuickBuzz/` each contain their
 own `.git`. The outer repository at the path above is the context root and owns
@@ -82,7 +95,7 @@ the new work. `[FACT]` verified by `find -type d -name .git`.
 
 | Layer | Choice | Status |
 |---|---|---|
-| Runtime | .NET 10 | `[DECIDED]` per design docs, no code yet |
+| Runtime | .NET 10 | `[DECIDED]`; `[FACT]` SDK 10.0.400 installed, solution scaffolded and builds clean |
 | API | ASP.NET Core Web API | `[DECIDED]` |
 | Data | SQL Server, EF Core 10, code-first migrations | `[DECIDED]` (EDMX rejected) |
 | Live updates | SignalR | `[DECIDED]` (AJAX polling rejected) |
@@ -93,27 +106,38 @@ the new work. `[FACT]` verified by `find -type d -name .git`.
 
 - `[FACT]` Windows 10 Pro 10.0.19045, PowerShell 5.1 primary; Git Bash available.
 - `[FACT]` Context root: `C:\Sharique\Projects\Personal\QuizApp`.
-- `[FACT]` Outer repo is on branch `master` with **no commits yet**; `main` is the
-  intended base branch for PRs.
-- `[UNVERIFIED]` .NET 10 SDK installed locally. Check: `dotnet --list-sdks`.
+- `[FACT]` Outer repo is on branch `master` with **one commit** (`bf8cb06`,
+  "Initial commit: project scaffolding, docs, and AI context system") as of
+  S-2026-09-04-02; `main` is the intended base branch for PRs but does not exist.
+  `[FACT]` The `QuizApp/` solution scaffolding (T-002) is `git add`-staged on top
+  of that commit but not yet committed — see `TASKS.md` T-007/Q-004.
+- `[FACT]` .NET 10 SDK **10.0.400** installed locally, alongside 8.0.421, both
+  under `C:\Program Files\dotnet\sdk`. Verified via `dotnet --list-sdks`.
 - `[UNVERIFIED]` SQL Server instance available for development. Check: connection
   string in a future `appsettings.Development.json`.
-- `[ASSUMED]` Deployment target is an on-premises venue server, no cloud
-  dependency (design docs §6.5 Q11 records this as an assumption, not a
-  confirmation). Confirm: ask the user.
+- `[DECIDED]` Deployment target is an on-premises venue server, no cloud
+  dependency (D-014). Buzzer device count is configurable, default 3 (D-014).
 
 ## Commands
 
-No build yet — `QuizApp.slnx` is an empty solution.
+`[FACT]` Verified working from `QuizApp/` (the solution root — note the same
+last-path-segment name as the repo root, `QuizApp\QuizApp\`, is easy to fumble in
+`cd`):
+
+```bash
+dotnet sln QuizApp.slnx list       # list the 10 projects
+dotnet build                       # 0 warnings, 0 errors as of S-2026-09-04-02
+dotnet list <project> reference    # verify a project's dependency edges
+```
+
+`[UNVERIFIED]` No tests exist yet (test projects have only a `.csproj`, no `.cs`
+files), so `dotnet test` has not been run against real tests. No EF Core context
+or migrations exist yet — `dotnet ef migrations add ...` is Phase 4, not run.
 
 ```bash
 git status --short          # outer repo; nested repos report separately
-dotnet --list-sdks          # verify the .NET 10 SDK before Phase 3
+dotnet --list-sdks          # confirmed: 8.0.421 and 10.0.400
 ```
-
-Once the skeleton exists (Phase 3), expected: `dotnet build`, `dotnet test`,
-`dotnet ef migrations add <Name> -p src/QuizApp.Infrastructure -s src/QuizApp.Api`.
-`[UNVERIFIED]` — record the real commands here the first time they are run.
 
 ## Conventions and user preferences
 
@@ -128,13 +152,36 @@ Once the skeleton exists (Phase 3), expected: `dotnet build`, `dotnet test`,
 - `[FACT]` The user asked for existing conventions to be inspected before adding
   structure, rather than a new structure being imposed. Applies to future work too.
 - `[ASSUMED]` Commits are made only when the user asks. Confirm: ask before the
-  first commit.
+  first commit. `[UNVERIFIED]` One commit (`bf8cb06`) exists that was not
+  reported as user-requested in any brief seen so far — presumed made by the user
+  directly, not a contradiction of this convention (see `TASKS.md` V-005).
+- `[FACT]` The user makes incremental, narrow requests rather than specifying
+  everything up front (e.g. narrowing the Judge role's authority across four
+  separate messages before asking for full removal, D-013). Expect more of this
+  style; it is not a sign a decision is unstable, just how it arrives.
+- `[FACT]` The user reads output carefully enough to catch inconsistencies an
+  agent introduced (e.g. a stray leftover role checkmark in an intermediate
+  pass). Thoroughness matters more than speed to this user.
+- `[FACT]` **"Configurable" means "configurable with a sensible default,"** not
+  "configurable with no default." Observed twice: tie-break format defaults to
+  MCQ but is fully configurable (D-011); buzzer device count defaults to 3 but is
+  configurable (D-014). Apply this pattern when a future request says
+  "configurable" without specifying a default.
+- `[UNVERIFIED]` Large, cross-referenced documentation edits were made via
+  targeted scripts (read file, assert exact old text present, replace, write)
+  rather than an editor's diff-style edit tool, because the design docs are large
+  (400-2000 lines) and cross-referenced. Worked well for that session; not
+  established as a standing preference to reach for by default.
 
 ## External systems
 
 - **Buzzer hardware** — serial/COM devices, today owned by QuickBuzz. New design
   puts them behind an `IBuzzerProvider` port with `Null` (default), `HttpAgent`
   (recommended) and `Serial` adapters. The system must complete every match with
-  the buzzer module deleted entirely.
-- `[UNVERIFIED]` No other external services identified. The design assumes no
-  cloud dependency.
+  the buzzer module deleted entirely. `[DECIDED]` Device count is configurable via
+  a `DeviceCount` setting, default 3 — today's hardware count, not a hard limit
+  (D-014).
+- `[DECIDED]` No cloud dependency — hosting is a local/on-premises venue server
+  (D-014). The buzzer agent still pushes outward to the API over HTTP even though
+  everything is local, since the operator PC's exact network position relative to
+  the server is not guaranteed.

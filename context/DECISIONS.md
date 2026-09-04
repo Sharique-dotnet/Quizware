@@ -4,7 +4,8 @@ Append-only. Entries are never deleted or renumbered — a decision that turns o
 wrong is marked `SUPERSEDED` and keeps its reasoning, so the next agent does not
 re-propose it. Format: `_meta/SPEC.md` §6.3.
 
-**Index:** D-001 · D-002 · D-003 · D-004 · D-005 · D-006 · D-007 · D-008
+**Index:** D-001 · D-002 · D-003 · D-004 · D-005 · D-006 · D-007 · D-008 · D-009 ·
+D-010 · D-011 · D-012 · D-013 · D-014
 
 ---
 
@@ -19,9 +20,14 @@ alternatives** in `docs/new-system/02-Architecture-Proposal.md` §2.16.
 
 They are not duplicated here. See **D-001** for why.
 
-`[FACT]` Those decisions are design-stage and awaiting Phase 0 confirmation
-(`docs/new-system/06-Development-Roadmap.md` §6.1 marks Phase 0 as the current
-position). The unconfirmed points are tracked as Q-001 in `TASKS.md`.
+`[FACT]` Those decisions are design-stage; several of the highest-impact points
+that used to be Phase 0 open questions now have documented answers baked directly
+into the design docs as of S-2026-09-04-02 — see **D-009** through **D-014** below
+for the reasoning behind Table-Per-Type questions, configurable segment order, and
+tie-break-as-an-ordinary-match specifically (three of the twelve §2.16 items,
+given their own entries here because their rejected alternatives are worth
+keeping close to the reasoning). Real-world stakeholder sign-off on the roadmap's
+remaining Phase 0 assumptions has still not happened — see Q-001 in `TASKS.md`.
 
 ---
 
@@ -167,4 +173,182 @@ position). The unconfirmed points are tracked as Q-001 in `TASKS.md`.
   `sessions/`.
 - **Consequences:** "Material" needs a definition: a new, updated, or superseded
   entry, or a status change. Reformatting is not material. Stated in SPEC §4.6.
+- **Confidence:** [DECIDED]
+
+### D-009 · Questions are Table-Per-Type, not one shared table
+- **Status:** ACTIVE
+- **Added:** 2026-09-04
+- **Decision:** One shared `Question` base table carries identity, lifecycle, and
+  classification columns common to all ten formats. Each format (MCQ, Buzzer,
+  Passing, Card, Choice, Sequence, AudioVisual, RapidFire, VisualRapidFire,
+  TieBreaker) gets its own child table holding only that format's fields. Six of
+  the ten formats share one `QuestionOption` child table since their options are
+  byte-identical in shape; `Sequence` and `VisualRapidFire` get their own item
+  tables (`SequenceItem`, `VisualRapidFireItem`) because their items genuinely
+  differ. Full schema: `docs/new-system/04-Database-Schema.md`.
+- **Why:** The user pushed back on an earlier single-table design: different
+  question formats have genuinely different required fields, and a shared table
+  cannot express that difference as a constraint. Concrete example:
+  `AudioVisualQuestion.MediaAssetId` and `.AnswerText` need to be NOT NULL — a
+  guarantee impossible to state in a table that also holds MCQ or Sequence rows,
+  where those columns must be nullable.
+- **Alternatives rejected:** *Single `Question` table with nullable format-specific
+  columns* — the original design; rejected because NOT NULL constraints that only
+  apply to one format become unenforceable, pushing validation into application
+  code where it can be forgotten. *A JSON/EAV column per format* — considered
+  implicitly rejected by choosing typed child tables; not discussed in detail in
+  the brief, so not recorded as weighed.
+- **Consequences:** Every layer that touches questions needs one route/endpoint
+  per format (e.g. `POST /questions/mcq` vs `POST /questions/audio-visual`) rather
+  than one generic endpoint — this is now baked into `05-API-Design.md`, the PRD's
+  functional requirements, and `Implementation-Plan.md` Phase 9's sub-tasks and
+  Phase 16's legacy migration mapping.
+- **Confidence:** [DECIDED]
+
+### D-010 · Question-type order is configurable at three levels, with a fixed default
+- **Status:** ACTIVE
+- **Added:** 2026-09-04
+- **Decision:** `StageSegmentTemplate.OrderIndex` is the single source of truth for
+  the order question formats are played within a stage. Three levels can override
+  it: the stage template default, a per-match override, and a live reorder of
+  pending (not-yet-played) segments during a match. `SegmentOrderMode` has three
+  values: `Fixed` (default — respects `OrderIndex` as configured), `RandomPerMatch`
+  (shuffled from the match's stored RNG seed, so it is reproducible), and
+  `OperatorChoice` (the operator picks live). `IsOrderLocked` can pin a segment so
+  it is excluded from live reordering.
+- **Why:** User's own words: "the Order of Question type should also be easily
+  configurable." Finding 1.4h in `01-Analysis-Findings.md` documents why this
+  matters: the legacy system hardcodes the running order as a literal
+  `window.location.href` redirect chain repeated across 108 Razor views (e.g.
+  `MatchOneMCQ.cshtml:153` jumps to `MatchOneAudioVisual`) — changing the order for
+  one event means editing view code.
+- **Alternatives rejected:** *A single fixed order per program, no per-match
+  override* — does not cover the operator wanting to reorder live if, say, an
+  AV asset fails to load; the three-level design was chosen specifically to cover
+  that case without inventing new gameplay code.
+- **Consequences:** Match-start logic must resolve `OrderIndex` through all three
+  levels and respect `IsOrderLocked`; the match's RNG seed must be persisted
+  before segment order is derived, or `RandomPerMatch` cannot be reproduced for
+  audit/replay.
+- **Confidence:** [DECIDED]
+
+### D-011 · Tie-break runs as an ordinary Match through the existing engine
+- **Status:** ACTIVE
+- **Added:** 2026-09-04
+- **Decision:** Two-phase tie-break at the League wildcard boundary. Phase 1:
+  ordered, configurable, non-playing criteria (total score, fewer incorrect
+  answers, harder questions answered, faster buzz time, head-to-head). Phase 2 (if
+  still tied): create an ordinary `Match` with `MatchKind = TieBreak` containing
+  only the tied teams, configured by a new `TieBreakRule` table — format defaults
+  to MCQ but is configurable to any of the 10 formats, plus question count,
+  difficulty, sudden-death flag, max rounds, and a fallback rule if still
+  unresolved. New tables: `TieBreakRule`, `TieBreakEvent`, `TieBreakParticipant`.
+  `ScoreCountsTowardStage` defaults to `false` — a tie-break match decides
+  qualification order, not points.
+- **Why:** User's own words: "if there is a tie in scores... there should be tie
+  breaker round and mostly it should be MCQ type but it should also be
+  configurable." Running it through the existing match engine — rather than
+  writing separate tie-break gameplay code — was a deliberate simplification: a
+  `Match` already knows how to run any of the 10 formats, so a tie-break is just a
+  `Match` with a different `MatchKind` and a smaller participant list. Finding
+  1.4i in the analysis doc documents the legacy gap this replaces: a `TieBreaker`
+  table/screens exist but are completely disconnected from qualification, and
+  `LeagueRoundScore` currently resolves ties by database row order.
+- **Alternatives rejected:** *Dedicated tie-break gameplay module* — rejected as
+  unnecessary duplication once it was clear the existing match engine already
+  supports arbitrary formats; a second code path for "matches that happen to be
+  tie-breaks" would double the surface area to test and diverge over time.
+- **Consequences:** Reporting and scoring code must be able to tell a tie-break
+  match apart from a stage match (`MatchKind`) and must respect
+  `ScoreCountsTowardStage = false` so tie-break points do not leak into league
+  standings.
+- **Confidence:** [DECIDED]
+
+### D-012 · Question formats are optional at three independent levels
+- **Status:** ACTIVE
+- **Added:** 2026-09-04
+- **Decision:** "Optional" has three distinct, non-conflatable meanings, all
+  supported: (1) **not-configured** — no `StageSegmentTemplate` row for that
+  format; the common case, already true by construction since a stage only plays
+  the segments it is configured with. (2) **skippable-on-the-night** —
+  `StageSegmentTemplate.IsOptional = 1`; the segment is still drawn but can be
+  skipped during play. (3) **disabled-program-wide** — new
+  `ProgramQuestionFormat.IsEnabled = 0`; a per-program admin-screen toggle that
+  only hides a format from configuration UI, guarded by a `FORMAT_IN_USE` error if
+  a segment template still references a format someone tries to disable.
+- **Why:** User's words: "does all question types compulsory? they should be
+  optional... if we don't want passing so we will not configure it or leave it
+  blank." Verifying this surfaced one real gap rather than a design flaw: PRD
+  `FR-1.5` readiness validation read as if a stage needed "enough questions to
+  satisfy every selection rule," which could be misread as requiring all ten
+  formats to have question-bank content regardless of use. Tightened to check
+  only formats actually referenced by that stage's segment templates.
+- **Alternatives rejected:** none recorded — this was confirmation-plus-one-fix,
+  not a alternatives-weighing decision.
+- **Consequences:** Any future code or documentation that says a question format
+  is "optional" must say which of the three senses it means; the ambiguity is
+  exactly what caused the `FR-1.5` near-miss.
+- **Confidence:** [DECIDED]
+
+### D-013 · Judge role removed; ProgramAdmin/SuperAdmin hold sole authority over oversight actions
+- **Status:** ACTIVE
+- **Added:** 2026-09-04
+- **Decision:** The system has exactly **7 roles**: `SuperAdmin`, `ProgramAdmin`,
+  `QuestionAuthor`, `Operator`, `Scorer`, `Display`, `Auditor`. There is no `Judge`
+  role. `ProgramAdmin` (or `SuperAdmin`) holds sole approval authority over
+  disqualification, answer reversal, manual score adjustment, and tie-break manual
+  resolution.
+- **Why:** Arrived at incrementally across four separate user requests in one
+  conversation, each narrowing authority further: disqualification approval
+  narrowed to ProgramAdmin-only (was Judge-or-ProgramAdmin); answer-reversal and
+  score-adjustment approval narrowed to ProgramAdmin-only (were
+  Operator-or-Judge and Judge-or-ProgramAdmin respectively); tie-break manual
+  resolution narrowed to ProgramAdmin-only (was ProgramAdmin-or-Judge); then an
+  explicit final instruction, "Drop Judge from the system entirely." The pattern
+  across all four steps was the same: a role that existed for oversight
+  duplicated authority ProgramAdmin already had, without a distinct
+  responsibility of its own.
+- **Alternatives rejected:** *Keep Judge for a subset of actions* (the state after
+  steps 1–3, before step 4) — rejected in the final step because a role with a
+  shrinking, inconsistent set of powers is confusing to configure and audit; full
+  removal is simpler than a partial role.
+- **Consequences:** Every place a role list, permission matrix, or policy table
+  existed had to be swept: PRD actors table and permission matrix, API design
+  endpoint role columns and the `CanDisqualify`/`CanAdjustScore`/`CanResolveTie`
+  policy table in `05-API-Design.md` §5.9 (a `CanResolveTie` row was missing and
+  got added while doing this sweep), the seeded `AppRole` list and column comments
+  in `04-Database-Schema.md`, roadmap open-questions rows 8/8a/6b and the
+  authorization test additions to Phase 9–11 deliverables, one stray unrelated
+  "a remote judge" wording in the architecture doc reworded to "a remote
+  reviewer" to avoid confusion, and the README. `[FACT]` Verified present in the
+  current repo: `docs/new-system/06-Development-Roadmap.md:296-299,586-590` and
+  `docs/new-system/05-API-Design.md:1401-1405`.
+- **Confidence:** [DECIDED]
+
+### D-014 · Local/on-premises hosting assumed; buzzer device count configurable, default 3
+- **Status:** ACTIVE
+- **Added:** 2026-09-04
+- **Decision:** API hosting is a **local/on-premises venue server** — no cloud
+  dependency assumed. The buzzer agent still pushes outward to the API even
+  though everything is local, because the operator PC's exact network position
+  relative to the server is not guaranteed. Separately, the number of buzzer
+  devices is **configurable, defaulting to 3** (today's hardware count) — added
+  as a `DeviceCount` config setting in the architecture doc's buzzer JSON config
+  example and in the `BuzzDeviceMapping` discussion. The default is explicitly a
+  seed value, not a hard limit.
+- **Why:** Both answered via a user screenshot of `06-Development-Roadmap.md` §6.5
+  showing partially-visible answers to its open-questions table: open question 11
+  (hosting) and open question 12 (device count). The "configurable with a sensible
+  default" shape mirrors the same pattern the user applied to the tie-break
+  format (defaults to MCQ, but configurable) — this appears to be a consistent
+  house preference, not a one-off (see `PROJECT.md` §Conventions).
+- **Alternatives rejected:** *Cloud-hosted API* — not chosen; the on-premises
+  assumption changed the architecture doc's physical topology diagram and prose.
+  *Hardcoded device count of 3* — rejected in favor of a configurable value with 3
+  as the default, consistent with the house style.
+- **Consequences:** No SignalR scale-out design is needed for a multi-server
+  farm (single on-prem server); the buzzer agent's HTTP client must handle the
+  server being reachable but not co-located, so it cannot assume localhost.
+  `V-004` (previously `[ASSUMED]`, unconfirmed) is now `[DECIDED]` — see
+  `TASKS.md` Closed section.
 - **Confidence:** [DECIDED]
