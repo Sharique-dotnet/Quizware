@@ -1,0 +1,47 @@
+using QuizApp.Domain.Common;
+
+namespace QuizApp.Domain.QuestionBank;
+
+/// <summary>Drives question selection and the Choice round's topic list.
+/// ProgramId null means shared across programs.</summary>
+public sealed class Topic : BaseEntity, IAuditable, ISoftDeletable
+{
+    private Topic()
+    {
+        Name = string.Empty;
+        CreatedBy = string.Empty;
+    }
+
+    public static Topic Create(string name, string createdBy, Guid? programId = null, Guid? parentTopicId = null)
+    {
+        if (string.IsNullOrWhiteSpace(name))
+        {
+            throw new ArgumentException("Name is required.", nameof(name));
+        }
+
+        return new Topic
+        {
+            ProgramId = programId,
+            Name = name,
+            ParentTopicId = parentTopicId,
+            IsActive = true,
+            CreatedAtUtc = DateTime.UtcNow,
+            CreatedBy = createdBy,
+        };
+    }
+
+    public Guid? ProgramId { get; private set; }
+    public string Name { get; private set; }
+    public Guid? ParentTopicId { get; private set; }
+    public string? Description { get; private set; }
+    public int SortOrder { get; private set; }
+    public bool IsActive { get; private set; }
+
+    public DateTime CreatedAtUtc { get; private set; }
+    public string CreatedBy { get; private set; }
+    public DateTime? UpdatedAtUtc { get; private set; }
+    public string? UpdatedBy { get; private set; }
+
+    public bool IsDeleted { get; private set; }
+    public DateTime? DeletedAtUtc { get; private set; }
+}
