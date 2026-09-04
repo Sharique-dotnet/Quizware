@@ -60,3 +60,10 @@ editing, or you will change the wrong one.
   history. Commits for the new work belong to the outer repository.
 - Design documents separate confirmed findings from recommendations. Preserve that
   distinction when editing them.
+  
+
+## Instructions
+- Never commit the change on your own until asked.
+- Always provide plans in phases, after each phase meaningful single line commit message.
+- Separate commit messages for API and Angular changes.
+- In Plan, always mention What you are changing/adding, Why you are doing this, Where you will add/delete/change things, What it will affect.

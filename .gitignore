@@ -1,5 +1,6 @@
 QuizApp-9AMM/
 QuickBuzz/
+docs/
 
 # Visual Studio
 .vs/
@@ -11,3 +12,4 @@ bin/
 obj/
 [Bb]in/
 [Oo]bj/
+docs/Implementation-Plan.md
