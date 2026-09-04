@@ -1,0 +1,54 @@
+---
+description: Cross-AI context preservation — read context/CURRENT.md before working, save context/ when checkpointing
+alwaysApply: true
+---
+
+# Project context lives in `context/`
+
+This repository carries its own AI memory so work survives switching between
+assistants, accounts, and tools. Full rules: [AGENTS.md](mdc:AGENTS.md).
+Full procedure: [SPEC.md](mdc:context/_meta/SPEC.md).
+
+## At the start of a session
+
+Read [CURRENT.md](mdc:context/CURRENT.md) **first**. It states the project, the
+current objective, what has been decided, where the work stands, and what to do
+next — without any chat history.
+
+Then as needed: [TASKS.md](mdc:context/TASKS.md) for the queue and open questions,
+[DECISIONS.md](mdc:context/DECISIONS.md) for binding constraints,
+[LESSONS.md](mdc:context/LESSONS.md) **before proposing an approach** (it lists
+what already failed), [PROJECT.md](mdc:context/PROJECT.md) for the stack and
+conventions.
+
+Confidence tags: `[FACT]` verified · `[DECIDED]` binding · `[ASSUMED]`
+unconfirmed · `[UNVERIFIED]` unchecked · `[OPEN]` unanswered. Anything `[ASSUMED]`
+or `[UNVERIFIED]` is not established — verify it or say you did not. Where the
+repo and the context disagree, the repo is right and the context is stale.
+
+Do not ask the user to re-explain anything `context/` already answers.
+
+## When asked to save or checkpoint the context
+
+Follow [SPEC.md](mdc:context/_meta/SPEC.md) §4. Summary:
+
+1. Extract high-signal information from this conversation — decisions **with
+   reasoning**, changes with paths, status, failed approaches, open questions,
+   assumptions, preferences, environment, commands.
+2. **Read the existing `context/` files before writing.** Never write blind.
+3. Merge: append new, update changed, and **supersede contradictions rather than
+   overwriting** — mark the old entry `SUPERSEDED by D-###` and keep its text.
+4. Rewrite `CURRENT.md` under 400 lines; anything you remove must first exist in a
+   longer-lived file.
+5. Append to `HISTORY.md`, write `context/sessions/YYYY-MM-DD-NN-slug.md`, update
+   `context/_meta/state.json`.
+6. If nothing material changed, write nothing and say so.
+
+Never record secrets — note that a credential exists and where it lives, never its
+value.
+
+## Naming trap
+
+`QuizApp` (new system), `QuizApp-9AMM` (legacy MVC 4), and `QuickBuzz` (legacy
+buzzer) are three different things. Check `context/PROJECT.md` §Domain glossary
+before editing, or you will change the wrong system.

@@ -1,0 +1,13 @@
+QuizApp-9AMM/
+QuickBuzz/
+
+# Visual Studio
+.vs/
+*.user
+*.suo
+
+# Build output
+bin/
+obj/
+[Bb]in/
+[Oo]bj/
