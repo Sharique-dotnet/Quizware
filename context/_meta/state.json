@@ -2,15 +2,15 @@
   "context_version": 1,
   "spec": "context/_meta/SPEC.md",
   "last_save": "2026-09-04T00:00:00Z",
-  "last_session_id": "S-2026-09-04-02",
+  "last_session_id": "S-2026-09-04-03",
   "sessions_by_date": {
-    "2026-09-04": 2
+    "2026-09-04": 3
   },
   "counters": {
-    "decision": 14,
-    "task": 7,
+    "decision": 15,
+    "task": 10,
     "question": 4,
-    "lesson": 3,
+    "lesson": 4,
     "verification": 5
   },
   "saved_by": [

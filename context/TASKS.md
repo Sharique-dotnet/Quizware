@@ -4,31 +4,11 @@ Work items (`T-###`), open questions (`Q-###`), and things that need checking
 before they can be relied on. Done items stay — they are the record of what was
 already tried. Format: `_meta/SPEC.md` §6.4.
 
-**Last updated:** 2026-09-04 (S-2026-09-04-02)
+**Last updated:** 2026-09-04 (S-2026-09-04-03)
 
 ---
 
 ## Active work
-
-- **T-001** `IN-PROGRESS` · Confirm the Phase 0 requirement assumptions
-  - Why: `docs/new-system/06-Development-Roadmap.md` §6.1 places the project at
-    Phase 0, and §6.5 lists ~18 points where the design had to assume an answer.
-    Phase 1 (domain model) should not start until these are settled — the domain
-    model encodes them.
-  - Where: `docs/new-system/06-Development-Roadmap.md` §6.5
-  - Update (S-2026-09-04-02): several of the widest-impact points are now answered
-    directly in the docs rather than left as assumptions — tie-break format
-    default (D-011), disqualification approver and Judge-role removal (D-013),
-    API hosting (D-014), buzzer device count (D-014). Still genuinely open: shared
-    vs per-program question bank, whether a disqualified team's score is zeroed or
-    kept-and-excluded, whether a team may play more than one match per stage,
-    whether negative totals are allowed (roadmap §6.5 records "Yes, configurable"
-    for negative totals per row 7 — `[UNVERIFIED]` whether that specific row is a
-    genuine per-program-owner decision or another AI-assisted default; check
-    against the doc directly). None of this has real-world stakeholder sign-off —
-    it is still one person iterating with an AI. See Q-001.
-  - Blocked by: Q-001 (needs the user for final sign-off; several sub-points no
-    longer block on it)
 
 - **T-005** `TODO` · Implement Phase 3's cross-cutting concerns
   - Why: T-002 delivered only the project/reference skeleton. Roadmap Phase 3 also
@@ -51,35 +31,52 @@ already tried. Format: `_meta/SPEC.md` §6.4.
   - Blocked by: nothing urgent — this is Phase 14 work per
     `docs/Implementation-Plan.md`. Flagged now so it isn't assumed silently later.
 
-- **T-007** `TODO` · Commit the staged solution scaffolding
-  - Why: `git status` shows the entire `QuizApp/src|tests|tools` tree and the
-    updated `QuizApp.slnx` as staged (`git add` has run) but not committed. Only
-    one commit exists in the outer repo (`bf8cb06`), made before this scaffolding
-    existed.
-  - Where: outer repo root
-  - Blocked by: nothing technical — needs the user's go-ahead per the "commit only
-    when asked" convention (see `PROJECT.md` §Conventions).
+- **T-008** `TODO` · Re-sync `docs/Implementation-Plan.md` Phase 0 section with D-015
+  - Why: D-015 records Phase 0 as owner-confirmed/skipped, but `[FACT]` verified
+    this session that the file on disk (`docs/Implementation-Plan.md` lines
+    73–88) still carries the original six-task workshop wording
+    (`P0-01`–`P0-06`, "Duration: 1 week"). An edit rewriting this into a short
+    "SKIPPED — owner-confirmed" note was reportedly made earlier but is not
+    present now — either it was never saved, or it reverted through some
+    out-of-band change. Not investigated further this session; not worth the
+    time versus just re-applying the edit.
+  - Where: `docs/Implementation-Plan.md` lines 73–88
+  - Blocked by: nothing — purely needs someone to make the edit and this time
+    verify it persisted (re-read the file after writing, not just after the
+    tool call reports success).
+
+- **T-009** `TODO` · Decide Phase 1 vs Phase 2 vs Phase 3 sequencing going forward
+  - Why: Phase 1 (domain model) is now fully implemented (P1-01–P1-14, see T-010
+    Closed). Phase 2 (ADRs) has not been started. Phase 3 (skeleton) was already
+    partially done before Phase 1 even started (T-002/T-005) — so the roadmap's
+    recommended order (Domain → ADRs → Skeleton) has now been done out of
+    sequence in two different ways in two different sessions. Whoever resumes
+    should pick: backfill Phase 2 (ADRs) before continuing Phase 3's remaining
+    cross-cutting concerns, or proceed with Phase 3 (T-005) directly since the
+    domain model it would sit on top of now exists.
+  - Where: `docs/Implementation-Plan.md` Phases 2 and 3.
+  - Blocked by: nothing technical — a judgment call for whoever resumes.
 
 ## Open questions
 
-- **Q-001** `OPEN` · Which of the ~18 Phase 0 assumptions do you confirm?
-  - Blocks: further Phase 1 domain-model work that depends on the still-open
-    sub-points below. Does **not** block T-002 any longer — the user scaffolded
-    the solution structure without waiting on this.
-  - The full table with the design's assumed answer for each is at
-    `docs/new-system/06-Development-Roadmap.md` §6.5. `[UNVERIFIED→partially
-    resolved]` as of S-2026-09-04-02: open question 8 (disqualification approver),
-    8a (Judge role), 11 (hosting), and 12 (buzzer device count) now have answers
-    written directly into the docs (D-011, D-013, D-014) rather than left as
-    assumptions. Still genuinely open, widest blast radius on the domain model:
-    shared vs per-program question bank (§6.5 Q1); whether a disqualified team's
-    score is zeroed or kept-and-excluded (Q3); whether a team may play more than
-    one match per stage (Q5). Row 7 (negative totals) reads "Yes, configurable per
-    program" in the current doc — `[UNVERIFIED]` whether this reflects genuine
-    stakeholder sign-off or another AI-assisted default; check the doc directly
-    before treating it as confirmed.
-  - `[OPEN]` No real-world stakeholder sign-off has happened on any of these — this
-    remains one person iterating with an AI, per the brief for S-2026-09-04-02.
+- **Q-001** `ANSWERED` (S-2026-09-04-03) · Which of the ~18 Phase 0 assumptions do
+  you confirm?
+  - `[DECIDED]` via D-015: the user is QuizApp's sole owner/stakeholder, so Phase 0
+    is treated as owner-confirmed rather than run as an external workshop. All 16
+    assumptions in `docs/new-system/06-Development-Roadmap.md` §6.5 are accepted
+    as-is and are now `[DECIDED]`, not `[ASSUMED]`. Domain-model work (Phase 1) is
+    no longer blocked on this — see T-010 (Closed), which shows Phase 1 has since
+    been fully implemented against these assumptions.
+  - Residual detail worth keeping visible: rows that previously read as the
+    widest blast-radius sub-points — shared vs per-program question bank,
+    disqualified-team score handling, one-match-per-stage-or-not, negative
+    totals — are covered by the same owner-confirmed acceptance. If a genuine
+    second stakeholder is ever brought onto the project (e.g. a co-organiser),
+    these rows are the ones worth re-confirming with them specifically, since
+    "owner-confirmed" resolved *who* signs off, not independent verification
+    against real event operations. See D-015's Consequences for the caveat that
+    the Implementation-Plan.md doc text itself hasn't caught up with this
+    decision yet (T-008).
 
 - **Q-002** `ANSWERED` · Should `context/` be committed, and should the outer repo get
   its first commit?
@@ -98,13 +95,14 @@ already tried. Format: `_meta/SPEC.md` §6.4.
     pointed at `context/_meta/SPEC.md` — the cost of a missing adapter is one
     sentence of prompting, not a failure.
 
-- **Q-004** `OPEN` · Commit the staged solution scaffolding now, or leave it staged?
-  - Blocks: T-007.
-  - `[FACT]` `git status` shows all of `QuizApp/src|tests|tools` plus the modified
-    `QuizApp.slnx` staged but not committed, as of S-2026-09-04-02.
-  - Recommendation: commit it — per D-002/D-006's own logic, uncommitted work does
-    not survive a machine or account switch any better than uncommitted context
-    does.
+- **Q-004** `ANSWERED` (S-2026-09-04-03) · Commit the staged solution scaffolding
+  now, or leave it staged?
+  - `[FACT]` It was committed. `git log` as of this session shows the scaffolding
+    landed as `893c4a7` and the domain model that followed landed as three
+    further commits (`d6171cd`, `4697df7`, `6e6a13e`) plus `2b2bcfb` for the
+    turn-order calculator. See T-007/T-010 (Closed). Only `CLAUDE.md` has an
+    uncommitted one-line addition as of this session (the new "always refer to
+    `context/`" Instructions bullet).
 
 ## Verification queue
 
@@ -121,16 +119,115 @@ they stay unchecked.
     `appsettings.Development.json`.
   - Matters for: Phase 4 (schema and migrations).
 
-- **V-005** · `[ASSUMED]` Commits are made only when the user explicitly asks.
-  - Check: ask before the first commit.
-  - Matters for: every session. Cheap to confirm, annoying to get wrong.
-  - Note (S-2026-09-04-02): the one commit in the repo (`bf8cb06`) was not
-    reported as user-requested in this session's brief, so it was presumably made
-    directly by the user outside the AI's view — consistent with this assumption,
-    not a contradiction of it, but the AI side of any future session should keep
-    asking rather than assuming a precedent now exists for it to commit unasked.
+- **V-005** · Resolved as `[DECIDED]` (S-2026-09-04-03) · Commits are made only
+  when the user explicitly asks; the AI proposes a plan and a commit message but
+  does not run `git commit` itself.
+  - `[FACT]` `CLAUDE.md` now has an explicit "Instructions" section (added by the
+    user directly, verified present on disk) stating this in writing: "Never
+    commit the change on your own until asked," plus "always provide plans in
+    phases, after each phase meaningful single line commit message," separate
+    commit messages for API vs Angular changes, and a What/Why/Where/Affects
+    format for every plan. This is no longer an inferred convention — it is
+    written policy in the repo.
+  - Note (S-2026-09-04-03): despite this, `git log` shows several commits
+    (`893c4a7`, `471a60a`, `2b2bcfb`, `d6171cd`, `4697df7`, `6e6a13e`) made during
+    or around this and prior sessions' work, all authored directly by the user
+    (`Sharique`) — consistent with the policy (the AI proposed messages, the user
+    ran the commits), not a contradiction. A prior brief for S-2026-09-04-0x
+    claimed the Phase 1 domain-model work was still uncommitted at session end;
+    that claim was **stale** by the time this checkpoint ran — verified `[FACT]`
+    against `git log` this session. Lesson recorded as L-004.
 
 ## Closed
+
+- **T-010** `DONE` · Implement Phase 1 — the domain model (P1-01 through P1-14)
+  - Delivered in S-2026-09-04-03, verified `[FACT]` against the repository this
+    session (89 `.cs` files under `QuizApp/src/QuizApp.Domain/`, 23 under
+    `QuizApp/tests/QuizApp.Domain.Tests/`, `dotnet test` on the Domain test
+    project → 95 passed, 0 failed; `dotnet build` on the full solution → 0
+    warnings/0 errors). All committed as `d6171cd`, `4697df7`, `6e6a13e` on top
+    of `2b2bcfb` (P1-02, from an earlier session).
+  - Common/ (P1-01): `BaseEntity`, `ITenantScoped`, `IAuditable`,
+    `ISoftDeletable`. Enums/ (P1-03): all plan-listed enums plus several more
+    added on demand while building later tasks (`QuestionPoolScope`,
+    `QuestionStatus`, `QuestionOwnerScope`, `PassDirection`, `CardRevealMode`,
+    `SequenceItemKind`, `MediaKind`, `TieBreakAnswerMode`, `StageType`,
+    `TeamCountChangePolicy`, `TopicSelectionMode`, `MatchSegmentState`,
+    `MatchQuestionState`, `AnswerSource`, `ScoreEventType`, `SeedingMode`,
+    `OnStillTiedPolicy`, `TieBreakEventState`, `QualificationReason`).
+    `QuestionFormatCode` integer values match the seed ids in
+    `docs/new-system/04-Database-Schema.md` §4.3, `[FACT]` verified this session
+    — id 4 is an intentional gap, documented in a comment on the enum itself.
+  - Teams/ (P1-05): `Team` (status changes require a reason via `ChangeStatus`),
+    `TeamMember`. QuestionBank/ (P1-06): `Question` abstract base (TPT, per
+    D-009) plus 10 sealed subclasses, `QuestionOption`, `SequenceItem`,
+    `VisualRapidFireItem`, `Topic`, `Tag`, `MediaAsset`. `AudioVisualQuestion`
+    enforces non-null `MediaAssetId` and non-empty `AnswerText` in its factory
+    method, per D-009's original NOT-NULL reasoning. `QuestionTag` was
+    deliberately **not** modeled here — left for an EF many-to-many mapping in
+    Phase 4, since P1-06's acceptance criteria didn't require a join entity.
+  - Tournament/ (P1-07): `Stage`, `StageSegmentTemplate`, `Match`,
+    `MatchParticipant` (implements `ITurnOrderParticipant`, integrates with
+    `TurnOrderCalculator` from P1-02). `Match.Start(int activeParticipantCount)`
+    enforces >=2 active participants via the new `InsufficientParticipantsException`.
+  - Gameplay/ (P1-08): `MatchSegment` (`Open()` enforces one-open-segment-per-match
+    by taking the sibling list as a parameter; `Reorder()` throws
+    `SegmentNotReorderableException` if locked or not Pending), `MatchQuestion`
+    (`Activate()` enforces one-active-question-per-segment the same way),
+    `AnswerRecord` (`MarkReversed`), `MatchEvent` (append-only,
+    `NextSequenceNumber` enforces strictly-increasing sequence numbers).
+  - Scoring/ (P1-09): `ScoringRule`, `ScoreEvent` (immutable once created —
+    `Reverse()` creates a **new**, opposite-signed event rather than mutating,
+    marks the original `IsReversed = true`, throws if reversed twice),
+    `TeamMatchScore` (`ApplyAnswer`/`ApplyAdjustment`, the incremental read
+    model), `TeamStageScore`.
+  - Qualification/ (P1-10): `QualificationRule`, `StageQualification`,
+    `TieBreakRule` (`Criteria` stored as `IReadOnlyList<string>`, not raw JSON —
+    JSON serialization is an EF-layer concern deferred to Phase 4),
+    `TieBreakEvent` (`Resolve()` enforces "a resolved tie must name its
+    resolution method," and additionally requires non-blank `Notes` when
+    `ResolutionMethod` is Manual, matching a CHECK constraint in the schema doc),
+    `TieBreakParticipant`.
+  - Buzzer/ (P1-11): `BuzzRankingCalculator` — pure function ported from
+    QuickBuzz's `DeviceApiController` ranking logic; lowest non-zero press time
+    wins, `0` means "no press" and sorts last.
+  - Tournament/SegmentOrderResolver.cs (P1-12): pure function — `Fixed` returns
+    template order; `RandomPerMatch` shuffles unlocked segments deterministically
+    via a stored `System.Random(seed)` while locked segments keep their template
+    position; same seed always reproduces the same order (tested).
+  - Qualification/TieBreakCriteriaEvaluator.cs (P1-13): pure function taking
+    pre-normalized criterion values (caller ensures higher-is-always-better per
+    criterion) and an ordered criterion-name list; narrows the tied group
+    criterion-by-criterion and reports which criterion decided it, or still-tied.
+  - Common/Exceptions/ (P1-14): all 7 domain exceptions exist —
+    `InvalidStateTransitionException`, `InsufficientParticipantsException`,
+    `QuestionPoolExhaustedException`, `ScoringRuleNotFoundException`,
+    `UnresolvedTieException`, `SegmentNotReorderableException`,
+    `FormatInUseException` — plus `NoActiveParticipantsException` from P1-02.
+    Deliberate pattern across the whole phase: exceptions were introduced
+    incrementally, when the entity that needed them was built, rather than all
+    stubbed out upfront under P1-14.
+  - Test project: `QuizApp.Domain.Tests` uses xUnit + FluentAssertions 6.12.2
+    (added as a package reference this session, `[FACT]` verified present in
+    the committed `.csproj`). `QuizApp.Domain.csproj` itself has **zero** NuGet
+    package references, `[FACT]` verified — the domain layer stays dependency-free.
+  - Full detail: `sessions/2026-09-04-03-phase0-owner-confirmed-phase1-domain.md`.
+
+- **T-007** `DONE` · Commit the solution scaffolding
+  - `[FACT]` Corrected this session: the scaffolding was committed as `893c4a7`
+    ("Add initial project structure with API, application, domain, and
+    infrastructure layers"), which already existed in `git log` before this
+    checkpoint ran. The prior open state (staged-not-committed) reflected an
+    earlier point in the project's history that had already been resolved by
+    the time of this save; this task is closed rather than left open on stale
+    information. See Q-004.
+
+- **T-001** `DONE` (via D-015) · Confirm the Phase 0 requirement assumptions
+  - Resolved in S-2026-09-04-03: not through a stakeholder workshop (the
+    original plan for this task) but through an explicit decision that the user
+    is QuizApp's sole owner and there is no separate stakeholder to run a
+    workshop with. See D-015. The Implementation-Plan.md doc itself has not yet
+    been re-edited to reflect this — see T-008.
 
 - **T-000** `DONE` · Build the cross-AI context preservation system
   - Delivered in S-2026-09-04-01: `context/` structure, `_meta/SPEC.md` as the
@@ -153,7 +250,7 @@ they stay unchecked.
   - Residual work is **not** part of this task — see T-005 (Phase 3 cross-cutting
     concerns) and T-006 (BuzzerAgent reference decision), which are genuinely new
     work, not loose ends of T-002.
-  - Note: these files are `git add`-staged but **not committed** — see T-007.
+  - Note: subsequently committed as `893c4a7` — see T-007 (Closed).
 
 - **T-003** `DONE` · Exercise the context system on a real working session
   - This save (S-2026-09-04-02) is the exercise: a real merge against existing

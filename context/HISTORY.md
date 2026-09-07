@@ -32,3 +32,22 @@ Newest last. Format: `_meta/SPEC.md` §6.6.
 - **Superseded:** none — all new information extended or closed existing entries
   rather than contradicting them.
 - **Detail:** `sessions/2026-09-04-02-tpt-roles-scaffolding.md`
+
+## S-2026-09-04-03 · phase0-owner-confirmed-phase1-domain · Claude Sonnet 5 (Claude Code)
+- **Focus:** Merged a brief covering two things: closing Phase 0 as
+  owner-confirmed (the user is QuizApp's sole stakeholder, so no external
+  workshop applies), and the full implementation of Phase 1's domain model
+  (P1-01–P1-14, 89 files, 95 passing tests). Verification against the
+  repository found the brief's commit-state claim was stale — `git log` showed
+  the domain model and prior scaffolding already committed across six commits
+  the brief did not account for — and corrected it rather than transcribing it.
+- **Changed:** `CURRENT.md` (rewritten), `TASKS.md` (T-001/T-007 closed,
+  T-005/T-006 kept, T-008/T-009/T-010 added, Q-001/Q-004 answered, V-005
+  resolved to `[DECIDED]`), `DECISIONS.md` (D-015 appended), `LESSONS.md`
+  (L-004 added), `PROJECT.md` (repo map, environment, conventions updated),
+  `HISTORY.md` (this block).
+- **Added:** D-015, T-008, T-009, T-010, L-004.
+- **Superseded:** none directly, but corrected a stale claim from the source
+  brief (commit state) rather than propagating it — see L-004 and the session
+  file's "Corrections made to the brief's account".
+- **Detail:** `sessions/2026-09-04-03-phase0-owner-confirmed-phase1-domain.md`

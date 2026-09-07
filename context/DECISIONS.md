@@ -5,7 +5,7 @@ wrong is marked `SUPERSEDED` and keeps its reasoning, so the next agent does not
 re-propose it. Format: `_meta/SPEC.md` §6.3.
 
 **Index:** D-001 · D-002 · D-003 · D-004 · D-005 · D-006 · D-007 · D-008 · D-009 ·
-D-010 · D-011 · D-012 · D-013 · D-014
+D-010 · D-011 · D-012 · D-013 · D-014 · D-015
 
 ---
 
@@ -351,4 +351,44 @@ remaining Phase 0 assumptions has still not happened — see Q-001 in `TASKS.md`
   server being reachable but not co-located, so it cannot assume localhost.
   `V-004` (previously `[ASSUMED]`, unconfirmed) is now `[DECIDED]` — see
   `TASKS.md` Closed section.
+- **Confidence:** [DECIDED]
+
+### D-015 · Phase 0 is owner-confirmed, not run as a stakeholder workshop
+- **Status:** ACTIVE
+- **Added:** 2026-09-04 (S-2026-09-04-03)
+- **Decision:** `docs/Implementation-Plan.md` Phase 0 ("Requirements confirmation")
+  is treated as **skipped-by-substitution**: the six tasks that assumed a
+  workshop with organisers/quiz-masters (`P0-01`–`P0-06`) do not apply, because
+  the user is the sole owner and stakeholder of QuizApp — there is no separate
+  organiser or quiz-master to convene. The 16 assumptions listed in
+  `docs/new-system/06-Development-Roadmap.md` §6.5 are accepted as-is and are
+  now to be treated as **`[DECIDED]`**, not `[ASSUMED]`. This answers `Q-001` in
+  `TASKS.md`.
+- **Why:** A workshop-style confirmation process assumes a party distinct from
+  the person building the system, whose sign-off is worth waiting for. That
+  party does not exist here — the user reviewing the docs one-on-one with an AI
+  *is* the sign-off, since there is nobody else with standing to disagree.
+  Re-running "confirm with the organisers" as a literal task would block Phase 1
+  indefinitely on a meeting that cannot happen.
+- **Alternatives rejected:** *Leave Phase 0 as an unstarted blocking phase* —
+  rejected because it would stall Phase 1 (domain model) forever waiting on a
+  workshop the project structurally cannot hold. *Silently treat the
+  assumptions as decided without recording why* — rejected because a future
+  session (or a future actual stakeholder, e.g. a co-organiser brought on
+  later) needs to see that these were accepted by the owner, not independently
+  verified against real event operations.
+- **Consequences:** All 16 rows in §6.5 move from `[ASSUMED]` to `[DECIDED]`
+  outcome-wise, though the residual genuinely-open sub-points tracked in
+  `TASKS.md` T-001/Q-001 (shared vs per-program question bank, disqualified-team
+  score handling, one-match-per-stage-or-not) still need an explicit answer —
+  "owner-confirmed" resolves *who* signs off, not the content of every still-
+  blank row. **Known inconsistency, flagged for follow-up:** the edit that was
+  meant to rewrite `docs/Implementation-Plan.md`'s Phase 0 section into a short
+  "SKIPPED — owner-confirmed" note did not persist — verified `[FACT]` this
+  session (S-2026-09-04-03) that the file on disk still reads with the original
+  six-task workshop wording (`P0-01`–`P0-06`, lines 73–88). The decision recorded
+  here is the one that stands (repository content that merely restates an
+  already-superseded plan does not un-decide anything), but the doc text is
+  stale relative to it and should be re-edited to match. See `TASKS.md` for the
+  follow-up task.
 - **Confidence:** [DECIDED]

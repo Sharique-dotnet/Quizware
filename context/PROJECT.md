@@ -3,7 +3,7 @@
 Slow-changing orientation. Read `CURRENT.md` first; come here when you need the
 stack, the map, or the conventions.
 
-**Last updated:** 2026-09-04 (S-2026-09-04-02)
+**Last updated:** 2026-09-04 (S-2026-09-04-03)
 
 ---
 
@@ -69,12 +69,18 @@ C:\Sharique\Projects\Personal\QuizApp\      <- context root (outer git repo)
 │   └── QuickBuzz-Technical-Analysis.md      Legacy audit (123 lines)
 ├── QuizApp/                 NEW system. `[FACT]` Solution scaffolded, 10 projects:
 │   ├── QuizApp.slnx
-│   ├── src/QuizApp.Domain/            no project references
+│   ├── src/QuizApp.Domain/            no project/NuGet references. Phase 1 domain
+│   │                                  model complete (P1-01–P1-14): Common/,
+│   │                                  Enums/, Teams/, QuestionBank/, Tournament/,
+│   │                                  Gameplay/, Scoring/, Qualification/, Buzzer/
 │   ├── src/QuizApp.Application/       -> Domain
 │   ├── src/QuizApp.Infrastructure/    -> Application, Domain
 │   ├── src/QuizApp.Modules.Buzzer/    -> Application, Domain (optional module)
 │   ├── src/QuizApp.Api/               -> all four above
-│   ├── tests/QuizApp.{Domain,Application}.Tests/, Api.IntegrationTests/, Architecture.Tests/
+│   ├── tests/QuizApp.Domain.Tests/    xUnit + FluentAssertions 6.12.2; 95 tests,
+│   │                                  0 failing as of S-2026-09-04-03
+│   ├── tests/QuizApp.Application.Tests/, Api.IntegrationTests/, Architecture.Tests/
+│   │                                  no tests written yet
 │   └── tools/QuizApp.BuzzerAgent/     console tray app; no project refs yet (T-006)
 ├── QuizApp-9AMM/            LEGACY MVC 4. Nested git repo.
 ├── QuickBuzz/               LEGACY buzzer. Nested git repo.
@@ -83,9 +89,11 @@ C:\Sharique\Projects\Personal\QuizApp\      <- context root (outer git repo)
 └── .claude/, .cursor/       Tool adapters for the context system
 ```
 
-`[FACT]` Only project/reference/subfolder scaffolding exists in `QuizApp/` so far
-(Phase 3 skeleton, partial). No domain model, no DI wiring beyond framework
-defaults, no Identity/JWT, no EF Core context, no migrations. See `TASKS.md` T-005.
+`[FACT]` As of S-2026-09-04-03: the Phase 1 domain model is fully implemented and
+committed (see `TASKS.md` T-010, Closed). Project/reference/subfolder scaffolding
+from Phase 3 is otherwise still only partial — no DI wiring beyond framework
+defaults, no Identity/JWT, no EF Core context, no migrations. Phase 2 (ADRs) has
+not been started. See `TASKS.md` T-005, T-009.
 
 **Nested git repositories.** `QuizApp-9AMM/` and `QuickBuzz/` each contain their
 own `.git`. The outer repository at the path above is the context root and owns
@@ -106,11 +114,16 @@ the new work. `[FACT]` verified by `find -type d -name .git`.
 
 - `[FACT]` Windows 10 Pro 10.0.19045, PowerShell 5.1 primary; Git Bash available.
 - `[FACT]` Context root: `C:\Sharique\Projects\Personal\QuizApp`.
-- `[FACT]` Outer repo is on branch `master` with **one commit** (`bf8cb06`,
-  "Initial commit: project scaffolding, docs, and AI context system") as of
-  S-2026-09-04-02; `main` is the intended base branch for PRs but does not exist.
-  `[FACT]` The `QuizApp/` solution scaffolding (T-002) is `git add`-staged on top
-  of that commit but not yet committed — see `TASKS.md` T-007/Q-004.
+- `[FACT]` Outer repo is on branch `master`. As of S-2026-09-04-03, `git log`
+  shows: `bf8cb06` (initial commit, docs + context system) · `893c4a7` (solution
+  scaffolding) · `471a60a` (.gitignore + `CLAUDE.md` commit-practice
+  instructions) · `2b2bcfb` (P1-02, `TurnOrderCalculator`) · `d6171cd` (Common
+  base interfaces + remaining enums) · `4697df7` (Common interfaces, enums,
+  `Program` aggregate) · `6e6a13e` (full domain model — teams, question bank,
+  tournaments, gameplay, scoring, tie-breaking). `main` is the intended base
+  branch for PRs but does not exist. Only `CLAUDE.md` has an uncommitted
+  one-line addition as of this session (see `TASKS.md` Q-004, and L-004 for why
+  a prior brief's "nothing is committed" claim needed correcting against this).
 - `[FACT]` .NET 10 SDK **10.0.400** installed locally, alongside 8.0.421, both
   under `C:\Program Files\dotnet\sdk`. Verified via `dotnet --list-sdks`.
 - `[UNVERIFIED]` SQL Server instance available for development. Check: connection
@@ -151,10 +164,17 @@ dotnet --list-sdks          # confirmed: 8.0.421 and 10.0.400
   system mirrors this with its confidence tags — see D-004.
 - `[FACT]` The user asked for existing conventions to be inspected before adding
   structure, rather than a new structure being imposed. Applies to future work too.
-- `[ASSUMED]` Commits are made only when the user asks. Confirm: ask before the
-  first commit. `[UNVERIFIED]` One commit (`bf8cb06`) exists that was not
-  reported as user-requested in any brief seen so far — presumed made by the user
-  directly, not a contradiction of this convention (see `TASKS.md` V-005).
+- `[DECIDED]` Commits are made only when the user asks (V-005, promoted from
+  `[ASSUMED]` in S-2026-09-04-03). `[FACT]` `CLAUDE.md` now has an explicit
+  "Instructions" section, written by the user directly: never commit unasked;
+  always present plans in phases, each followed by a single-line commit
+  message; separate commit messages for API vs Angular changes; every plan
+  states What/Why/Where/Affects; and — added this session — always read
+  `context/CURRENT.md` first and keep the rest of `context/` in mind for every
+  decision during the session, not only at the start. This assistant proposes
+  commit messages; the user runs `git commit`. See `TASKS.md` V-005 for the
+  git-log evidence this pattern is actually being followed, and L-004 for a
+  related pitfall (a brief's claim about commit state can be stale).
 - `[FACT]` The user makes incremental, narrow requests rather than specifying
   everything up front (e.g. narrowing the Judge role's authority across four
   separate messages before asking for full removal, D-013). Expect more of this
@@ -167,6 +187,13 @@ dotnet --list-sdks          # confirmed: 8.0.421 and 10.0.400
   MCQ but is fully configurable (D-011); buzzer device count defaults to 3 but is
   configurable (D-014). Apply this pattern when a future request says
   "configurable" without specifying a default.
+- `[FACT]` Domain exceptions were introduced incrementally during Phase 1 — added
+  when the entity that needed them was built (e.g. `InsufficientParticipantsException`
+  appeared with `Match.Start`, `SegmentNotReorderableException` with
+  `MatchSegment.Reorder`) rather than all stubbed out upfront under the
+  P1-14 "exceptions" task. Worked well: every exception in the codebase has a
+  real caller from the moment it exists. Treat this as the default pattern for
+  future phases too, not just something that happened to occur this once.
 - `[UNVERIFIED]` Large, cross-referenced documentation edits were made via
   targeted scripts (read file, assert exact old text present, replace, write)
   rather than an editor's diff-style edit tool, because the design docs are large

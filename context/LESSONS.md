@@ -4,7 +4,7 @@ Approaches that failed, bugs, and environment traps. **Read this before proposin
 an approach** — it is the list of things that already cost someone time.
 Format: `_meta/SPEC.md` §6.5.
 
-**Last updated:** 2026-09-04 (S-2026-09-04-01)
+**Last updated:** 2026-09-04 (S-2026-09-04-03)
 
 ---
 
@@ -61,3 +61,29 @@ Format: `_meta/SPEC.md` §6.5.
   preferences, and current state.
 - **Still true?** Yes while the docs stay in the repo. If design detail ever moves
   somewhere an agent cannot read, that content must be pulled into `context/`.
+
+### L-004 · A conversation brief's claims about git/commit state can be stale by save time
+- **Added:** 2026-09-04 (S-2026-09-04-03)
+- **Tried:** Trusted a brief's claim at face value — "all of this session's work
+  is uncommitted, only an earlier task's commit exists" — before checking
+  `git log` directly.
+- **Result:** Would have written `TASKS.md`/`CURRENT.md` with a false "nothing is
+  committed" state. `git log` showed the opposite: six commits existed beyond
+  the one the brief named, covering exactly the work described as uncommitted,
+  each authored directly by the user. The user evidently ran the commits outside
+  the visible conversation (consistent with the "AI proposes a message, user
+  runs `git commit`" workflow in `CLAUDE.md`'s Instructions section), and the
+  brief simply hadn't caught up.
+- **Root cause:** `[FACT]` A brief describes the conversation as the reporting
+  agent last saw it. Git state can change through action the agent doesn't
+  witness (the user committing directly, a separate terminal, another tool).
+  Commit/staging state is exactly the kind of claim that is cheap to verify and
+  expensive to get wrong, because everything downstream (`TASKS.md`'s "commit
+  this" tasks, `CURRENT.md`'s "not yet committed" warnings) inherits the error.
+- **Instead:** Always run `git status --short`, `git log --oneline -15`, and
+  `git diff --stat` before writing any claim about what is or isn't committed —
+  per the context-keeper's own Step 0/§4.0b instructions — rather than
+  transcribing the brief's account of it. This applies even when the brief
+  sounds confident and specific.
+- **Still true?** Yes, structurally — this is not specific to this project, it
+  follows from the subagent/brief split (D-007, L-002) itself.
