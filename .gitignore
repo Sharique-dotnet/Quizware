@@ -12,3 +12,7 @@ bin/
 obj/
 [Bb]in/
 [Oo]bj/
+
+# Per-developer local secrets/config — appsettings.json stays generic
+**/appsettings.Development.json
+**/appsettings.*.local.json
