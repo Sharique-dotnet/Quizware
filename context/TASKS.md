@@ -4,24 +4,11 @@ Work items (`T-###`), open questions (`Q-###`), and things that need checking
 before they can be relied on. Done items stay — they are the record of what was
 already tried. Format: `_meta/SPEC.md` §6.4.
 
-**Last updated:** 2026-09-04 (S-2026-09-04-03)
+**Last updated:** 2026-09-07 (S-2026-09-07-01)
 
 ---
 
 ## Active work
-
-- **T-005** `TODO` · Implement Phase 3's cross-cutting concerns
-  - Why: T-002 delivered only the project/reference skeleton. Roadmap Phase 3 also
-    calls for DI wiring beyond framework defaults, Identity/JWT, a global exception
-    handler, Serilog, a FluentValidation pipeline, health checks beyond template
-    defaults, and CI. None of these exist yet.
-  - Where: `QuizApp/src/QuizApp.Api/`, `QuizApp/src/QuizApp.Infrastructure/`,
-    `docs/Implementation-Plan.md` (Phase 3 task IDs)
-  - Blocked by: nothing technical; sequencing question below (see note).
-  - Note: the roadmap/plan's recommended order is Domain (Phase 1) → ADRs
-    (Phase 2) → Skeleton (Phase 3), but the user scaffolded the skeleton (T-002)
-    before either Phase 1 or Phase 2 was started. Whoever resumes should decide
-    whether to backfill Phase 1/2 first or continue Phase 3 on the skeleton as-is.
 
 - **T-006** `TODO` · Decide whether `QuizApp.BuzzerAgent` references `QuizApp.Modules.Buzzer`
   - Why: The agent needs the serial frame-parsing logic (`DeviceParser`/
@@ -31,31 +18,15 @@ already tried. Format: `_meta/SPEC.md` §6.4.
   - Blocked by: nothing urgent — this is Phase 14 work per
     `docs/Implementation-Plan.md`. Flagged now so it isn't assumed silently later.
 
-- **T-008** `TODO` · Re-sync `docs/Implementation-Plan.md` Phase 0 section with D-015
-  - Why: D-015 records Phase 0 as owner-confirmed/skipped, but `[FACT]` verified
-    this session that the file on disk (`docs/Implementation-Plan.md` lines
-    73–88) still carries the original six-task workshop wording
-    (`P0-01`–`P0-06`, "Duration: 1 week"). An edit rewriting this into a short
-    "SKIPPED — owner-confirmed" note was reportedly made earlier but is not
-    present now — either it was never saved, or it reverted through some
-    out-of-band change. Not investigated further this session; not worth the
-    time versus just re-applying the edit.
-  - Where: `docs/Implementation-Plan.md` lines 73–88
-  - Blocked by: nothing — purely needs someone to make the edit and this time
-    verify it persisted (re-read the file after writing, not just after the
-    tool call reports success).
-
-- **T-009** `TODO` · Decide Phase 1 vs Phase 2 vs Phase 3 sequencing going forward
-  - Why: Phase 1 (domain model) is now fully implemented (P1-01–P1-14, see T-010
-    Closed). Phase 2 (ADRs) has not been started. Phase 3 (skeleton) was already
-    partially done before Phase 1 even started (T-002/T-005) — so the roadmap's
-    recommended order (Domain → ADRs → Skeleton) has now been done out of
-    sequence in two different ways in two different sessions. Whoever resumes
-    should pick: backfill Phase 2 (ADRs) before continuing Phase 3's remaining
-    cross-cutting concerns, or proceed with Phase 3 (T-005) directly since the
-    domain model it would sit on top of now exists.
-  - Where: `docs/Implementation-Plan.md` Phases 2 and 3.
-  - Blocked by: nothing technical — a judgment call for whoever resumes.
+- **T-014** `TODO` · Implement Phase 6 — Configuration modules
+  - Why: Phase 5 (API contract) is done; the plan's "Start here" section names
+    Phase 6 next. This is the first phase where `QuizApp.Application` gets real
+    MediatR command/query handlers behind the Phase 5 stub controllers.
+  - Where: Sub-phases in order (each depends on the previous): Program
+    management → Users/roles → Teams → Topics/tags → Media → Question bank. See
+    `docs/Implementation-Plan.md` Phase 6 section (~line 404).
+  - Blocked by: nothing technical. Ask the user whether to commit Phase 5's
+    staged work first (see `CURRENT.md` §4 action 2).
 
 ## Open questions
 
@@ -104,6 +75,12 @@ already tried. Format: `_meta/SPEC.md` §6.4.
     uncommitted one-line addition as of this session (the new "always refer to
     `context/`" Instructions bullet).
 
+- **Q-005** `OPEN` (added S-2026-09-07-01) · `POST /buzzer/sessions/{id}/presses`
+  is `[AllowAnonymous]` in Phase 5 because agent-to-API auth is explicitly a
+  Phase 14 concern (ADR-005). Not the final security posture — needs a real
+  auth scheme for the buzzer agent before Phase 14 ships. Blocks: Phase 14
+  hardening, not current work.
+
 ## Verification queue
 
 Things currently tagged `[ASSUMED]` or `[UNVERIFIED]` that will mislead someone if
@@ -117,7 +94,28 @@ they stay unchecked.
 - **V-003** · `[UNVERIFIED]` A SQL Server instance is available for development.
   - Check: ask the user, or look for a connection string once Phase 3 creates
     `appsettings.Development.json`.
-  - Matters for: Phase 4 (schema and migrations).
+  - Matters for: Phase 4 (schema and migrations). Superseded in practice by
+    V-006/V-007 below — Phase 4 shipped against SQLite instead, real SQL Server
+    still unverified.
+
+- **V-006** (added S-2026-09-07-01) · `[UNVERIFIED]` `docker compose up`
+  (`QuizApp/docker-compose.yml`) and the GitHub Actions CI workflow
+  (`.github/workflows/ci.yml`) both from Phase 3 — neither has been run in this
+  dev environment (no Docker daemon, no CI runner). This is stated directly in
+  `docs/Implementation-Plan.md`'s own Phase 3 exit-criteria text, not just this
+  session's guess.
+  - Check: run `docker compose up` locally once Docker is available; push to
+    trigger the Actions workflow once a remote exists.
+  - Matters for: trusting the dev-DB and CI setup before relying on them.
+
+- **V-007** (added S-2026-09-07-01) · `[UNVERIFIED]` The Phase 4 migration
+  `AddBusinessSchema` has only been verified against SQLite
+  (`CustomWebApplicationFactory` in integration tests), not real SQL Server via
+  Testcontainers as the plan's exit criteria call for — no Docker daemon here.
+  - Check: run the same test suite against SQL Server via Testcontainers once
+    Docker is available.
+  - Matters for: trusting the migration in production without surprises from
+    SQL-Server-specific behavior SQLite doesn't share.
 
 - **V-005** · Resolved as `[DECIDED]` (S-2026-09-04-03) · Commits are made only
   when the user explicitly asks; the AI proposes a plan and a commit message but
@@ -139,6 +137,158 @@ they stay unchecked.
     against `git log` this session. Lesson recorded as L-004.
 
 ## Closed
+
+- **T-014-PRIOR-NOTE:** T-011, T-012, T-013 below were reconstructed in
+  S-2026-09-07-01 from `docs/Implementation-Plan.md`'s own inline phase-status
+  text and `git log`/`git show`, **not** from a conversation brief (the brief
+  handed to that session only covered Phase 5). See that session's file for the
+  reconstruction method.
+
+- **T-013** `DONE` · Implement Phase 5 — API contract, OpenAPI first (P5-01–P5-08)
+  - Delivered per this session's (S-2026-09-07-01) conversation brief; verified
+    `[FACT]` against the repo: 16 controllers under
+    `QuizApp/src/QuizApp.Api/Controllers/v1/`, `dotnet build` → 0 warnings/errors,
+    `dotnet test` → 147 passed/0 failed (95 Domain, 4 Application, 4
+    Architecture, 44 Api.IntegrationTests), TS client
+    `QuizApp/clients/typescript/quizapp-api-client.ts` → 19,419 lines (brief
+    claimed ~19,400 — matches).
+  - Contracts/V1/ (P5-01–P5-04): per-area request/response DTOs; the 10 per-format
+    question create-request records in `Contracts/V1/Questions/Formats/`; the
+    `[JsonPolymorphic]`/`[JsonDerivedType]` discriminated-union `QuestionResponse`
+    in `Contracts/V1/Questions/QuestionResponses.cs` (P5-05); FluentValidation
+    validators per format in `QuestionFormatValidators.cs`.
+  - 16 controllers (P5-06): 14 new + AuthController/AdminController extended, all
+    actions `StatusCode(501)` typed `ActionResult<TResponse>` — see D-017 for why
+    the typing is load-bearing for Swagger, not cosmetic.
+  - TypeScript client (P5-07) via NSwag, not openapi-generator-cli — see D-018,
+    L-006 (no JVM in this environment).
+  - `.http` collection (P5-08): `QuizApp/src/QuizApp.Api/QuizApp.Api.http`,
+    covers all 16 areas plus a full login-to-qualification workflow.
+  - Five scope decisions recorded inline in `docs/Implementation-Plan.md`'s
+    Phase 5 section: (1) not every route has a bespoke response DTO — only
+    documented request bodies and worked-JSON-example endpoints do; (2)
+    `POST /buzzer/sessions/{id}/presses` is `[AllowAnonymous]`, not final — see
+    Q-005; (3) the Swashbuckle polymorphism gap, D-017; (4) NSwag over
+    openapi-generator-cli, D-018; (5) per-endpoint literal JSON examples from
+    the API design doc are not wired into Swagger via `schema.example` —
+    judged not worth the fragility risk against Swashbuckle 10.x's example API,
+    XML doc comments substitute instead.
+  - **Staged but not committed** as of this checkpoint — offered commit message:
+    "Add API contract: request/response DTOs, question format validators, 16
+    controller stubs, and generated TypeScript client".
+  - Full detail: `sessions/2026-09-07-01-phases-2-3-4-5-catchup.md`.
+
+- **T-012** `DONE` · Implement Phase 4 — database schema and migrations (P4-01–P4-20)
+  - Reconstructed `[FACT]` from `docs/Implementation-Plan.md`'s own "Status: all
+    20 tasks done" text and `git show --stat c624f51` ("Add full business
+    schema, global query filters, audit interceptors, and pluggable buzzer
+    persistence") — **committed**, unlike Phase 5.
+  - ~58 tables total (49 new in migration `AddBusinessSchema`, on top of Phase
+    3's 9 Identity/token tables) vs. the design doc's nominal 51 — reconciled by
+    three scope decisions recorded in the plan doc: (1) lookup values are C#
+    enum columns, not separate tables, matching Phase 1's enums; (2)
+    `ScoringRule`/`TieBreakRule` defaults seed per-program (Phase 6's "create a
+    program" flow), not globally, since no program exists yet at migration time
+    — legacy values captured meanwhile in
+    `QuizApp.Domain.Scoring.DefaultScoringValues`; (3) most FKs are plain `Guid`
+    columns without formal EF relationships (Phase 1 has no navigation
+    properties by design) — named indexes/unique/check constraints from the
+    schema doc are all in place regardless.
+  - Global query filters (tenant + soft delete) applied reflectively to every
+    `ITenantScoped`/`ISoftDeletable` entity; tenant filter is a no-op (never
+    throws) outside a program-scoped request, e.g. background jobs/seeding.
+    Audit + audit-log interceptors (`AuditableEntitySaveChangesInterceptor`,
+    `AuditLogSaveChangesInterceptor`). Buzzer tables live in a separate assembly
+    picked up via a new `IEntityConfigurationAssemblyMarker` port in
+    Application, so Infrastructure never references the buzzer module directly.
+  - Admin user seeded (`admin@quizapp.local` / `ChangeMe!123`, `SuperAdmin`,
+    skipped in Production) via `AdminUserSeeder`.
+  - Tests: 115 passing at the time (95 Domain, 4 Application, 4 Architecture, 12
+    Api.IntegrationTests — 6 new persistence tests: tenant isolation, soft
+    delete, audit stamping, audit log, NOT-NULL enforcement, seed fidelity), run
+    against SQLite in `CustomWebApplicationFactory`, **not** real SQL Server via
+    Testcontainers (no Docker here) — see V-007.
+  - Full detail: `sessions/2026-09-07-01-phases-2-3-4-5-catchup.md`.
+
+- **T-011** `DONE` · Implement Phases 2 and 3 (ADRs; skeleton and cross-cutting concerns)
+  - Reconstructed `[FACT]` from `docs/Implementation-Plan.md`'s own "Status:
+    DONE" text and `git show --stat 4452949` ("Add core infra: Identity, JWT,
+    DI, logging, tests") for Phase 3 — **committed**. Phase 2's 10 ADRs exist on
+    disk in `docs/adr/` but are **uncommitted by construction** since all of
+    `docs/` is gitignored — see D-016 — not a pending-commit gap the way Phase
+    5's staged files are.
+  - Phase 2 (ADRs, P2-01–P2-10): `docs/adr/ADR-001` through `ADR-010` — modular
+    monolith, multi-tenancy, TPT questions, event-sourced scoring,
+    buzzer-port-null-default, SignalR+outbox, tie-break-as-ordinary-match, local
+    hosting, authorisation model, module boundaries. This resolves the
+    "Phase 2 not started" state the prior checkpoint (S-2026-09-04-03) recorded
+    — superseded, not contradicted (nothing about Phase 1 or earlier changes).
+  - Phase 3 (skeleton, all 17 tasks): DI wiring (`AddApplication`/
+    `AddInfrastructure`/`AddApi`), ASP.NET Core Identity + JWT (15 min
+    access/7 day refresh, rotated on use, hash stored not the raw token), 7
+    roles seeded via `RoleSeeder`, 9 authorization policies matching
+    `05-API-Design.md` §5.9 exactly, `ProgramScopeMiddleware` (rejects
+    `{programId}`-vs-JWT-claim mismatches with 403 before hitting the DB),
+    `GlobalExceptionHandler` (RFC 9457 `application/problem+json`, maps all 7
+    P1-14 domain exceptions plus `NoActiveParticipantsException` and
+    `ValidationException`), Serilog + `CorrelationIdMiddleware`,
+    `ValidationBehavior<TRequest,TResponse>` MediatR pipeline (aggregates every
+    validator's every failure, not just the first), `ICurrentUser`/
+    `ICurrentProgram`/`IClock` + test fakes, `IdempotencyFilter` +
+    `EfIdempotencyStore`, `/health/live` and `/health/ready` (DB-backed),
+    Swagger + bearer scheme, Docker Compose for local SQL Server (unverified
+    here, no Docker daemon — see V-006), GitHub Actions CI (unverified here, no
+    runner — see V-006). Working endpoints: `GET /api/v1/admin/health`,
+    `POST /api/v1/auth/login`.
+  - Scope decision recorded in the plan doc: Phase 3's `AppDbContext` covers
+    only Identity/RefreshToken/IdempotencyRecord tables (migration
+    `InitialIdentitySchema`) — the full 51-table business schema is added to
+    this *same* context in Phase 4, not a second context.
+  - Testing note recorded in the plan doc: `QuizApp.Api.IntegrationTests` swaps
+    `AppDbContext`'s SQL Server connection for an in-process SQLite database (a
+    real relational engine enforcing constraints, not the forbidden EF Core
+    InMemory provider) — `EnsureCreatedAsync()` under `Testing`,
+    `MigrateAsync()` otherwise.
+  - Tests at the time: 109 passing (95 Domain, 4 Application, 4 Architecture, 6
+    Api.IntegrationTests).
+  - This closes out **T-005** (Phase 3 cross-cutting concerns — now fully
+    delivered, superseding its earlier `TODO` status) and **T-009** (the
+    Phase 1/2/3 sequencing question — resolved in practice as Domain → Skeleton
+    → ADRs → Schema → Contract, not the roadmap's nominal Domain → ADRs →
+    Skeleton order, but every phase did get done). Neither entry's original text
+    is deleted — this note supersedes their open status per SPEC §4.4.
+  - Full detail: `sessions/2026-09-07-01-phases-2-3-4-5-catchup.md`.
+
+- **T-009** `DONE` · Decide Phase 1 vs Phase 2 vs Phase 3 sequencing going forward
+  - Original text (S-2026-09-04-03): Phase 1 (domain model) is now fully
+    implemented (P1-01–P1-14, see T-010 Closed). Phase 2 (ADRs) has not been
+    started. Phase 3 (skeleton) was already partially done before Phase 1 even
+    started (T-002/T-005) — so the roadmap's recommended order (Domain → ADRs
+    → Skeleton) has now been done out of sequence in two different ways in two
+    different sessions. Whoever resumes should pick: backfill Phase 2 (ADRs)
+    before continuing Phase 3's remaining cross-cutting concerns, or proceed
+    with Phase 3 (T-005) directly since the domain model it would sit on top of
+    now exists.
+  - Resolved (S-2026-09-07-01): both were done, in the order Domain (1) →
+    Skeleton (3) → ADRs (2) → Schema (4) → Contract (5) — not the roadmap's
+    nominal order, but every phase got delivered and nothing was blocked by the
+    reordering. See T-011 (Closed) for the full Phase 2/3 detail.
+
+- **T-005** `DONE` · Implement Phase 3's cross-cutting concerns
+  - Original text (S-2026-09-04-03): T-002 delivered only the project/reference
+    skeleton. Roadmap Phase 3 also calls for DI wiring beyond framework
+    defaults, Identity/JWT, a global exception handler, Serilog, a
+    FluentValidation pipeline, health checks beyond template defaults, and CI.
+    None of these existed yet at that time.
+  - Resolved (S-2026-09-07-01): all 17 Phase 3 tasks delivered and committed as
+    `4452949`. See T-011 (Closed) for the full breakdown.
+
+- **T-008** `DONE` · Re-sync `docs/Implementation-Plan.md` Phase 0 section with D-015
+  - `[FACT]` Verified this session (S-2026-09-07-01): line 73 of
+    `docs/Implementation-Plan.md` now reads
+    `# Phase 0 — Requirements confirmation — **DONE (skipped, owner-confirmed)**`.
+    The earlier attempt's edit that "didn't persist" (per S-2026-09-04-03) has
+    since been re-applied and this time verified present on disk.
 
 - **T-010** `DONE` · Implement Phase 1 — the domain model (P1-01 through P1-14)
   - Delivered in S-2026-09-04-03, verified `[FACT]` against the repository this

@@ -4,9 +4,16 @@
     <TargetFramework>net10.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <!-- CS1591 (missing XML comment) is suppressed deliberately: Phase 5 is a
+         contract-only phase with ~150 stub actions, so requiring a doc
+         comment on every one is disproportionate. Comments are still added
+         wherever the route's purpose is non-obvious. -->
+    <NoWarn>$(NoWarn);CS1591</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="FluentValidation.DependencyInjectionExtensions" Version="12.1.1" />
     <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="10.0.11" />
     <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.11" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.11">

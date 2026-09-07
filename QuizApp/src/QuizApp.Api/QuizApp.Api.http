@@ -1,6 +1,408 @@
-@QuizApp.Api_HostAddress = http://localhost:5155
+@host = http://localhost:5299
+@programId = 00000000-0000-0000-0000-000000000001
+@stageId = 00000000-0000-0000-0000-000000000002
+@matchId = 00000000-0000-0000-0000-000000000003
+@teamId = 00000000-0000-0000-0000-000000000004
+@questionId = 00000000-0000-0000-0000-000000000005
+@tieId = 00000000-0000-0000-0000-000000000006
 
-GET {{QuizApp.Api_HostAddress}}/weatherforecast/
-Accept: application/json
+### Login as the seeded default admin (see AdminUserSeeder)
+# @name login
+POST {{host}}/api/v1/auth/login
+Content-Type: application/json
+
+{
+  "email": "admin@quizapp.local",
+  "password": "ChangeMe!123"
+}
 
 ###
+@accessToken = {{login.response.body.$.accessToken}}
+
+### Refresh
+POST {{host}}/api/v1/auth/refresh
+Content-Type: application/json
+
+{
+  "refreshToken": "{{login.response.body.$.refreshToken}}"
+}
+
+### Me
+GET {{host}}/api/v1/auth/me
+Authorization: Bearer {{accessToken}}
+
+### Logout
+POST {{host}}/api/v1/auth/logout
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{
+  "refreshToken": "{{login.response.body.$.refreshToken}}"
+}
+
+### Select program (mints a program-scoped token; 501 until P6-09)
+POST {{host}}/api/v1/auth/select-program
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{
+  "programId": "{{programId}}"
+}
+
+### Change password
+POST {{host}}/api/v1/auth/change-password
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{
+  "currentPassword": "ChangeMe!123",
+  "newPassword": "SomethingElse!456"
+}
+
+### ==================== Programs ====================
+
+### List programs
+GET {{host}}/api/v1/programs
+Authorization: Bearer {{accessToken}}
+
+### Create a program
+POST {{host}}/api/v1/programs
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{
+  "name": "2026 Inter-School Quiz",
+  "description": "Annual tournament"
+}
+
+### Get a program
+GET {{host}}/api/v1/programs/{{programId}}
+Authorization: Bearer {{accessToken}}
+
+### Update a program
+PUT {{host}}/api/v1/programs/{{programId}}
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{
+  "name": "2026 Inter-School Quiz",
+  "description": "Updated description"
+}
+
+### Enable/disable formats
+PUT {{host}}/api/v1/programs/{{programId}}/formats
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{
+  "formats": [
+    { "formatCode": "MCQ", "isEnabled": true, "displayOrder": 1, "disabledReason": null },
+    { "formatCode": "Passing", "isEnabled": false, "disabledReason": "Not running Passing this year" }
+  ]
+}
+
+### Readiness check before going live
+POST {{host}}/api/v1/programs/{{programId}}/validate
+Authorization: Bearer {{accessToken}}
+
+### Activate the program
+POST {{host}}/api/v1/programs/{{programId}}/activate
+Authorization: Bearer {{accessToken}}
+
+### Program dashboard
+GET {{host}}/api/v1/programs/{{programId}}/dashboard
+Authorization: Bearer {{accessToken}}
+
+### ==================== Teams ====================
+
+### List teams
+GET {{host}}/api/v1/programs/{{programId}}/teams
+Authorization: Bearer {{accessToken}}
+
+### Create a team
+POST {{host}}/api/v1/programs/{{programId}}/teams
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{
+  "registrationCode": "T-001",
+  "schoolName": "Al Hamd School",
+  "teamName": "الحمد",
+  "memberNames": ["Ali", "Sara"]
+}
+
+### Change team status
+POST {{host}}/api/v1/programs/{{programId}}/teams/{{teamId}}/status
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{
+  "status": "Disqualified",
+  "reason": "Used a mobile phone during the match"
+}
+
+### ==================== Topics & Tags ====================
+
+### List topics
+GET {{host}}/api/v1/programs/{{programId}}/topics
+Authorization: Bearer {{accessToken}}
+
+### Create a tag
+POST {{host}}/api/v1/programs/{{programId}}/tags
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{
+  "name": "History"
+}
+
+### ==================== Questions ====================
+
+### List questions
+GET {{host}}/api/v1/programs/{{programId}}/questions?formatCode=Mcq
+Authorization: Bearer {{accessToken}}
+
+### Get one question (polymorphic response, discriminated by formatCode)
+GET {{host}}/api/v1/programs/{{programId}}/questions/{{questionId}}
+Authorization: Bearer {{accessToken}}
+
+### Create an MCQ question
+POST {{host}}/api/v1/programs/{{programId}}/questions/mcq
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{
+  "formatCode": "Mcq",
+  "questionText": "What is the capital of France?",
+  "difficultyLevelId": 2,
+  "language": "en",
+  "options": [
+    { "text": "Paris", "isCorrect": true, "displayOrder": 1, "mediaAssetId": null },
+    { "text": "Rome", "isCorrect": false, "displayOrder": 2, "mediaAssetId": null }
+  ],
+  "allowMultipleCorrect": false,
+  "shuffleOptions": true,
+  "negativeMarkingEnabled": false,
+  "tagIds": []
+}
+
+### Create an Audio-Visual question
+POST {{host}}/api/v1/programs/{{programId}}/questions/audio-visual
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{
+  "formatCode": "AudioVisual",
+  "difficultyLevelId": 3,
+  "language": "ur",
+  "mediaAssetId": "00000000-0000-0000-0000-000000000099",
+  "mediaKind": "Audio",
+  "answerText": "مرزا غالب",
+  "acceptableAnswers": ["Ghalib"],
+  "tagIds": []
+}
+
+### Approve a question
+POST {{host}}/api/v1/programs/{{programId}}/questions/{{questionId}}/approve
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{
+  "notes": "Reviewed and approved"
+}
+
+### Question coverage — do we have enough questions to run the event?
+GET {{host}}/api/v1/programs/{{programId}}/questions/coverage
+Authorization: Bearer {{accessToken}}
+
+### ==================== Stages ====================
+
+### List stages
+GET {{host}}/api/v1/programs/{{programId}}/stages
+Authorization: Bearer {{accessToken}}
+
+### Create a stage
+POST {{host}}/api/v1/programs/{{programId}}/stages
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{
+  "name": "League",
+  "orderIndex": 1
+}
+
+### Add a segment (MCQ, 6 questions)
+POST {{host}}/api/v1/programs/{{programId}}/stages/{{stageId}}/segments
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{
+  "formatCode": "MCQ",
+  "questionCount": 6,
+  "isOrderLocked": false
+}
+
+### Reorder segments (drag-and-drop produces this)
+PUT {{host}}/api/v1/programs/{{programId}}/stages/{{stageId}}/segments/reorder
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{
+  "orderedSegmentTemplateIds": ["seg-buzzer-id", "seg-mcq-id"]
+}
+
+### ==================== Rules ====================
+
+### Get scoring rules
+GET {{host}}/api/v1/programs/{{programId}}/rules/scoring
+Authorization: Bearer {{accessToken}}
+
+### Preview a selection rule without consuming questions
+POST {{host}}/api/v1/programs/{{programId}}/rules/selection/preview
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{
+  "stageId": "{{stageId}}",
+  "formatCode": "MCQ",
+  "questionCount": 6
+}
+
+### ==================== Matches ====================
+
+### List matches
+GET {{host}}/api/v1/programs/{{programId}}/matches?stageId={{stageId}}
+Authorization: Bearer {{accessToken}}
+
+### Create a match
+POST {{host}}/api/v1/programs/{{programId}}/matches
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{
+  "stageId": "{{stageId}}",
+  "name": "League Match 1",
+  "matchNumber": 1
+}
+
+### Auto-seed matches for a stage
+POST {{host}}/api/v1/programs/{{programId}}/matches/auto-seed
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{
+  "stageId": "{{stageId}}",
+  "seedingMode": "Random"
+}
+
+### ==================== Live match engine ====================
+
+### Live state — everything the operator console needs in one call
+GET {{host}}/api/v1/matches/{{matchId}}/live/state
+Authorization: Bearer {{accessToken}}
+
+### Start a match
+POST {{host}}/api/v1/matches/{{matchId}}/live/start
+Authorization: Bearer {{accessToken}}
+Idempotency-Key: 4f3e1111-0000-0000-0000-000000000001
+
+### Record an answer
+POST {{host}}/api/v1/matches/{{matchId}}/live/answers
+Authorization: Bearer {{accessToken}}
+Idempotency-Key: 4f3e2222-0000-0000-0000-000000000002
+Content-Type: application/json
+
+{
+  "matchQuestionId": "00000000-0000-0000-0000-000000000010",
+  "matchParticipantId": "00000000-0000-0000-0000-000000000011",
+  "outcome": "Correct",
+  "selectedOptionId": "00000000-0000-0000-0000-000000000012",
+  "selectedOptionIds": null,
+  "freeTextAnswer": null,
+  "passNumber": 0,
+  "answerSource": "Operator",
+  "buzzPressId": null,
+  "responseTimeMs": 8210
+}
+
+### Disqualify a participant mid-match
+POST {{host}}/api/v1/matches/{{matchId}}/live/participants/00000000-0000-0000-0000-000000000011/disqualify
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{
+  "reason": "Used a mobile phone during the Sequence segment",
+  "approvedByUserId": "00000000-0000-0000-0000-000000000099",
+  "excludeFromStandings": true
+}
+
+### End the match
+POST {{host}}/api/v1/matches/{{matchId}}/live/end
+Authorization: Bearer {{accessToken}}
+
+### ==================== Scores & Standings ====================
+
+### Live scores for a match
+GET {{host}}/api/v1/matches/{{matchId}}/scores
+Authorization: Bearer {{accessToken}}
+
+### Overall standings
+GET {{host}}/api/v1/programs/{{programId}}/standings/overall
+Authorization: Bearer {{accessToken}}
+
+### ==================== Qualification ====================
+
+### Qualification preview
+GET {{host}}/api/v1/programs/{{programId}}/qualification/stages/{{stageId}}/preview
+Authorization: Bearer {{accessToken}}
+
+### List ties
+GET {{host}}/api/v1/programs/{{programId}}/qualification/stages/{{stageId}}/ties
+Authorization: Bearer {{accessToken}}
+
+### Create a tie-break match
+POST {{host}}/api/v1/programs/{{programId}}/qualification/ties/{{tieId}}/tie-break-match
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{
+  "reason": "Both teams requested a buzzer decider"
+}
+
+### Commit qualification — creates the next stage's matches
+POST {{host}}/api/v1/programs/{{programId}}/qualification/stages/{{stageId}}/commit
+Authorization: Bearer {{accessToken}}
+
+### ==================== Buzzer (optional module) ====================
+
+### Buzzer capability
+GET {{host}}/api/v1/buzzer/capability
+Authorization: Bearer {{accessToken}}
+
+### ==================== Display (read-only token) ====================
+
+### Match state for a display screen
+GET {{host}}/api/v1/display/matches/{{matchId}}/state
+Authorization: Bearer {{accessToken}}
+
+### ==================== Reports ====================
+
+### Match report
+GET {{host}}/api/v1/programs/{{programId}}/reports/matches/{{matchId}}
+Authorization: Bearer {{accessToken}}
+
+### ==================== Admin ====================
+
+### List users
+GET {{host}}/api/v1/admin/users
+Authorization: Bearer {{accessToken}}
+
+### All lookup tables
+GET {{host}}/api/v1/admin/lookups
+Authorization: Bearer {{accessToken}}
+
+### Liveness
+GET {{host}}/health/live
+
+### Readiness (includes DB)
+GET {{host}}/health/ready

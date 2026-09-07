@@ -3,7 +3,7 @@
 Slow-changing orientation. Read `CURRENT.md` first; come here when you need the
 stack, the map, or the conventions.
 
-**Last updated:** 2026-09-04 (S-2026-09-04-03)
+**Last updated:** 2026-09-07 (S-2026-09-07-01)
 
 ---
 
@@ -67,20 +67,38 @@ C:\Sharique\Projects\Personal\QuizApp\      <- context root (outer git repo)
 │   ├── Implementation-Plan.md              Phased task list, 658 lines, 185 tasks (P0-P17)
 │   ├── QuizApp-9AMM-Technical-Analysis.md   Legacy audit (1,492 lines)
 │   └── QuickBuzz-Technical-Analysis.md      Legacy audit (123 lines)
-├── QuizApp/                 NEW system. `[FACT]` Solution scaffolded, 10 projects:
+├── QuizApp/                 NEW system. `[FACT]` Solution scaffolded, 10 projects,
+│                            Phases 0–5 of 18 all DONE (see `CURRENT.md` §2):
 │   ├── QuizApp.slnx
 │   ├── src/QuizApp.Domain/            no project/NuGet references. Phase 1 domain
-│   │                                  model complete (P1-01–P1-14): Common/,
-│   │                                  Enums/, Teams/, QuestionBank/, Tournament/,
-│   │                                  Gameplay/, Scoring/, Qualification/, Buzzer/
-│   ├── src/QuizApp.Application/       -> Domain
-│   ├── src/QuizApp.Infrastructure/    -> Application, Domain
-│   ├── src/QuizApp.Modules.Buzzer/    -> Application, Domain (optional module)
-│   ├── src/QuizApp.Api/               -> all four above
-│   ├── tests/QuizApp.Domain.Tests/    xUnit + FluentAssertions 6.12.2; 95 tests,
-│   │                                  0 failing as of S-2026-09-04-03
-│   ├── tests/QuizApp.Application.Tests/, Api.IntegrationTests/, Architecture.Tests/
-│   │                                  no tests written yet
+│   │                                  model complete: Common/, Enums/, Teams/,
+│   │                                  QuestionBank/, Tournament/, Gameplay/,
+│   │                                  Scoring/, Qualification/, Buzzer/
+│   ├── src/QuizApp.Application/       -> Domain. Phase 3: Authorization/ (Policies,
+│   │                                  Roles), Common/Behaviors/ValidationBehavior,
+│   │                                  Abstractions/ (IClock, ICurrentUser,
+│   │                                  ICurrentProgram)
+│   ├── src/QuizApp.Infrastructure/    -> Application, Domain. Phase 3: Identity/
+│   │                                  (JWT, AppUser/AppRole, RefreshToken),
+│   │                                  Idempotency/. Phase 4: Persistence/
+│   │                                  (AppDbContext, ~58-table EF model,
+│   │                                  Configurations/, Interceptors/), Auditing/,
+│   │                                  Outbox/, Imports/
+│   ├── src/QuizApp.Modules.Buzzer/    -> Application, Domain (optional module).
+│   │                                  Phase 4: Manual/ (BuzzSession, BuzzPress,
+│   │                                  BuzzDeviceMapping) + own EF configs, kept out
+│   │                                  of Infrastructure's direct references
+│   ├── src/QuizApp.Api/               -> all four above. Phase 3: Middleware/,
+│   │                                  Filters/. Phase 5: Contracts/V1/ (DTOs per
+│   │                                  area, discriminated-union QuestionResponse),
+│   │                                  Controllers/v1/ (16 controllers, all 501 stubs)
+│   ├── tests/QuizApp.Domain.Tests/    xUnit + FluentAssertions; 95 tests
+│   ├── tests/QuizApp.Application.Tests/  4 tests
+│   ├── tests/QuizApp.Architecture.Tests/ 4 tests (NetArchTest dependency rules)
+│   ├── tests/QuizApp.Api.IntegrationTests/ 44 tests (persistence, auth/health,
+│   │                                  validators, controller-stub reachability)
+│   ├── clients/typescript/quizapp-api-client.ts  generated via NSwag (D-018),
+│   │                                  ~19,400 lines, committed
 │   └── tools/QuizApp.BuzzerAgent/     console tray app; no project refs yet (T-006)
 ├── QuizApp-9AMM/            LEGACY MVC 4. Nested git repo.
 ├── QuickBuzz/               LEGACY buzzer. Nested git repo.
@@ -89,11 +107,11 @@ C:\Sharique\Projects\Personal\QuizApp\      <- context root (outer git repo)
 └── .claude/, .cursor/       Tool adapters for the context system
 ```
 
-`[FACT]` As of S-2026-09-04-03: the Phase 1 domain model is fully implemented and
-committed (see `TASKS.md` T-010, Closed). Project/reference/subfolder scaffolding
-from Phase 3 is otherwise still only partial — no DI wiring beyond framework
-defaults, no Identity/JWT, no EF Core context, no migrations. Phase 2 (ADRs) has
-not been started. See `TASKS.md` T-005, T-009.
+`[FACT]` As of S-2026-09-07-01: `dotnet build` → 0 warnings/errors, `dotnet test`
+→ **147 passed, 0 failed** across all four test projects. Phases 0–5 of the
+18-phase plan are all marked DONE in `docs/Implementation-Plan.md`. See
+`CURRENT.md` §2–3 for the phase-by-phase breakdown and what's committed vs.
+staged vs. gitignored-by-construction (D-016).
 
 **Nested git repositories.** `QuizApp-9AMM/` and `QuickBuzz/` each contain their
 own `.git`. The outer repository at the path above is the context root and owns
@@ -114,16 +132,21 @@ the new work. `[FACT]` verified by `find -type d -name .git`.
 
 - `[FACT]` Windows 10 Pro 10.0.19045, PowerShell 5.1 primary; Git Bash available.
 - `[FACT]` Context root: `C:\Sharique\Projects\Personal\QuizApp`.
-- `[FACT]` Outer repo is on branch `master`. As of S-2026-09-04-03, `git log`
-  shows: `bf8cb06` (initial commit, docs + context system) · `893c4a7` (solution
-  scaffolding) · `471a60a` (.gitignore + `CLAUDE.md` commit-practice
-  instructions) · `2b2bcfb` (P1-02, `TurnOrderCalculator`) · `d6171cd` (Common
-  base interfaces + remaining enums) · `4697df7` (Common interfaces, enums,
-  `Program` aggregate) · `6e6a13e` (full domain model — teams, question bank,
-  tournaments, gameplay, scoring, tie-breaking). `main` is the intended base
-  branch for PRs but does not exist. Only `CLAUDE.md` has an uncommitted
-  one-line addition as of this session (see `TASKS.md` Q-004, and L-004 for why
-  a prior brief's "nothing is committed" claim needed correcting against this).
+- `[FACT]` Outer repo is on branch `master`. As of S-2026-09-07-01, `git log`
+  shows 12 commits: `bf8cb06` (initial commit, docs + context system) ·
+  `893c4a7` (solution scaffolding) · `471a60a` (.gitignore + `CLAUDE.md`
+  commit-practice instructions) · `2b2bcfb` (P1-02, `TurnOrderCalculator`) ·
+  `d6171cd` (Common base interfaces + remaining enums) · `4697df7` (Common
+  interfaces, enums, `Program` aggregate) · `6e6a13e` (full domain model) ·
+  `0df2bd2` (docs updated, and `docs/` moved from tracked to fully gitignored —
+  see D-016) · `4452949` (Phase 3: Identity, JWT, DI, logging, tests) ·
+  `c624f51` (Phase 4: full business schema, global query filters, audit
+  interceptors, pluggable buzzer persistence). `main` is the intended base
+  branch for PRs but does not exist. **Phase 5's ~20 files (contracts,
+  controllers, TS client) are staged but not committed** as of this session —
+  see `TASKS.md` T-013. Phase 2's 10 ADRs in `docs/adr/` are on disk but will
+  never show in `git log` (`docs/` is gitignored, D-016) — this is expected,
+  not a pending-commit gap.
 - `[FACT]` .NET 10 SDK **10.0.400** installed locally, alongside 8.0.421, both
   under `C:\Program Files\dotnet\sdk`. Verified via `dotnet --list-sdks`.
 - `[UNVERIFIED]` SQL Server instance available for development. Check: connection
@@ -139,13 +162,15 @@ last-path-segment name as the repo root, `QuizApp\QuizApp\`, is easy to fumble i
 
 ```bash
 dotnet sln QuizApp.slnx list       # list the 10 projects
-dotnet build                       # 0 warnings, 0 errors as of S-2026-09-04-02
+dotnet build QuizApp.slnx          # 0 warnings, 0 errors as of S-2026-09-07-01
+dotnet test QuizApp.slnx --no-build  # 147 passed, 0 failed as of S-2026-09-07-01
 dotnet list <project> reference    # verify a project's dependency edges
 ```
 
-`[UNVERIFIED]` No tests exist yet (test projects have only a `.csproj`, no `.cs`
-files), so `dotnet test` has not been run against real tests. No EF Core context
-or migrations exist yet — `dotnet ef migrations add ...` is Phase 4, not run.
+`[FACT]` EF Core migrations exist: `InitialIdentitySchema` (Phase 3) and
+`AddBusinessSchema` (Phase 4, ~58 tables total). Integration tests run against
+an in-process SQLite database, not real SQL Server (no Docker daemon in this
+environment) — see `TASKS.md` V-006/V-007 for what that leaves unverified.
 
 ```bash
 git status --short          # outer repo; nested repos report separately
@@ -194,6 +219,15 @@ dotnet --list-sdks          # confirmed: 8.0.421 and 10.0.400
   P1-14 "exceptions" task. Worked well: every exception in the codebase has a
   real caller from the moment it exists. Treat this as the default pattern for
   future phases too, not just something that happened to occur this once.
+- `[DECIDED]` **All of `docs/` is gitignored** — design docs, the Implementation
+  Plan, and the ADRs are never tracked by the outer git repo (D-016). This was
+  made out-of-band; the reasoning isn't recorded, only the behavior. Treat the
+  on-disk content of `docs/` as authoritative regardless of what `git log`
+  shows — it will show nothing for `docs/`, ever.
+- `[DECIDED]` **Polymorphic API response types need explicit Swagger wiring**
+  (D-017): `ActionResult<TResponse>` return types plus explicit
+  `SelectSubTypesUsing`, because Swashbuckle 10.x does not read
+  `[JsonPolymorphic]`/`[JsonDerivedType]` on its own (L-005).
 - `[UNVERIFIED]` Large, cross-referenced documentation edits were made via
   targeted scripts (read file, assert exact old text present, replace, write)
   rather than an editor's diff-style edit tool, because the design docs are large

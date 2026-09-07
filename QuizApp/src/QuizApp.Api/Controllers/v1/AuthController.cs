@@ -2,6 +2,8 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using QuizApp.Api.Contracts.V1.Auth;
+using QuizApp.Application.Authorization;
 using QuizApp.Infrastructure.Identity;
 using QuizApp.Infrastructure.Persistence;
 
@@ -79,6 +81,26 @@ public sealed class AuthController : ControllerBase
         var roles = await _userManager.GetRolesAsync(user);
         return await IssueTokenPairAsync(user, roles, cancellationToken);
     }
+
+    [HttpPost("logout")]
+    [Authorize]
+    public IActionResult Logout([FromBody] LogoutRequest request) => StatusCode(StatusCodes.Status501NotImplemented);
+
+    [HttpGet("me")]
+    [Authorize]
+    public ActionResult<MeResponse> Me() => StatusCode(StatusCodes.Status501NotImplemented);
+
+    [HttpPost("select-program")]
+    [Authorize]
+    public ActionResult<TokenResponse> SelectProgram([FromBody] SelectProgramRequest request) => StatusCode(StatusCodes.Status501NotImplemented);
+
+    [HttpPost("display-token")]
+    [Authorize(Policy = Policies.CanManageProgram)]
+    public ActionResult<DisplayTokenResponse> DisplayToken([FromBody] DisplayTokenRequest request) => StatusCode(StatusCodes.Status501NotImplemented);
+
+    [HttpPost("change-password")]
+    [Authorize]
+    public IActionResult ChangePassword([FromBody] ChangePasswordRequest request) => StatusCode(StatusCodes.Status501NotImplemented);
 
     private async Task<TokenResponse> IssueTokenPairAsync(AppUser user, IEnumerable<string> roles, CancellationToken cancellationToken)
     {

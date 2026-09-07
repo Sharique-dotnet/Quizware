@@ -1,4 +1,5 @@
 using System.Text;
+using FluentValidation;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.IdentityModel.Tokens;
@@ -15,6 +16,11 @@ public static class DependencyInjection
         AddJwtAuthentication(services, configuration);
         AddAuthorizationPolicies(services);
         AddSwagger(services);
+
+        // Per-format request validators (05-API-Design.md §5.8) — this
+        // assembly only; MediatR command/query validators live in Application
+        // and are picked up by ValidationBehavior<,> instead.
+        services.AddValidatorsFromAssembly(typeof(DependencyInjection).Assembly);
 
         services.AddHealthChecks()
             .AddDbContextCheck<AppDbContext>("database");
@@ -68,7 +74,14 @@ public static class DependencyInjection
         services.AddEndpointsApiExplorer();
         services.AddSwaggerGen(options =>
         {
-            options.SwaggerDoc("v1", new OpenApiInfo { Title = "QuizApp API", Version = "v1" });
+            options.SwaggerDoc("v1", new OpenApiInfo
+            {
+                Title = "QuizApp API",
+                Version = "v1",
+                Description = "Contract for 05-API-Design.md. Most actions return 501 until their " +
+                    "phase implements them (see docs/Implementation-Plan.md) — the route, request " +
+                    "and response shapes are frozen so the Angular client can be generated now.",
+            });
 
             options.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
             {
@@ -79,6 +92,25 @@ public static class DependencyInjection
                 In = ParameterLocation.Header,
                 Description = "Paste a JWT access token — the 'Bearer ' prefix is added automatically.",
             });
+
+            var xmlPath = Path.Combine(AppContext.BaseDirectory, $"{typeof(DependencyInjection).Assembly.GetName().Name}.xml");
+            if (File.Exists(xmlPath))
+            {
+                options.IncludeXmlComments(xmlPath);
+            }
+
+            // Emits `oneOf` + discriminator for QuestionResponse and its 10
+            // per-format subtypes (the [JsonDerivedType] list on
+            // QuestionResponse) — this is what makes the generated TS client
+            // a discriminated union instead of a single flattened type
+            // (05-API-Design.md §5.8). Swashbuckle does not walk
+            // [JsonDerivedType] attributes on its own; SelectSubTypesUsing
+            // supplies the same list explicitly.
+            options.UseOneOfForPolymorphism();
+            options.SelectDiscriminatorNameUsing(_ => "formatCode");
+            options.SelectSubTypesUsing(baseType => baseType == typeof(Contracts.V1.Questions.QuestionResponse)
+                ? baseType.Assembly.GetTypes().Where(t => !t.IsAbstract && t.IsSubclassOf(baseType))
+                : []);
         });
     }
 }

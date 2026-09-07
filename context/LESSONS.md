@@ -4,7 +4,7 @@ Approaches that failed, bugs, and environment traps. **Read this before proposin
 an approach** — it is the list of things that already cost someone time.
 Format: `_meta/SPEC.md` §6.5.
 
-**Last updated:** 2026-09-04 (S-2026-09-04-03)
+**Last updated:** 2026-09-07 (S-2026-09-07-01)
 
 ---
 
@@ -87,3 +87,38 @@ Format: `_meta/SPEC.md` §6.5.
   sounds confident and specific.
 - **Still true?** Yes, structurally — this is not specific to this project, it
   follows from the subagent/brief split (D-007, L-002) itself.
+
+### L-005 · Swashbuckle does not auto-detect `[JsonPolymorphic]`/`[JsonDerivedType]`
+- **Added:** 2026-09-07 (S-2026-09-07-01)
+- **Tried:** Decorated `QuestionResponse` with `[JsonPolymorphic]` and its 10
+  subtypes with `[JsonDerivedType]`, expecting Swashbuckle 10.2.3 to generate a
+  `oneOf`/discriminator OpenAPI schema automatically, with controller actions
+  returning bare `IActionResult`.
+- **Result:** The generated `openapi.v1.json` had no usable schema for
+  `QuestionResponse` in most responses — Swashbuckle could not infer anything
+  from an `IActionResult` return type, and did not read the JSON attributes on
+  its own.
+- **Root cause:** `[FACT]` Swashbuckle 10.2.3 targets a newer major
+  `Microsoft.OpenApi` version and, in this configuration, needs response types
+  stated explicitly (`ActionResult<T>`) plus explicit subtype registration —
+  attribute-based polymorphism detection is not automatic here.
+- **Instead:** Type every action `ActionResult<TResponse>` (not `IActionResult`)
+  wherever a response DTO exists, and call
+  `options.SelectSubTypesUsing(...)` explicitly listing the union's subtypes,
+  alongside `UseOneOfForPolymorphism()` and `SelectDiscriminatorNameUsing(...)`.
+  See D-017.
+- **Still true?** `[UNVERIFIED]` whether a future Swashbuckle version fixes this
+  automatically — re-check this lesson before removing the explicit wiring on a
+  package upgrade.
+
+### L-006 · `openapi-generator-cli` needs a JVM this environment doesn't have
+- **Added:** 2026-09-07 (S-2026-09-07-01)
+- **Tried:** Running `openapi-generator-cli generate` (the Java-based tool) to
+  produce the TypeScript client from `docs/openapi.v1.json`.
+- **Result:** Could not run — no JVM installed in this environment.
+- **Root cause:** `[FACT]` `openapi-generator-cli` requires a Java runtime;
+  none is present on this machine.
+- **Instead:** Used `NSwag.ConsoleCore` (`nswag openapi2tsclient`), a pure-.NET
+  global dotnet tool — produced an equivalent discriminated-union TypeScript
+  client with no extra runtime dependency. See D-018.
+- **Still true?** Yes, unless a JVM is installed on this machine later.

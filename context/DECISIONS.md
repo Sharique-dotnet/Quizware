@@ -5,7 +5,7 @@ wrong is marked `SUPERSEDED` and keeps its reasoning, so the next agent does not
 re-propose it. Format: `_meta/SPEC.md` §6.3.
 
 **Index:** D-001 · D-002 · D-003 · D-004 · D-005 · D-006 · D-007 · D-008 · D-009 ·
-D-010 · D-011 · D-012 · D-013 · D-014 · D-015
+D-010 · D-011 · D-012 · D-013 · D-014 · D-015 · D-016 · D-017 · D-018
 
 ---
 
@@ -391,4 +391,74 @@ remaining Phase 0 assumptions has still not happened — see Q-001 in `TASKS.md`
   already-superseded plan does not un-decide anything), but the doc text is
   stale relative to it and should be re-edited to match. See `TASKS.md` for the
   follow-up task.
+- **Confidence:** [DECIDED]
+
+### D-016 · `docs/` is entirely gitignored; design docs and ADRs live on disk but outside git
+- **Status:** ACTIVE
+- **Added:** 2026-09-07 (S-2026-09-07-01)
+- **Decision:** The whole `docs/` directory (design docs 01–06, both legacy
+  technical analyses, `Implementation-Plan.md`, and the Phase 2 ADRs in
+  `docs/adr/`) is listed in `.gitignore` and is **not tracked by the outer git
+  repository** — verified `[FACT]`: `.gitignore` contains a bare `docs/` line,
+  and `git show --stat` on commit `0df2bd2` ("Update docs: schema, API, roadmap,
+  and process clarified") shows every file under `docs/` being removed from the
+  git index in the same commit that added the `docs/` ignore line.
+- **Why:** `[UNVERIFIED]` — no brief or conversation record explains the
+  reasoning; this was made out-of-band (the user edits `docs/` directly across
+  sessions and evidently decided it should not be version-controlled the same
+  way code is). Recorded here as a `[FACT]` about repository behavior, not as a
+  reasoned decision this context system was party to.
+- **Alternatives rejected:** not known — see above.
+- **Consequences:** `git log`/`git show` will never show design-doc or ADR
+  changes. Anyone reconstructing project history from git alone will think
+  Phase 2 (ADRs) never happened; always check `docs/adr/` on disk directly, not
+  just git history, before concluding a phase's paperwork doesn't exist. This
+  also means `docs/` content can change or vanish without any commit trail —
+  treat its current on-disk state as the only source of truth, with no git-based
+  diff/blame available to recover an earlier version.
+- **Confidence:** [DECIDED] (the behavior is `[FACT]`; the reasoning behind it is
+  `[UNVERIFIED]` — ask the user if it matters later)
+
+### D-017 · Swashbuckle 10.x needs explicit wiring to emit polymorphic OpenAPI schemas
+- **Status:** ACTIVE
+- **Added:** 2026-09-07 (S-2026-09-07-01)
+- **Decision:** Every controller action that returns a response DTO must be
+  typed `ActionResult<TResponse>` (never bare `IActionResult`), and the
+  `QuestionResponse` discriminated union's 10 subtypes are explicitly registered
+  via `options.SelectSubTypesUsing(...)` in Swagger setup, alongside
+  `UseOneOfForPolymorphism()` and `SelectDiscriminatorNameUsing(_ => "formatCode")`.
+- **Why:** Swashbuckle 10.2.3 (targeting a newer major `Microsoft.OpenApi`) does
+  not read `[JsonPolymorphic]`/`[JsonDerivedType]` attributes automatically, and
+  cannot infer any response schema at all from a bare `IActionResult` return
+  type. Verified by diffing the generated `openapi.v1.json` before/after the fix:
+  before, `QuestionResponse` had no schema in most responses; after,
+  `GET /questions/{id}` correctly shows `oneOf` referencing all 10 per-format
+  schemas with `discriminator.propertyName: "formatCode"`.
+- **Alternatives rejected:** *Rely on the JSON attributes alone* — silently
+  produces an empty/wrong schema with no build-time warning; discovered only by
+  inspecting the generated OpenAPI document directly. *Switch OpenAPI generator
+  entirely* — not pursued; the fix was cheap once the gap was found.
+- **Consequences:** Any future polymorphic response type needs the same two-part
+  treatment (typed `ActionResult<T>` + explicit `SelectSubTypesUsing`). A stub
+  action returning `StatusCode(501)` still satisfies `ActionResult<TResponse>`
+  via its implicit conversion, so this cost nothing functionally in Phase 5.
+- **Confidence:** [DECIDED]
+
+### D-018 · NSwag, not openapi-generator-cli, generates the TypeScript client
+- **Status:** ACTIVE
+- **Added:** 2026-09-07 (S-2026-09-07-01)
+- **Decision:** `QuizApp/clients/typescript/quizapp-api-client.ts` is generated
+  with `NSwag.ConsoleCore` (`nswag openapi2tsclient`), a pure-.NET global dotnet
+  tool, not the Java-based `openapi-generator-cli`.
+- **Why:** `openapi-generator-cli` could not run in this environment — no JVM
+  installed. NSwag needed no additional runtime and produced an equivalent
+  discriminated-union TypeScript client (`McqQuestionResponse extends
+  QuestionResponse`, etc., confirmed present in the generated file).
+- **Alternatives rejected:** *Install a JVM just for this tool* — an unnecessary
+  environment dependency when a pure-.NET alternative exists and produces
+  compatible output.
+- **Consequences:** Any future regeneration of the TypeScript client from
+  `docs/openapi.v1.json` should use the same NSwag command, not
+  openapi-generator-cli, unless a JVM becomes available and there's a concrete
+  reason to switch.
 - **Confidence:** [DECIDED]

@@ -51,3 +51,24 @@ Newest last. Format: `_meta/SPEC.md` §6.6.
   brief (commit state) rather than propagating it — see L-004 and the session
   file's "Corrections made to the brief's account".
 - **Detail:** `sessions/2026-09-04-03-phase0-owner-confirmed-phase1-domain.md`
+
+## S-2026-09-07-01 · phases-2-3-4-5-catchup · Claude Sonnet 5 (Claude Code)
+- **Focus:** Merged a brief covering only Phase 5 (API contract, OpenAPI
+  first), but found `CURRENT.md` was stale by three additional, undocumented
+  phases — Phase 2 (ADRs), Phase 3 (skeleton/cross-cutting), and Phase 4
+  (schema/migrations) had all been completed and mostly committed since the
+  last save, with no context checkpoint in between. Reconstructed those three
+  phases from `docs/Implementation-Plan.md`'s own inline "Status: done" text
+  and `git log`/`git show`, tagged `[FACT]` (verified against the repo, not
+  invented), then merged in Phase 5 from the brief. Verified the brief's test
+  count and file counts directly rather than transcribing them (95+4+4+44=147
+  tests passed, 16 controllers present, TS client 19,419 lines).
+- **Changed:** `CURRENT.md` (rewritten), `DECISIONS.md` (D-016–D-018 appended),
+  `TASKS.md` (T-005/T-008/T-009 closed with resolution notes, T-011/T-012/T-013
+  added closed, T-006 kept, T-014 added, Q-005 added, V-006/V-007 added),
+  `LESSONS.md` (L-005, L-006 added), `HISTORY.md` (this block).
+- **Added:** D-016, D-017, D-018, T-011, T-012, T-013, T-014, Q-005, L-005,
+  L-006, V-006, V-007.
+- **Superseded:** none directly — T-005/T-008/T-009 closed with their original
+  text preserved and a resolution note added, not overwritten.
+- **Detail:** `sessions/2026-09-07-01-phases-2-3-4-5-catchup.md`
