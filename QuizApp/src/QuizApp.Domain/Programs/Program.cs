@@ -24,7 +24,8 @@ public sealed class Program : BaseEntity, IAuditable, ISoftDeletable
         string name,
         string createdBy,
         string defaultLanguage = "ur",
-        string timeZoneId = "India Standard Time")
+        string timeZoneId = "India Standard Time",
+        string? description = null)
     {
         if (string.IsNullOrWhiteSpace(code))
         {
@@ -40,6 +41,7 @@ public sealed class Program : BaseEntity, IAuditable, ISoftDeletable
         {
             Code = code,
             Name = name,
+            Description = description,
             DefaultLanguage = defaultLanguage,
             TimeZoneId = timeZoneId,
             State = ProgramState.Draft,
@@ -77,6 +79,34 @@ public sealed class Program : BaseEntity, IAuditable, ISoftDeletable
 
     public bool IsDeleted { get; private set; }
     public DateTime? DeletedAtUtc { get; private set; }
+
+    /// <summary>Updates the descriptive and branding fields the admin UI
+    /// exposes on one form. Does not touch lifecycle, formats or settings.</summary>
+    public void UpdateDetails(
+        string name,
+        string? description,
+        string? organisationName,
+        string? logoUrl,
+        string? themePrimaryColor,
+        string? themeSecondaryColor,
+        string? fontFamily,
+        string updatedBy)
+    {
+        if (string.IsNullOrWhiteSpace(name))
+        {
+            throw new ArgumentException("Name is required.", nameof(name));
+        }
+
+        Name = name;
+        Description = description;
+        OrganisationName = organisationName;
+        LogoUrl = logoUrl;
+        ThemePrimaryColor = themePrimaryColor;
+        ThemeSecondaryColor = themeSecondaryColor;
+        FontFamily = fontFamily;
+        UpdatedAtUtc = DateTime.UtcNow;
+        UpdatedBy = updatedBy;
+    }
 
     public void Configure()
     {

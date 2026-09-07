@@ -50,6 +50,12 @@ public sealed class GlobalExceptionHandler : IExceptionHandler
             problemDetails.Extensions["errors"] = validationException.Errors;
         }
 
+        if (exception is FormatInUseException formatInUseException)
+        {
+            problemDetails.Extensions["formatCode"] = formatInUseException.FormatCode;
+            problemDetails.Extensions["usedBy"] = formatInUseException.UsedBy;
+        }
+
         httpContext.Response.StatusCode = statusCode;
         httpContext.Response.ContentType = "application/problem+json";
         await httpContext.Response.WriteAsJsonAsync(problemDetails, cancellationToken);

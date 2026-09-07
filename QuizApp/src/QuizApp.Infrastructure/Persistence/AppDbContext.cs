@@ -23,7 +23,7 @@ namespace QuizApp.Infrastructure.Persistence;
 /// Identity, RefreshToken and IdempotencyRecord; Phase 4 (this) adds the
 /// full 51-table business schema on top of the same context.
 /// </summary>
-public sealed class AppDbContext : IdentityDbContext<AppUser, AppRole, Guid>
+public sealed class AppDbContext : IdentityDbContext<AppUser, AppRole, Guid>, IAppDbContext
 {
     private readonly ICurrentProgram _currentProgram;
     private readonly IEnumerable<IEntityConfigurationAssemblyMarker> _extraConfigurationSources;

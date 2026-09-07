@@ -28,6 +28,8 @@ public static class DependencyInjection
                 sp.GetRequiredService<AuditableEntitySaveChangesInterceptor>(),
                 sp.GetRequiredService<AuditLogSaveChangesInterceptor>()));
 
+        services.AddScoped<IAppDbContext>(sp => sp.GetRequiredService<AppDbContext>());
+
         services
             .AddIdentityCore<AppUser>(options =>
             {

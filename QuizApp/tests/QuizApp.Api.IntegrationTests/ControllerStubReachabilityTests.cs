@@ -30,8 +30,8 @@ public class ControllerStubReachabilityTests : IClassFixture<CustomWebApplicatio
     /// substituted with real ids at test time so they match the token's scope.</summary>
     public static IEnumerable<object[]> RouteTemplates =>
     [
-        [HttpMethod.Get, "/api/v1/programs"],
-        [HttpMethod.Get, "/api/v1/programs/{programId}"],
+        // GET /api/v1/programs and GET /api/v1/programs/{programId} are no
+        // longer stubs (Phase 6a) — covered by ProgramsEndpointTests.cs instead.
         [HttpMethod.Get, "/api/v1/programs/{programId}/teams"],
         [HttpMethod.Get, "/api/v1/programs/{programId}/topics"],
         [HttpMethod.Get, "/api/v1/programs/{programId}/tags"],
