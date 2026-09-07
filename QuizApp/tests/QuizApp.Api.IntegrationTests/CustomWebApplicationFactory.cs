@@ -7,6 +7,7 @@ using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using QuizApp.Infrastructure.Persistence;
+using QuizApp.Infrastructure.Persistence.Interceptors;
 
 namespace QuizApp.Api.IntegrationTests;
 
@@ -42,12 +43,15 @@ public sealed class CustomWebApplicationFactory : WebApplicationFactory<Program>
             services.RemoveAll<DbContextOptions<AppDbContext>>();
             services.RemoveAll(typeof(IDbContextOptionsConfiguration<AppDbContext>));
 
-            services.AddDbContext<AppDbContext>(options => options
+            services.AddDbContext<AppDbContext>((sp, options) => options
                 .UseSqlite(_connection)
                 // The migration snapshot was generated against SqlServer;
                 // applying it under Sqlite trips EF's cross-provider model
                 // diff check even though the resulting schema is fine here.
-                .ConfigureWarnings(w => w.Ignore(RelationalEventId.PendingModelChangesWarning)));
+                .ConfigureWarnings(w => w.Ignore(RelationalEventId.PendingModelChangesWarning))
+                .AddInterceptors(
+                    sp.GetRequiredService<AuditableEntitySaveChangesInterceptor>(),
+                    sp.GetRequiredService<AuditLogSaveChangesInterceptor>()));
         });
     }
 

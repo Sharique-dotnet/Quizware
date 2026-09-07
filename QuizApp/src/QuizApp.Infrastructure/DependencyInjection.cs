@@ -8,6 +8,7 @@ using QuizApp.Infrastructure.Common;
 using QuizApp.Infrastructure.Identity;
 using QuizApp.Infrastructure.Idempotency;
 using QuizApp.Infrastructure.Persistence;
+using QuizApp.Infrastructure.Persistence.Interceptors;
 
 namespace QuizApp.Infrastructure;
 
@@ -18,7 +19,14 @@ public static class DependencyInjection
         var connectionString = configuration.GetConnectionString("Default")
             ?? "Server=localhost;Database=QuizApp;Trusted_Connection=True;TrustServerCertificate=True";
 
-        services.AddDbContext<AppDbContext>(options => options.UseSqlServer(connectionString));
+        services.AddScoped<AuditableEntitySaveChangesInterceptor>();
+        services.AddScoped<AuditLogSaveChangesInterceptor>();
+
+        services.AddDbContext<AppDbContext>((sp, options) => options
+            .UseSqlServer(connectionString)
+            .AddInterceptors(
+                sp.GetRequiredService<AuditableEntitySaveChangesInterceptor>(),
+                sp.GetRequiredService<AuditLogSaveChangesInterceptor>()));
 
         services
             .AddIdentityCore<AppUser>(options =>

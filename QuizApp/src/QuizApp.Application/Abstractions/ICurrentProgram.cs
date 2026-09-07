@@ -5,5 +5,8 @@ namespace QuizApp.Application.Abstractions;
 public interface ICurrentProgram
 {
     bool HasProgram { get; }
+
+    /// <summary>Guid.Empty when HasProgram is false — never throws. Check
+    /// HasProgram first if the caller requires a scoped token.</summary>
     Guid ProgramId { get; }
 }

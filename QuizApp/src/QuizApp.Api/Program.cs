@@ -8,6 +8,7 @@ using QuizApp.Application;
 using QuizApp.Infrastructure;
 using QuizApp.Infrastructure.Identity;
 using QuizApp.Infrastructure.Persistence;
+using QuizApp.Modules.Buzzer;
 using Serilog;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -19,6 +20,7 @@ builder.Host.UseSerilog((context, configuration) => configuration
 builder.Services.AddApplication();
 builder.Services.AddInfrastructure(builder.Configuration);
 builder.Services.AddApi(builder.Configuration);
+builder.Services.AddBuzzerModule();
 
 builder.Services.AddScoped<IdempotencyFilter>();
 builder.Services.AddControllers(options => options.Filters.AddService<IdempotencyFilter>());
@@ -47,6 +49,14 @@ using (var scope = app.Services.CreateScope())
 
     var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<AppRole>>();
     await RoleSeeder.SeedAsync(roleManager);
+
+    // Dev convenience only — never auto-create a known-password account in
+    // Production. Credentials: AdminUserSeeder.DefaultEmail / DefaultPassword.
+    if (!app.Environment.IsProduction())
+    {
+        var userManager = scope.ServiceProvider.GetRequiredService<UserManager<AppUser>>();
+        await AdminUserSeeder.SeedAsync(userManager);
+    }
 }
 
 app.UseExceptionHandler();
