@@ -47,7 +47,8 @@ public class ControllerStubReachabilityTests : IClassFixture<CustomWebApplicatio
         [HttpMethod.Get, "/api/v1/buzzer/capability"],
         [HttpMethod.Get, "/api/v1/programs/{programId}/reports/questions/usage"],
         [HttpMethod.Get, "/api/v1/admin/lookups"],
-        [HttpMethod.Get, "/api/v1/auth/me"],
+        // GET /api/v1/auth/me is no longer a stub (Phase 6b) — covered by
+        // AuthEndpointsTests.cs instead.
     ];
 
     private async Task<string> LoginAsAsync(HttpClient client, string email, string password, Guid? programId, params string[] roles)

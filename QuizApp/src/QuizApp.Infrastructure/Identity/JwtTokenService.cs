@@ -16,7 +16,7 @@ public sealed class JwtTokenService : IJwtTokenService
         _options = options.Value;
     }
 
-    public string GenerateAccessToken(AppUser user, IEnumerable<string> roles, Guid? programId)
+    public string GenerateAccessToken(AppUser user, IEnumerable<string> roles, Guid? programId, TimeSpan? expiresIn = null)
     {
         var claims = new List<Claim>
         {
@@ -39,7 +39,7 @@ public sealed class JwtTokenService : IJwtTokenService
             issuer: _options.Issuer,
             audience: _options.Audience,
             claims: claims,
-            expires: DateTime.UtcNow.AddMinutes(_options.AccessTokenMinutes),
+            expires: DateTime.UtcNow.Add(expiresIn ?? TimeSpan.FromMinutes(_options.AccessTokenMinutes)),
             signingCredentials: credentials);
 
         return new JwtSecurityTokenHandler().WriteToken(token);
