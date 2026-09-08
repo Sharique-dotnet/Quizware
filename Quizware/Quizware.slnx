@@ -1,0 +1,18 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Quizware.Api/Quizware.Api.csproj" />
+    <Project Path="src/Quizware.Application/Quizware.Application.csproj" />
+    <Project Path="src/Quizware.Domain/Quizware.Domain.csproj" />
+    <Project Path="src/Quizware.Infrastructure/Quizware.Infrastructure.csproj" />
+    <Project Path="src/Quizware.Modules.Buzzer/Quizware.Modules.Buzzer.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Quizware.Api.IntegrationTests/Quizware.Api.IntegrationTests.csproj" />
+    <Project Path="tests/Quizware.Application.Tests/Quizware.Application.Tests.csproj" />
+    <Project Path="tests/Quizware.Architecture.Tests/Quizware.Architecture.Tests.csproj" />
+    <Project Path="tests/Quizware.Domain.Tests/Quizware.Domain.Tests.csproj" />
+  </Folder>
+  <Folder Name="/tools/">
+    <Project Path="tools/Quizware.BuzzerAgent/Quizware.BuzzerAgent.csproj" />
+  </Folder>
+</Solution>
