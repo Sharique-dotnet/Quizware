@@ -4,7 +4,7 @@ Work items (`T-###`), open questions (`Q-###`), and things that need checking
 before they can be relied on. Done items stay — they are the record of what was
 already tried. Format: `_meta/SPEC.md` §6.4.
 
-**Last updated:** 2026-09-08 (S-2026-09-08-01)
+**Last updated:** 2026-09-08 (S-2026-09-08-02)
 
 ---
 
@@ -18,28 +18,33 @@ already tried. Format: `_meta/SPEC.md` §6.4.
   - Blocked by: nothing urgent — this is Phase 14 work per
     `docs/Implementation-Plan.md`. Flagged now so it isn't assumed silently later.
 
-- **T-015** `TODO` · Ask the user whether to commit Phase 6e (Media) and 6f
-  (Question bank)
-  - Why: `git status` confirms these are the only uncommitted sub-phases of
-    Phase 6 — 6a–6d are already committed (`717b96f`, `ae94bca`, `41e45bd`,
-    `1d86810`). 52 files, +6259/-56 lines uncommitted.
-  - Where: `Application/Media/**`, `Application/QuestionBank/**`,
-    `Infrastructure/Media/**`, `Infrastructure/Imports/McqQuestionExcelParser.cs`,
-    `Api/Controllers/v1/QuestionsController.cs`, `Api/Contracts/V1/Questions/**`,
-    migration `AddQuestionDifficultyCheckConstraint`, `.gitignore`.
+- **T-018** `TODO` · Ask the user whether to commit the Postman collection and
+  the three rule-handler bugfixes
+  - Why: `git status` confirms these are the only uncommitted work as of this
+    checkpoint — Phase 6e/6f (`783bc1c`) and Phase 7 (`3dbc6f2`) are already
+    committed (see T-015/T-016, both closed, and L-004's third recurrence).
+  - Where: `QuizApp/postman/QuizApp.postman_collection.json`,
+    `QuizApp/postman/README.md` (both new), plus modifications to
+    `Application/Rules/Commands/{UpsertScoringRules,UpsertQualificationRules,
+    UpsertTieBreakRules}.cs` and `tests/QuizApp.Api.IntegrationTests/RulesEndpointTests.cs`
+    (the new regression test). All staged (`git add`'d) but not committed.
   - Blocked by: standing policy (V-005) — never commit without being asked.
-    `Contracts/V1/Questions/**` and `QuestionsController.cs` are touched by both
-    6e and 6f, so a clean two-commit split may not be possible; decide when asked.
+    Offered message: "Add Postman collection covering all Phase 0-7 endpoints,
+    and fix three rule-upsert handlers that 500'd on a natural-key collision".
+    A single commit is reasonable here — the bugfixes were found *while*
+    building/validating the Postman collection, so they aren't a cleanly
+    separable unit of work the way Phase 6e vs 6f were.
 
-- **T-016** `TODO` · Implement Phase 7 — Tournament configuration
-  - Why: Phase 6 (all of 6a–6f) is now done. Per
-    `docs/Implementation-Plan.md`'s dependency map, Phase 7 is next: Stage CRUD,
-    segment templates, segment reordering, scoring/selection/qualification rule
-    management, tie-break rule management, program readiness validation.
-  - Where: `docs/Implementation-Plan.md` Phase 7 section — **re-read it fresh**,
-    it may be stale relative to `CURRENT.md` (this session did not update it).
-  - Blocked by: T-015 (commit decision) is not a hard blocker, but should be
-    resolved first per standing workflow.
+- **T-019** `TODO` · Implement Phase 8 — Question selection engine (`IQuestionSelector`)
+  - Why: Phase 7 (Tournament configuration) is now fully done, including
+    `IRuleService` (P7-10) which Phase 8's selector will need to resolve
+    scoring rules. Per `docs/Implementation-Plan.md`'s dependency map, Phase 8
+    depends on P6f (question bank, done) and P7 (rule management, done) — both
+    prerequisites are now satisfied.
+  - Where: `docs/Implementation-Plan.md` Phase 8 section — **re-read it fresh**,
+    do not assume its text matches `CURRENT.md`.
+  - Blocked by: T-018 (commit decision) is not a hard blocker, but should be
+    resolved first per standing workflow (same pattern as T-015→T-016).
 
 - **T-017** `TODO` · Re-sync `docs/Implementation-Plan.md`'s "Start here" section
   (~line 794) with actual progress
@@ -154,6 +159,23 @@ they stay unchecked.
   - Matters for: trusting the dev DB schema matches the code before Phase 7
     work assumes the fixed `CK_MP_Removal` constraint or the new FK/indexes.
 
+- **V-009** (added S-2026-09-08-02) · `[UNVERIFIED]` This checkpoint's claim
+  that Phase 7 landed with a clean `dotnet build`/`dotnet test` (238
+  passed/0 failed) was **not independently re-verified this session** — a
+  `dotnet build` attempted during the save itself failed with `MSB3027`/
+  `MSB3021` file-lock errors (`QuizApp.Api.exe` PID 5752 running, plus
+  Visual Studio holding some of the same DLLs). Killing a live dev-server
+  process to force a clean rebuild was judged out of scope for a
+  context-only checkpoint. The claim is plausible (git history shows a
+  full, cleanly-organized commit with 22 new tests, and the diff content of
+  the 3 rule-handler fixes read as complete and self-consistent) but rests
+  on the brief's account, not this session's own run.
+  - Check: stop the running `QuizApp.Api.exe` (and close Visual Studio if it
+    also holds a lock), then `dotnet build QuizApp.slnx` and
+    `dotnet test QuizApp.slnx --no-build` from `QuizApp/`.
+  - Matters for: trusting that Phase 7's 22 new tests and the 3 rule-handler
+    bugfixes actually pass before starting Phase 8 on top of them.
+
 - **V-005** · Resolved as `[DECIDED]` (S-2026-09-04-03) · Commits are made only
   when the user explicitly asks; the AI proposes a plan and a commit message but
   does not run `git commit` itself.
@@ -174,6 +196,49 @@ they stay unchecked.
     against `git log` this session. Lesson recorded as L-004.
 
 ## Closed
+
+- **T-016** `DONE` · Implement Phase 7 — Tournament configuration (P7-01–P7-12)
+  - Delivered in S-2026-09-08-02, committed as `3dbc6f2` ("Stage/segment CRUD
+    with reorder, scoring/selection/qualification/tie-break rule management,
+    IRuleService resolution, program readiness validation, and the 18-team
+    seed script") — `[FACT]` verified via `git show --stat 3dbc6f2` (43 files,
+    +2209/-37 lines).
+  - Stage CRUD + reorder, segment-template CRUD + reorder (with locked
+    segments keeping their slot — see D-024), `SegmentOrderMode` mutator,
+    scoring/selection/qualification/tie-break rule upsert + two reset-to-
+    defaults commands, `IRuleService`/`RuleService` (specificity-based
+    resolution: segment beats stage beats program), the richer
+    `STAGE_HAS_NO_SEGMENTS` program/stage readiness check, and
+    `TournamentSeeder.cs` (18-team demo tournament, wired into `Program.cs`
+    behind the same `!IsProduction` guard as `AdminUserSeeder`).
+  - Real pre-existing bug found and fixed: reorder handlers needed a
+    two-phase reindex to avoid transiently violating a unique `OrderIndex`
+    index — see D-023.
+  - New Domain mutators added to entities that had been create-only through
+    Phase 1–6: `Stage.{Rename,Reorder,SetSegmentOrderMode,Delete}`,
+    `StageSegmentTemplate.{Update,Delete}`, `ScoringRule.{UpdatePoints,Delete}`,
+    `QualificationRule.Update`, `TieBreakRule.{Update,Delete}`,
+    `QuestionSelectionRule.Update`.
+  - New `Domain/Qualification/DefaultTieBreakValues.cs` (3 seed rows, mirrors
+    `DefaultScoringValues`'s pattern from Phase 4).
+  - No new EF migration needed — confirmed via
+    `dotnet ef migrations has-pending-model-changes`.
+  - Testing: 22 new tests (`StagesEndpointTests.cs`, `RulesEndpointTests.cs`);
+    `[UNVERIFIED]` this checkpoint — see V-009 — the brief's own claimed count
+    (238 passed / 0 failed) was not independently re-run this session due to
+    a locked build (running `QuizApp.Api.exe` + Visual Studio holding DLLs).
+  - Full detail: `sessions/2026-09-08-02-phase7-tournament-configuration.md`.
+
+- **T-015** `DONE` (superseded its own premise) · Ask the user whether to
+  commit Phase 6e (Media) and 6f (Question bank)
+  - `[FACT]` Resolved by action, not by an explicit conversation turn this
+    context system witnessed: `git log` (checked S-2026-09-08-02) shows both
+    landed as `783bc1c` ("Media upload with validation/deduplication, and
+    question bank CRUD with versioning, approval, import, coverage, and
+    duplicate detection") — the user ran the commit out-of-band, consistent
+    with V-005's standing workflow. This is the third recurrence of the
+    pattern in L-004 (a brief's "still uncommitted" claim being stale by save
+    time) — see L-004's third entry.
 
 - **T-014-PRIOR-NOTE:** T-011, T-012, T-013 below were reconstructed in
   S-2026-09-07-01 from `docs/Implementation-Plan.md`'s own inline phase-status

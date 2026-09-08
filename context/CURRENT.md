@@ -11,7 +11,7 @@
 > Where this file and the repository disagree, **the repository is right** and
 > this file is stale; say so.
 
-**Last updated:** 2026-09-08 · **Session:** S-2026-09-08-01 · **Saved by:** Claude Sonnet 5 (Claude Code)
+**Last updated:** 2026-09-08 · **Session:** S-2026-09-08-02 · **Saved by:** Claude Sonnet 5 (Claude Code)
 
 ---
 
@@ -34,101 +34,114 @@ before editing, or you will change the wrong one.
 
 ## 2. Current objective
 
-`[FACT]` **Phase 6 — Configuration modules — is now fully done, all six
-sub-phases (6a–6f, tasks P6-01 through P6-21).** Verified this session by
-re-running the full suite (`dotnet build` → 0 warnings/errors; `dotnet test` →
-**224 passed, 0 failed**: 95 Domain, 17 Application, 4 Architecture, 108
-Api.IntegrationTests) and by spot-checking file paths named in the session brief
-directly against the repo (all present as described).
+`[FACT]` **Phase 7 — Tournament configuration — is now fully done, all 12
+tasks (P7-01 through P7-12), and committed** as `3dbc6f2` ("Stage/segment CRUD
+with reorder, scoring/selection/qualification/tie-break rule management,
+IRuleService resolution, program readiness validation, and the 18-team seed
+script"). `[FACT]` verified via `git show --stat 3dbc6f2` (43 files,
++2209/-37 lines).
 
-**Phases 0–5 remain DONE from the prior checkpoint** (S-2026-09-07-01) —
-unchanged this session. Full phase-by-phase history: `TASKS.md` Closed section
-(T-010 through T-013), `sessions/2026-09-07-01-*.md`.
+`[FACT]` **Phase 6 (all of 6a–6f) is now fully committed too** — 6e (Media)
+and 6f (Question bank), left uncommitted at the end of the prior checkpoint
+(S-2026-09-08-01), landed as `783bc1c` ("Media upload with validation/
+deduplication, and question bank CRUD with versioning, approval, import,
+coverage, and duplicate detection") sometime between that checkpoint and this
+one. **Phases 0–5 remain DONE**, unchanged. Full phase-by-phase history:
+`TASKS.md` Closed section, `sessions/2026-09-07-01-*.md`,
+`sessions/2026-09-08-01-*.md`.
 
-**Sub-phases delivered this session, in order:**
-- **6a — Program management** (`P6-01`–`P6-06`): `IAppDbContext` port
-  introduced; real `ProgramsController` handlers via MediatR (`Application/Programs/`).
-  Committed `717b96f`.
-- **6b — Users and roles** (`P6-07`–`P6-10`): `AuthController`/`AdminController`
-  extended directly (no MediatR — see D-019). Login/refresh/logout/me/
-  select-program/display-token/change-password; user invite/list/assign-roles/
-  deactivate/reset-password. Committed `ae94bca`.
-- **6c — Teams** (`P6-11`–`P6-13`): Team CRUD, status changes, Excel import
-  (validate → report → commit) via `Application/Teams/` + `TeamExcelParser`
-  (ClosedXML 0.105.1). Migration `FixMatchParticipantRemovalCheckConstraint`
-  (real pre-existing bug, see §8). Committed `41e45bd`.
-- **6d — Topics and tags** (`P6-14`): Topic (parent/child, cycle-checked) and Tag
-  CRUD, shared-vs-per-program scoping. Migration
-  `AddTopicParentForeignKeyAndTagUniqueIndex`. Committed `1d86810`.
-- **6e — Media** (`P6-15`): `IFileStorage`/`LocalFileStorage`, magic-byte +
-  extension + size validation, SHA-256 dedup. **Uncommitted** — see §3.
-- **6f — Question bank** (`P6-16`–`P6-21`): all 10 formats have Create, format-
-  agnostic Update/versioning/Approve/Retire/Delete/Coverage/Duplicates; Excel
-  import scoped to MCQ only (deliberate, D-022). Migration
-  `AddQuestionDifficultyCheckConstraint`. **Uncommitted** — see §3.
+**Delivered this session (S-2026-09-08-02), in order:**
+- **Phase 7 — Tournament configuration** (all 12 tasks, `3dbc6f2`): Stage CRUD
+  + reorder; segment-template CRUD + reorder (locked segments keep their slot
+  — see D-024); `SegmentOrderMode` mutator; scoring/selection/qualification/
+  tie-break rule upsert + two reset-to-defaults commands (wires up
+  `DefaultScoringValues`, unused since Phase 4, and a new
+  `DefaultTieBreakValues`); `IRuleService`/`RuleService` (specificity-based
+  resolution — segment beats stage beats program); the richer
+  `STAGE_HAS_NO_SEGMENTS` program/stage readiness check (this closes the gap
+  the prior checkpoint had explicitly flagged as deferred to Phase 7); and
+  `TournamentSeeder.cs` (an 18-team "Demo 18-Team Tournament" seed, wired into
+  `Program.cs` behind the same `!IsProduction` guard as `AdminUserSeeder`,
+  live-verified: 3 stages / 18 teams / 18 scoring rules present after a fresh
+  `dotnet run`). New Domain mutators on entities that were create-only through
+  Phase 1–6 (`Stage`, `StageSegmentTemplate`, `ScoringRule`,
+  `QualificationRule`, `TieBreakRule`, `QuestionSelectionRule` — full list in
+  `TASKS.md` T-016). Real bug found and fixed: reorder handlers needed a
+  two-phase reindex to avoid transiently violating a unique `OrderIndex` index
+  — see D-023. 22 new tests (`StagesEndpointTests.cs`, `RulesEndpointTests.cs`).
+  No new EF migration needed.
+- **Postman collection** (`QuizApp/postman/`, **staged, not yet committed** —
+  see §3): 80 requests across 10 folders covering every implemented endpoint
+  through Phase 7 (Phase 8+ — Matches, Live engine, Scores, Standings,
+  Qualification, Buzzer, Display, Reports — deliberately excluded, still 501
+  stubs). Validated by actually running it with `newman` against a live
+  `dotnet run`, not just written — this surfaced and led to fixing two real
+  bugs (see below).
+- **Two bugs found and fixed while validating the Postman collection:**
+  (1) a collection-ordering bug (Admin folder ran before Programs, but
+  Admin's Assign-Roles request needs `{{programId}}`) — fixed by reordering
+  the folders. (2) A genuine backend bug, same class as L-007: `PUT
+  /rules/scoring` 500'd when a "new" rule's natural key already matched a
+  row `ResetScoringDefaults` had just seeded, because the handler only
+  looked up existing rows by `Id`, not by natural key. Fixed in all three
+  affected handlers (Scoring/Qualification/TieBreak — Selection's index is
+  non-unique, no bug there) — see L-010 and D-023/D-024's sibling reasoning.
+  Added a regression test. **These fixes are staged but not committed** —
+  see §3/T-018.
 
-**Important correction to the session brief (recurrence of L-004):** the brief
-that drove this save claimed *nothing from 6b–6f was committed*. `git log`
-verified `[FACT]` this is wrong for 6a–6d: four commits exist, dated 2026-09-08,
-authored directly by `Sharique` — `717b96f` (6a), `ae94bca` (6b), `41e45bd` (6c),
-`1d86810` (6d) — consistent with the standing "AI proposes, user runs `git
-commit`" workflow (V-005) having happened outside this save's visibility. Only
-**6e (Media) and 6f (Question bank) are actually uncommitted**, confirmed via
-`git status --short` (52 files, +6259/-56 lines: `Application/Media/**`,
-`Application/QuestionBank/**`, `Infrastructure/Media/**`,
-`Infrastructure/Imports/McqQuestionExcelParser.cs`, `QuestionsController.cs`,
-`Contracts/V1/Questions/**`, the `AddQuestionDifficultyCheckConstraint`
-migration, `.gitignore` `**/App_Data/` line, two new test files). See L-004
-(updated) for this pattern recurring.
+**Important correction to the session brief (third recurrence of L-004):**
+the brief driving this save claimed *neither* Phase 7 nor Phase 6e/6f had
+been committed — only one-line commit messages were ever "offered." `git log`
+verified `[FACT]` both already exist as real commits (`783bc1c`, `3dbc6f2`),
+authored directly by `Sharique`, consistent with the standing "AI proposes,
+user runs `git commit`" workflow (V-005) having happened outside this save's
+visibility. Only the Postman collection and the three rule-handler bugfixes
+(work that came *after* the Phase 7 commit message was offered) are actually
+still uncommitted. See L-004's third entry — treat every "offered but not
+run" claim in a future brief as needing independent `git log` verification,
+not just the most recent one.
 
-**What's next: Phase 7 — Tournament configuration** (Stage CRUD, segment
-templates, segment reordering, scoring/selection/qualification rule management,
-tie-break rule management, program readiness validation). Per
-`docs/Implementation-Plan.md` line 817 ("Start here" section) — **not yet
-re-edited to name Phase 7**, since the brief for this session said
-`Implementation-Plan.md` itself was not updated; treat its "Start here" text as
-one phase stale, `CURRENT.md` is authoritative.
+**What's next: Phase 8 — Question selection engine (`IQuestionSelector`).**
+Both of its stated prerequisites (P6f question bank, P7 rule management) are
+now done. Re-read `docs/Implementation-Plan.md`'s Phase 8 section fresh — do
+not assume its text matches this file.
 
 ## 3. State of play
 
 | Area | State |
 |---|---|
-| Phases 0–5 | `[FACT]` DONE, unchanged since S-2026-09-07-01. See that checkpoint / `TASKS.md` Closed for detail. |
-| Phase 6a (Programs) | `[FACT]` DONE, **committed** `717b96f` |
-| Phase 6b (Users/roles) | `[FACT]` DONE, **committed** `ae94bca` |
-| Phase 6c (Teams) | `[FACT]` DONE, **committed** `41e45bd` |
-| Phase 6d (Topics/tags) | `[FACT]` DONE, **committed** `1d86810` |
-| Phase 6e (Media) | `[FACT]` DONE, **uncommitted** (working tree) |
-| Phase 6f (Question bank) | `[FACT]` DONE, **uncommitted** (working tree, same diff as 6e) |
-| Test suite | `[FACT]` 224 passed / 0 failed, re-run this session: 95 Domain, 17 Application, 4 Architecture, 108 Api.IntegrationTests |
-| Build | `[FACT]` 0 warnings, 0 errors, re-run this session |
-| Migrations | `[FACT]` 5 total on disk: `InitialIdentitySchema`, `AddBusinessSchema` (both pre-existing), `FixMatchParticipantRemovalCheckConstraint` (6c), `AddTopicParentForeignKeyAndTagUniqueIndex` (6d), `AddQuestionDifficultyCheckConstraint` (6f, uncommitted). `dotnet ef migrations list` against the configured connection lists all 5, confirming the tooling sees them `[FACT]`. Whether they were actually **applied** to the LocalDB (`QuizApp-Dev`) is `[UNVERIFIED]` this session — brief claims yes, live-verified during the session's own work, but not independently re-checked here (see V-008). |
-| Git (outer repo) | `[FACT]` Branch `master`, HEAD `1d86810`, 17 commits total (`bf8cb06` → `1d86810`). 6e+6f uncommitted in the working tree — nothing staged. |
-| Context system | `[FACT]` This is its 5th real merge. |
+| Phases 0–5 | `[FACT]` DONE, unchanged since S-2026-09-07-01. |
+| Phase 6 (all of 6a–6f) | `[FACT]` DONE, **fully committed**: 6a `717b96f`, 6b `ae94bca`, 6c `41e45bd`, 6d `1d86810`, 6e+6f `783bc1c`. |
+| Phase 7 (all of P7-01–P7-12) | `[FACT]` DONE, **committed** `3dbc6f2`. |
+| Postman collection (`QuizApp/postman/`) | `[FACT]` DONE, **staged, not committed**. |
+| 3 rule-handler bugfixes + regression test | `[FACT]` DONE, **staged, not committed** (same diff group as the Postman work — found while validating it). |
+| Test suite | `[UNVERIFIED]` this session — brief claims 238 passed/0 failed (95 Domain, 17 Application, 4 Architecture, 122 Api.IntegrationTests) after the Phase 7 + bugfix work; **not independently re-run this checkpoint** — a `dotnet build` attempt failed on file locks from a running `QuizApp.Api.exe` (PID 5752) and Visual Studio. See V-009. |
+| Build | Same caveat as above — see V-009. |
+| Migrations | `[FACT]` Still 5 total on disk (unchanged from prior checkpoint) — Phase 7 needed no new migration, confirmed via `dotnet ef migrations has-pending-model-changes`. Whether all 5 are actually **applied** to LocalDB remains `[UNVERIFIED]` — see V-008 (unchanged). |
+| Git (outer repo) | `[FACT]` Branch `master`, HEAD `3dbc6f2`, 19 commits total. Staged-not-committed: `QuizApp/postman/**` (new) and 4 modified files (3 rule-handler fixes + `RulesEndpointTests.cs`). |
+| Context system | `[FACT]` This is its 6th real merge. |
 
 ## 4. Next actions
 
-1. **Ask the user whether to commit Phase 6e+6f's uncommitted work** before
-   starting Phase 7 — see T-015. Two logical commits per the session's own
-   grouping: Media (6e) and Question bank (6f) touch mostly disjoint files
-   (`Contracts/V1/Questions/**` and `QuestionsController.cs` are shared, so a
-   clean single-purpose split may not be possible — decide when asked).
-2. **Start Phase 7 — Tournament configuration** (Stage CRUD, segment templates,
-   reordering, scoring/selection/qualification/tie-break rule management,
-   program readiness validation). Re-read `docs/Implementation-Plan.md`'s Phase
-   7 section fresh — do not assume its text matches this file. This is also
-   where the richer `STAGE_HAS_NO_SEGMENTS` coverage check (deferred in 6a's
-   `ValidateProgram` and 6f's coverage query) would get built out for real.
-   See T-016.
+1. **Ask the user whether to commit the Postman collection + rule-handler
+   bugfixes** — see T-018. A single commit is reasonable here (the bugfixes
+   were found while validating the collection, not a cleanly separable unit
+   the way 6e/6f were). Offered message: "Add Postman collection covering all
+   Phase 0-7 endpoints, and fix three rule-upsert handlers that 500'd on a
+   natural-key collision".
+2. **Start Phase 8 — Question selection engine** (`IQuestionSelector`).
+   Re-read `docs/Implementation-Plan.md`'s Phase 8 section fresh. See T-019.
 3. **T-006** (Phase 14, not urgent) — decide whether `QuizApp.BuzzerAgent`
    references `QuizApp.Modules.Buzzer` to reuse serial frame-parsing code, or
    reimplements it standalone.
-4. **Verify when possible, not urgent:** V-006 (Docker/CI), V-007 (Testcontainers
-   vs SQL Server), V-008 (new — did the 6c/6d/6f migrations actually get applied
-   to LocalDB, not just generated).
+4. **Verify when possible, not urgent:** V-006 (Docker/CI), V-007
+   (Testcontainers vs SQL Server), V-008 (migrations actually applied to
+   LocalDB, not just generated), V-009 (new — re-run `dotnet build`/
+   `dotnet test` once the locked `QuizApp.Api.exe` process is stopped, to
+   independently confirm the 238-passed claim).
 5. Optional, low priority: `docs/Implementation-Plan.md`'s own "Start here"
-   section (line ~794) still says Phase 6 is next and describes Phases 3–5 as
-   "Uncommitted" — both now stale. See T-017.
+   section (line ~794) is now two phases stale (still names Phase 6/7 text
+   that predates this session). See T-017.
 
 Full queue: `TASKS.md`.
 
@@ -179,35 +192,51 @@ Full queue: `TASKS.md`.
   `git log`" as "doesn't exist" for anything under `docs/`.
 - `[DECIDED]` **Swashbuckle 10.x needs explicit polymorphic-schema wiring**
   (D-017); **NSwag, not openapi-generator-cli** (D-018).
-- `[DECIDED]` **Commit only when asked** (V-005). **As of this session, 6e+6f are
-  uncommitted; 6a–6d already are** (see §2's correction).
+- `[DECIDED]` **Commit only when asked** (V-005). **As of this session, only the
+  Postman collection + 3 rule-handler bugfixes are uncommitted; Phase 6
+  (all of 6a–6f) and Phase 7 are fully committed** (see §2's correction —
+  third recurrence of L-004).
 - `[FACT]` **A DB-only uniqueness/state constraint without a handler pre-check
-  surfaces as an unhandled 500, not a clean 4xx.** Hit 3 times this session
-  (Team.Code, Topic/Tag name, `Question.Approve`'s `InvalidOperationException`)
-  — see L-007. Always add the matching pre-check, or map the exception type in
-  `GlobalExceptionHandler`, whenever adding a new unique index or check
-  constraint.
+  surfaces as an unhandled 500, not a clean 4xx.** Hit 3 times in the prior
+  session (Team.Code, Topic/Tag name, `Question.Approve`'s
+  `InvalidOperationException`, L-007), and **recurred a fourth/fifth/sixth
+  time this session** in 3 of the 4 rule-upsert handlers (Scoring/
+  Qualification/TieBreak) — this time the handler *did* pre-check by `Id`,
+  but not by the entity's full natural key, so a "create" whose natural key
+  already existed (e.g. right after `ResetScoringDefaults`) still 500'd. See
+  L-010: any upsert handler must look up existing rows by every column a
+  unique index covers, not just `Id`.
 - `[FACT]` **`Program.MaxTeams` (typed column) is the real team-cap mechanism**;
   the `ProgramSetting("Teams","MaxTeams")` key seen in Phase 6a's own test
   fixtures was only ever an incidental example value, not a second intended
   mechanism — see L-009 if you find that key in old test code and wonder.
+- `[DECIDED]` **Reordering a unique-`OrderIndex` list needs a two-phase reindex**
+  (D-023) — write a temporary offset first, then final values in a second
+  `SaveChangesAsync`, or a unique-index violation can occur mid-batch
+  depending on EF's per-row update order. **Locked segments keep their slot
+  during a bulk segment reorder** (D-024) — `IsOrderLocked` segments are
+  excluded from repositioning, not validated-and-rejected if the caller's
+  order would have moved them.
 
-Reasoning for all decisions: `DECISIONS.md` D-001 – D-022.
+Reasoning for all decisions: `DECISIONS.md` D-001 – D-024.
 
 ## 6. Files in play
 
 | Path | Note |
 |---|---|
 | `QuizApp/src/QuizApp.Application/Abstractions/IAppDbContext.cs` | New in 6a — the port MediatR handlers use for Domain-typed entities |
-| `QuizApp/src/QuizApp.Application/{Programs,Teams,Topics,Tags,Media,QuestionBank}/**` | Phase 6 command/query handlers, one folder per area |
-| `QuizApp/src/QuizApp.Api/Controllers/v1/{ProgramsController,AuthController,AdminController,TeamsController,TopicsController,TagsController,QuestionsController}.cs` | Real handlers now, not 501 stubs |
+| `QuizApp/src/QuizApp.Application/{Programs,Teams,Topics,Tags,Media,QuestionBank,Tournament,Rules}/**` | Command/query handlers, one folder per area — `Tournament/` and `Rules/` are new this session (Phase 7) |
+| `QuizApp/src/QuizApp.Application/Rules/Services/{IRuleService,RuleService}.cs` | New this session — specificity-based scoring-rule resolution (segment > stage > program) |
+| `QuizApp/src/QuizApp.Api/Controllers/v1/{ProgramsController,AuthController,AdminController,TeamsController,TopicsController,TagsController,QuestionsController,StagesController,RulesController}.cs` | Real handlers now, not 501 stubs — `StagesController`/`RulesController` rewritten this session |
+| `QuizApp/src/QuizApp.Infrastructure/Persistence/TournamentSeeder.cs` | New this session — 18-team demo tournament seed, wired into `Program.cs` |
+| `QuizApp/src/QuizApp.Domain/Tournament/Stage.cs`, `StageSegmentTemplate.cs`, `Domain/Scoring/ScoringRule.cs`, `Domain/Qualification/{QualificationRule,TieBreakRule,DefaultTieBreakValues}.cs`, `Domain/Tournament/QuestionSelectionRule.cs` | New mutators this session (`Rename`/`Reorder`/`Update`/`Delete`/etc.) on entities that were create-only through Phase 1–6 |
+| `QuizApp/postman/{QuizApp.postman_collection.json,README.md}` | New this session — 80 requests, 10 folders, Phase 0–7 coverage. **Staged, not committed.** |
+| `QuizApp/src/QuizApp.Application/Rules/Commands/{UpsertScoringRules,UpsertQualificationRules,UpsertTieBreakRules}.cs` | Bugfixed this session (natural-key lookup, L-010). **Staged, not committed.** |
 | `QuizApp/src/QuizApp.Infrastructure/Identity/{IJwtTokenService,JwtTokenService}.cs` | 6b: optional `programId`/`expiresIn` params for display/select-program tokens |
 | `QuizApp/src/QuizApp.Infrastructure/Imports/{TeamExcelParser,McqQuestionExcelParser}.cs` | Excel import parsers (format-only parsing; ClosedXML 0.105.1) |
-| `QuizApp/src/QuizApp.Infrastructure/Media/{LocalFileStorage,MediaStorageOptions}.cs` | 6e, **uncommitted** |
-| `QuizApp/src/QuizApp.Infrastructure/Persistence/Configurations/{TournamentConfigurations,QuestionConfigurations}.cs` | Bug fixes: `CK_MP_Removal` (6c), Topic parent FK + Tag unique index (6d), `CK_Question_Difficulty` (6f, uncommitted) |
-| `QuizApp/src/QuizApp.Infrastructure/Persistence/Migrations/2026090*` | 3 new migrations this session — see §3 table for names/commit status |
+| `QuizApp/src/QuizApp.Infrastructure/Media/{LocalFileStorage,MediaStorageOptions}.cs` | 6e, committed `783bc1c` |
 | `QuizApp/src/QuizApp.Domain/QuestionBank/*.cs` | All 10 question subclasses' `Create()` factories gained optional params (6f) |
-| `QuizApp/src/QuizApp.Api/Contracts/V1/{Admin,Teams,Topics,Questions}/**` | Rewritten/extended contracts; several were unusable Phase 5 stubs (mismatched field names) fixed this session |
+| `QuizApp/src/QuizApp.Api/Contracts/V1/{Admin,Teams,Topics,Questions,Stages}/**` | Rewritten/extended contracts; `StageContracts.cs`'s `CreateStageRequest` gained `StageType` this session (Phase 5 stub had omitted it) |
 | `context/_meta/SPEC.md` | The save/resume procedure |
 
 `[FACT]` `QuizApp-9AMM/` and `QuickBuzz/` are **nested git repositories**.
@@ -223,49 +252,60 @@ Reasoning for all decisions: `DECISIONS.md` D-001 – D-022.
 Q-001, Q-002, Q-004 remain **ANSWERED** — see `TASKS.md` Closed.
 
 Verification queue in `TASKS.md`: V-001 (Codex/AGENTS.md), V-006 (Docker/CI
-unverified), V-007 (Testcontainers-vs-SQL-Server), V-008 (new — migrations
-generated this session actually applied to LocalDB, not just present on disk).
+unverified), V-007 (Testcontainers-vs-SQL-Server), V-008 (migrations actually
+applied to LocalDB, not just present on disk), V-009 (new — this session's
+238-passed test claim not independently re-run, build was file-locked by a
+running dev-server process).
 
 ## 8. Do not retry
 
 - **L-001** through **L-006** — see `LESSONS.md` (heredoc failures, bare subagent
   invocation, doc duplication, stale git-state claims in briefs, Swashbuckle
   polymorphism gap, openapi-generator-cli needs a JVM).
-- **L-004** (updated this session) — a conversation brief's claim about commit
-  state recurred as stale *again*: this session's brief said all of 6b–6f was
-  uncommitted; `git log` showed 6a–6d already committed by the user out-of-band.
-  Same root cause as the original entry. Always run `git log`/`git status`
-  yourself before writing any commit-state claim, regardless of how specific or
-  confident the brief sounds.
-- **L-007** (new) — a uniqueness or state constraint enforced only at the DB
-  level (unique index, check constraint) but never pre-checked in the handler
-  surfaces as an unhandled 500 instead of a clean 4xx. Hit 3 times this session.
-  Always add the matching pre-check, or map the exception type in
-  `GlobalExceptionHandler`.
-- **L-008** (new) — `Question.Approve`/domain-thrown `InvalidOperationException`
+- **L-004** (updated this session, third recurrence) — a conversation brief's
+  claim about commit state was stale *again*: this session's brief said
+  neither Phase 6e/6f nor Phase 7 was committed; `git log` showed both already
+  committed by the user out-of-band (`783bc1c`, `3dbc6f2`). Same root cause
+  each time. Always run `git log`/`git status` yourself before writing any
+  commit-state claim, regardless of how specific or confident the brief
+  sounds — this is now a 3-for-3 pattern, treat it as near-certain to recur.
+- **L-007** — a uniqueness or state constraint enforced only at the DB level
+  (unique index, check constraint) but never pre-checked in the handler
+  surfaces as an unhandled 500 instead of a clean 4xx. Always add the
+  matching pre-check, or map the exception type in `GlobalExceptionHandler`.
+- **L-008** — `Question.Approve`/domain-thrown `InvalidOperationException`
   isn't one of `GlobalExceptionHandler`'s mapped types; check state *before*
   calling a domain method that throws a generic exception type, and throw a
   mapped domain exception instead.
-- **L-009** (new) — don't mistake `ProgramSetting("Teams","MaxTeams")` (seen in
+- **L-009** — don't mistake `ProgramSetting("Teams","MaxTeams")` (seen in
   Phase 6a's own test fixtures) for a second real team-cap mechanism; the typed
   `Program.MaxTeams` column, wired in Phase 6c, is the actual one.
+- **L-010** (new) — L-007's pattern recurred in 3 of 4 rule-upsert handlers:
+  each pre-checked existing rows by `Id` only, not by the full natural key a
+  unique index covers, so a "create" whose natural key already existed (e.g.
+  right after a reset-to-defaults) still 500'd. Any upsert handler must look
+  up by every column the unique index covers, not just `Id` — found by
+  end-to-end (Newman) testing, not a unit test.
 
 Full detail: `LESSONS.md`.
 
 ## 9. Environment and commands
 
 `[FACT]` Windows 10 Pro 10.0.19045 · PowerShell 5.1 primary, Git Bash available ·
-context root `C:\Sharique\Projects\Personal\QuizApp` · branch `master`, 17 commits.
+context root `C:\Sharique\Projects\Personal\QuizApp` · branch `master`, 19 commits.
 `[FACT]` .NET SDKs 8.0.421 and 10.0.400 installed. `[FACT]` LocalDB instance
 `(localdb)\MSSQLLocalDB`, database `QuizApp-Dev`, used for live manual
 verification via `dotnet run` (port 5299) and curl against the seeded admin
 (`admin@quizapp.local` / `ChangeMe!123` — credential location only, per policy).
+`[FACT]` `newman` (Postman's CLI runner) is now usable in this environment via
+`npx --yes newman` — not previously used/verified here.
 
 ```bash
 git status --short                          # outer repo only
-cd QuizApp && dotnet build QuizApp.slnx     # 0 warnings, 0 errors, verified this session
-dotnet test QuizApp.slnx --no-build         # 224 passed, 0 failed, verified this session
+cd QuizApp && dotnet build QuizApp.slnx      # last independently verified 2026-09-08 S-2026-09-08-01; this session's build attempt failed on file locks — see V-009
+dotnet test QuizApp.slnx --no-build          # brief claims 238 passed, 0 failed — [UNVERIFIED] this session, see V-009
 dotnet ef migrations list --project src/QuizApp.Infrastructure --startup-project src/QuizApp.Api
+npx --yes newman run QuizApp/postman/QuizApp.postman_collection.json --folder "00 Health"   # etc. per folder — see QuizApp/postman/README.md for run order
 ```
 
 `[FACT]` No Docker daemon and no CI runner in this dev environment — see V-006/V-007.
@@ -279,7 +319,8 @@ dotnet ef migrations list --project src/QuizApp.Infrastructure --startup-project
 | `LESSONS.md` | What already failed — **read before proposing an approach** |
 | `PROJECT.md` | Stack, repo map, glossary, environment, conventions |
 | `HISTORY.md` | The timeline of checkpoints |
-| `sessions/2026-09-08-01-phase6-configuration-modules.md` | Full detail of this session (6a–6f) |
+| `sessions/2026-09-08-02-phase7-tournament-configuration.md` | Full detail of this session (Phase 7 + Postman collection) |
+| `sessions/2026-09-08-01-phase6-configuration-modules.md` | Phase 6 (6a–6f) detail |
 | `sessions/2026-09-07-01-phases-2-3-4-5-catchup.md` | Phases 2–5 detail |
 | `_meta/SPEC.md` | How to save and resume context |
 | `README.md` | The workflow, for humans |

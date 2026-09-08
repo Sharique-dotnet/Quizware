@@ -1,18 +1,19 @@
 {
   "context_version": 1,
   "spec": "context/_meta/SPEC.md",
-  "last_save": "2026-09-07T00:00:00Z",
-  "last_session_id": "S-2026-09-07-01",
+  "last_save": "2026-09-08T00:00:00Z",
+  "last_session_id": "S-2026-09-08-02",
   "sessions_by_date": {
     "2026-09-04": 3,
-    "2026-09-07": 1
+    "2026-09-07": 1,
+    "2026-09-08": 2
   },
   "counters": {
-    "decision": 18,
-    "task": 14,
+    "decision": 24,
+    "task": 19,
     "question": 5,
-    "lesson": 6,
-    "verification": 7
+    "lesson": 10,
+    "verification": 9
   },
   "saved_by": [
     "Claude Opus 5 (Claude Code)",

@@ -4,7 +4,7 @@ Approaches that failed, bugs, and environment traps. **Read this before proposin
 an approach** — it is the list of things that already cost someone time.
 Format: `_meta/SPEC.md` §6.5.
 
-**Last updated:** 2026-09-08 (S-2026-09-08-01)
+**Last updated:** 2026-09-08 (S-2026-09-08-02)
 
 ---
 
@@ -98,6 +98,21 @@ Format: `_meta/SPEC.md` §6.5.
   every time, not a one-off — treat "is X committed?" as always requiring a
   fresh `git log`/`git status` check, never a transcription, no matter how
   specific or recent the brief's account sounds.
+- **Recurrence (2026-09-08, S-2026-09-08-02):** happened a third time, same
+  shape. The brief driving this session's save claimed Phase 7 (all of
+  `Application/Tournament/**`, `Application/Rules/**`, `TournamentSeeder.cs`,
+  etc.) and Phase 6e/6f were still uncommitted at session end, with only
+  one-line commit messages ever *offered*, never run. `git log` showed both
+  already committed: `783bc1c` ("Media upload with validation/deduplication,
+  and question bank CRUD...") and `3dbc6f2` ("Stage/segment CRUD with
+  reorder, scoring/selection/qualification/tie-break rule management...").
+  Only the Postman collection and the three rule-handler bugfixes (with their
+  regression test) — work from *after* the Phase 7 commit message was offered
+  — were actually still staged-uncommitted. Same root cause each time: the
+  user runs `git commit` directly, out of the agent's view, some time after
+  the message is offered. At this point treat it as a near-certainty that
+  "offered but not run" claims in a brief will be stale by save time — verify
+  every single one against `git log`, not just the most recent.
 
 ### L-005 · Swashbuckle does not auto-detect `[JsonPolymorphic]`/`[JsonDerivedType]`
 - **Added:** 2026-09-07 (S-2026-09-07-01)
@@ -208,3 +223,37 @@ Format: `_meta/SPEC.md` §6.5.
 - **Still true?** Yes, unless a future decision deliberately introduces a
   second, settings-bag-driven override — which would need its own `D-###`
   entry, not a silent revival of the old test-fixture value.
+
+### L-010 · L-007's "DB-only uniqueness without a handler pre-check" pattern recurred in 3 of 4 rule-upsert handlers, this time found by end-to-end (Newman) testing, not a unit test
+- **Added:** 2026-09-08 (S-2026-09-08-02)
+- **Tried:** `UpsertScoringRulesCommandHandler`/`UpsertQualificationRulesCommandHandler`/
+  `UpsertTieBreakRulesCommandHandler` all checked for an existing row by `Id`
+  before deciding create-vs-update, but did not also check by the entity's
+  *natural key* (`ScoringRule`: `FormatCode`+`Outcome`+`ContextKey` scoped to
+  Program/Stage/Segment; `QualificationRule`: `FromStageId`; `TieBreakRule`:
+  `StageId`+`Scope`) — all three have a unique DB index on that natural key.
+- **Result:** `PUT /rules/scoring` with a "new" (`Id: Guid.Empty`) rule whose
+  natural key already matched one of the 18 rows `ResetScoringDefaults` had
+  just seeded threw an unhandled `DbUpdateException` → 500, not a clean
+  update. Found via an end-to-end Postman/Newman run against a live API, not
+  a unit test this time — reset-defaults-then-upsert is a realistic user
+  sequence a unit test in isolation hadn't covered. Proactively audited the
+  other three rule-upsert handlers afterward and found the identical latent
+  bug in Qualification and TieBreak (not yet triggered by any test, found by
+  code inspection); `UpsertSelectionRulesCommandHandler` was checked and is
+  fine — its underlying index is non-unique.
+- **Root cause:** `[FACT]` Same class as L-007 — a unique constraint enforced
+  only at the DB level, with the handler's existing-row lookup keyed on `Id`
+  alone rather than on every column the constraint covers.
+- **Instead:** Fixed all three by falling back to a natural-key lookup
+  (`existing.SingleOrDefault(r => <natural key columns match>)`) whenever the
+  `Id`-based lookup misses, updating that row instead of inserting a
+  duplicate. Added a regression test reproducing the exact sequence
+  (`RulesEndpointTests.UpsertScoring_SameNaturalKeyAsExistingDefault_UpdatesInsteadOf500`).
+- **Still true?** Yes — treat as a standing rule: any handler that "upserts" a
+  list of DTOs against an entity with a unique index must look up existing
+  rows by **every column the index covers**, not just by `Id`, especially
+  right after a reset/seed operation that populates rows the caller doesn't
+  have ids for yet. L-007's original advice ("add a pre-check or map the
+  exception") under-specified this — the pre-check itself must match the full
+  constraint, not just primary key.

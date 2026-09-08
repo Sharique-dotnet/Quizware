@@ -3,7 +3,7 @@
 Slow-changing orientation. Read `CURRENT.md` first; come here when you need the
 stack, the map, or the conventions.
 
-**Last updated:** 2026-09-07 (S-2026-09-07-01)
+**Last updated:** 2026-09-08 (S-2026-09-08-02)
 
 ---
 
@@ -68,22 +68,39 @@ C:\Sharique\Projects\Personal\QuizApp\      <- context root (outer git repo)
 │   ├── QuizApp-9AMM-Technical-Analysis.md   Legacy audit (1,492 lines)
 │   └── QuickBuzz-Technical-Analysis.md      Legacy audit (123 lines)
 ├── QuizApp/                 NEW system. `[FACT]` Solution scaffolded, 10 projects,
-│                            Phases 0–5 of 18 all DONE (see `CURRENT.md` §2):
+│                            Phases 0–7 of 18 all DONE (see `CURRENT.md` §2):
 │   ├── QuizApp.slnx
 │   ├── src/QuizApp.Domain/            no project/NuGet references. Phase 1 domain
 │   │                                  model complete: Common/, Enums/, Teams/,
 │   │                                  QuestionBank/, Tournament/, Gameplay/,
-│   │                                  Scoring/, Qualification/, Buzzer/
+│   │                                  Scoring/, Qualification/, Buzzer/. Phase 7
+│   │                                  added mutators (Rename/Reorder/Update/Delete)
+│   │                                  to several entities that were create-only
+│   │                                  before (Stage, StageSegmentTemplate,
+│   │                                  ScoringRule, QualificationRule, TieBreakRule,
+│   │                                  QuestionSelectionRule) plus
+│   │                                  Qualification/DefaultTieBreakValues.cs
 │   ├── src/QuizApp.Application/       -> Domain. Phase 3: Authorization/ (Policies,
 │   │                                  Roles), Common/Behaviors/ValidationBehavior,
 │   │                                  Abstractions/ (IClock, ICurrentUser,
-│   │                                  ICurrentProgram)
+│   │                                  ICurrentProgram, IAppDbContext [Phase 6a]).
+│   │                                  Phase 6: Programs/, Teams/, Topics/, Tags/,
+│   │                                  Media/, QuestionBank/ (one folder per area,
+│   │                                  MediatR commands/queries — see D-019 for
+│   │                                  when this pattern applies vs. controller-direct).
+│   │                                  Phase 7: Tournament/ (Stage/segment CRUD +
+│   │                                  reorder), Rules/ (scoring/selection/
+│   │                                  qualification/tie-break upsert + reset-
+│   │                                  defaults + IRuleService resolution)
 │   ├── src/QuizApp.Infrastructure/    -> Application, Domain. Phase 3: Identity/
 │   │                                  (JWT, AppUser/AppRole, RefreshToken),
 │   │                                  Idempotency/. Phase 4: Persistence/
 │   │                                  (AppDbContext, ~58-table EF model,
 │   │                                  Configurations/, Interceptors/), Auditing/,
-│   │                                  Outbox/, Imports/
+│   │                                  Outbox/, Imports/ (Phase 6c/6f Excel import
+│   │                                  parsers). Phase 6e: Media/ (LocalFileStorage).
+│   │                                  Phase 7: Persistence/TournamentSeeder.cs
+│   │                                  (18-team demo tournament, dev-only seed)
 │   ├── src/QuizApp.Modules.Buzzer/    -> Application, Domain (optional module).
 │   │                                  Phase 4: Manual/ (BuzzSession, BuzzPress,
 │   │                                  BuzzDeviceMapping) + own EF configs, kept out
@@ -91,14 +108,27 @@ C:\Sharique\Projects\Personal\QuizApp\      <- context root (outer git repo)
 │   ├── src/QuizApp.Api/               -> all four above. Phase 3: Middleware/,
 │   │                                  Filters/. Phase 5: Contracts/V1/ (DTOs per
 │   │                                  area, discriminated-union QuestionResponse),
-│   │                                  Controllers/v1/ (16 controllers, all 501 stubs)
+│   │                                  Controllers/v1/ (16 controllers). Phases 6–7
+│   │                                  turned most of those from 501 stubs into
+│   │                                  real handlers — only Phase 8+ areas (Matches,
+│   │                                  Live engine, Scores, Standings, Qualification
+│   │                                  commit, Buzzer, Display, Reports) remain stubs.
 │   ├── tests/QuizApp.Domain.Tests/    xUnit + FluentAssertions; 95 tests
-│   ├── tests/QuizApp.Application.Tests/  4 tests
+│   ├── tests/QuizApp.Application.Tests/  17 tests (Phase 6/7 growth from 4)
 │   ├── tests/QuizApp.Architecture.Tests/ 4 tests (NetArchTest dependency rules)
-│   ├── tests/QuizApp.Api.IntegrationTests/ 44 tests (persistence, auth/health,
-│   │                                  validators, controller-stub reachability)
+│   ├── tests/QuizApp.Api.IntegrationTests/ 122 tests `[UNVERIFIED]` this checkpoint,
+│   │                                  see `CURRENT.md` V-009 (persistence,
+│   │                                  auth/health, validators, controller-stub
+│   │                                  reachability, Teams/Topics/Tags/Media/
+│   │                                  QuestionBank/Stages/Rules endpoint tests)
 │   ├── clients/typescript/quizapp-api-client.ts  generated via NSwag (D-018),
-│   │                                  ~19,400 lines, committed
+│   │                                  ~19,400 lines, committed (not regenerated
+│   │                                  since Phase 5 — stale relative to Phase 6/7
+│   │                                  endpoints if the Angular front end needs it)
+│   ├── postman/QuizApp.postman_collection.json + README.md  Phase 7 checkpoint:
+│   │                                  80 requests, 10 folders, covers every
+│   │                                  implemented endpoint through Phase 7;
+│   │                                  staged, not committed as of this checkpoint
 │   └── tools/QuizApp.BuzzerAgent/     console tray app; no project refs yet (T-006)
 ├── QuizApp-9AMM/            LEGACY MVC 4. Nested git repo.
 ├── QuickBuzz/               LEGACY buzzer. Nested git repo.
@@ -107,11 +137,14 @@ C:\Sharique\Projects\Personal\QuizApp\      <- context root (outer git repo)
 └── .claude/, .cursor/       Tool adapters for the context system
 ```
 
-`[FACT]` As of S-2026-09-07-01: `dotnet build` → 0 warnings/errors, `dotnet test`
-→ **147 passed, 0 failed** across all four test projects. Phases 0–5 of the
-18-phase plan are all marked DONE in `docs/Implementation-Plan.md`. See
-`CURRENT.md` §2–3 for the phase-by-phase breakdown and what's committed vs.
-staged vs. gitignored-by-construction (D-016).
+`[UNVERIFIED]` as of S-2026-09-08-02 (see `CURRENT.md` V-009 — not
+independently re-run this checkpoint, build attempt was file-locked by a
+running dev-server process): `dotnet build` reportedly 0 warnings/errors,
+`dotnet test` reportedly **238 passed, 0 failed** across all four test
+projects (95 Domain, 17 Application, 4 Architecture, 122
+Api.IntegrationTests). Phases 0–7 of the 18-phase plan are all marked DONE.
+See `CURRENT.md` §2–3 for the phase-by-phase breakdown and what's committed
+vs. staged vs. gitignored-by-construction (D-016).
 
 **Nested git repositories.** `QuizApp-9AMM/` and `QuickBuzz/` each contain their
 own `.git`. The outer repository at the path above is the context root and owns
@@ -132,21 +165,26 @@ the new work. `[FACT]` verified by `find -type d -name .git`.
 
 - `[FACT]` Windows 10 Pro 10.0.19045, PowerShell 5.1 primary; Git Bash available.
 - `[FACT]` Context root: `C:\Sharique\Projects\Personal\QuizApp`.
-- `[FACT]` Outer repo is on branch `master`. As of S-2026-09-07-01, `git log`
-  shows 12 commits: `bf8cb06` (initial commit, docs + context system) ·
-  `893c4a7` (solution scaffolding) · `471a60a` (.gitignore + `CLAUDE.md`
-  commit-practice instructions) · `2b2bcfb` (P1-02, `TurnOrderCalculator`) ·
-  `d6171cd` (Common base interfaces + remaining enums) · `4697df7` (Common
-  interfaces, enums, `Program` aggregate) · `6e6a13e` (full domain model) ·
-  `0df2bd2` (docs updated, and `docs/` moved from tracked to fully gitignored —
-  see D-016) · `4452949` (Phase 3: Identity, JWT, DI, logging, tests) ·
-  `c624f51` (Phase 4: full business schema, global query filters, audit
-  interceptors, pluggable buzzer persistence). `main` is the intended base
-  branch for PRs but does not exist. **Phase 5's ~20 files (contracts,
-  controllers, TS client) are staged but not committed** as of this session —
-  see `TASKS.md` T-013. Phase 2's 10 ADRs in `docs/adr/` are on disk but will
-  never show in `git log` (`docs/` is gitignored, D-016) — this is expected,
-  not a pending-commit gap.
+- `[FACT]` Outer repo is on branch `master`. As of S-2026-09-08-02, `git log`
+  shows 19 commits, most recent: `3dbc6f2` (Phase 7: Stage/segment CRUD +
+  reorder, scoring/selection/qualification/tie-break rule management,
+  IRuleService, program readiness validation, 18-team seed script) ·
+  `783bc1c` (Phase 6e/6f: media upload + question bank CRUD) · `1d86810`
+  (6d: Topics/Tags) · `41e45bd` (6c: Teams) · `ae94bca` (6b: Users/roles) ·
+  `717b96f` (6a: Programs) · `8294c27` (Phase 5: API contract) · `c624f51`
+  (Phase 4: full business schema) · `4452949` (Phase 3: Identity/JWT/DI) ·
+  `0df2bd2` (docs updated, `docs/` moved to fully gitignored — D-016) ·
+  `6e6a13e`/`4697df7`/`d6171cd`/`2b2bcfb` (Phase 1 domain model) · `471a60a`
+  (.gitignore + `CLAUDE.md` commit-practice instructions) · `893c4a7`
+  (solution scaffolding) · `bf8cb06` (initial commit). `main` is the intended
+  base branch for PRs but does not exist. **As of this checkpoint, only the
+  Postman collection (`QuizApp/postman/`) and 3 rule-handler bugfixes +
+  their regression test are staged but not committed** — see `TASKS.md`
+  T-018. Everything else through Phase 7 is committed (see `CURRENT.md` §2's
+  correction — a brief's "still uncommitted" claim has now gone stale by
+  save time three separate times, L-004). Phase 2's 10 ADRs in `docs/adr/`
+  are on disk but will never show in `git log` (`docs/` is gitignored,
+  D-016) — this is expected, not a pending-commit gap.
 - `[FACT]` .NET 10 SDK **10.0.400** installed locally, alongside 8.0.421, both
   under `C:\Program Files\dotnet\sdk`. Verified via `dotnet --list-sdks`.
 - `[UNVERIFIED]` SQL Server instance available for development. Check: connection
@@ -162,9 +200,10 @@ last-path-segment name as the repo root, `QuizApp\QuizApp\`, is easy to fumble i
 
 ```bash
 dotnet sln QuizApp.slnx list       # list the 10 projects
-dotnet build QuizApp.slnx          # 0 warnings, 0 errors as of S-2026-09-07-01
-dotnet test QuizApp.slnx --no-build  # 147 passed, 0 failed as of S-2026-09-07-01
+dotnet build QuizApp.slnx          # 0 warnings, 0 errors last independently verified S-2026-09-08-01
+dotnet test QuizApp.slnx --no-build  # 238 passed, 0 failed reported S-2026-09-08-02, [UNVERIFIED] this checkpoint (V-009)
 dotnet list <project> reference    # verify a project's dependency edges
+npx --yes newman run QuizApp/postman/QuizApp.postman_collection.json  # requires `dotnet run` already active; see postman/README.md for folder order
 ```
 
 `[FACT]` EF Core migrations exist: `InitialIdentitySchema` (Phase 3) and

@@ -6,7 +6,7 @@ re-propose it. Format: `_meta/SPEC.md` §6.3.
 
 **Index:** D-001 · D-002 · D-003 · D-004 · D-005 · D-006 · D-007 · D-008 · D-009 ·
 D-010 · D-011 · D-012 · D-013 · D-014 · D-015 · D-016 · D-017 · D-018 · D-019 ·
-D-020 · D-021 · D-022
+D-020 · D-021 · D-022 · D-023 · D-024
 
 ---
 
@@ -575,4 +575,55 @@ remaining Phase 0 assumptions has still not happened — see Q-001 in `TASKS.md`
   parser class + `TeamsController`/`QuestionsController`'s validate/report/
   commit controller code, reusing that format's `CreateXxxQuestionCommand` via
   `ISender` for the commit step) rather than inventing a new import mechanism.
+- **Confidence:** [DECIDED]
+
+### D-023 · Reordering a unique-OrderIndex list needs a two-phase reindex, never direct final values in one pass
+- **Status:** ACTIVE
+- **Added:** 2026-09-08 (S-2026-09-08-02)
+- **Decision:** ReorderStagesCommandHandler and ReorderSegmentTemplatesCommandHandler
+  write a temporary offset value (100_000 + i) to every row's OrderIndex in one
+  SaveChangesAsync, then the real final values in a second SaveChangesAsync,
+  rather than writing final values directly in one pass.
+- **Why:** Stage.OrderIndex (unique per ProgramId) and StageSegmentTemplate.OrderIndex
+  (unique per StageId) are both enforced by a unique DB index. EF Core issues one
+  UPDATE per changed row in whatever order the change tracker picks, so reordering
+  [A,B,C] to [B,C,A] can produce a row briefly holding another row's about-to-be-
+  vacated index mid-batch. Both SQL Server and the SQLite test provider check
+  unique indexes per-statement, not deferred to end-of-transaction, so a direct
+  single-pass write throws a constraint violation on some permutations depending
+  on tracked-row order - caught by a failing integration test before reaching a
+  human tester.
+- **Alternatives rejected:** Defer constraint checking to end-of-transaction - not
+  supported by SQLite (the test provider) as configured; would be a bigger, riskier
+  change than a two-phase write. Sort the update order to avoid collisions -
+  fragile and permutation-dependent; the temporary-offset approach is correct for
+  every permutation unconditionally.
+- **Consequences:** Any future "reorder a unique-ordered list" feature should reuse
+  this same two-phase-write pattern, not a single-pass write of final values.
+- **Confidence:** [DECIDED]
+
+### D-024 · Segment-template reorder: a locked segment keeps its original slot; unlocked segments fill in around it from the caller's requested order
+- **Status:** ACTIVE
+- **Added:** 2026-09-08 (S-2026-09-08-02)
+- **Decision:** ReorderSegmentTemplatesCommandHandler requires the full ordered
+  list of segment ids (rejects a partial list with 400 VALIDATION_FAILED).
+  Algorithm: walk target slots 0..n-1; if the segment that originally occupied
+  slot i has IsOrderLocked = true, it stays in slot i regardless of where the
+  caller's request places it; otherwise the next unlocked id from the request's
+  queue (in the order the caller supplied) fills slot i.
+- **Why:** IsOrderLocked (a StageSegmentTemplate column since Phase 4) needs the
+  property implied by its name - "excluded from reordering" - to actually hold at
+  the one place segments are ever reordered in bulk. A locked segment silently
+  moving because the caller listed it in a different position would defeat the
+  column's purpose.
+- **Alternatives rejected:** Reject the whole request if a locked segment's
+  requested position differs from its current one - considered but not chosen;
+  picked the more forgiving "locked segments are simply excluded from
+  repositioning" semantics instead, since it lets a caller resubmit the full
+  current order (including locked segments in their current slots) without
+  needing to compute which slots are locked itself.
+- **Consequences:** Any UI building a drag-and-drop reorder for segment templates
+  must either disable dragging locked segments, or accept that dragging one has no
+  effect on the persisted order (silently ignored, not rejected) - worth a UX note
+  when the Angular front end gets built.
 - **Confidence:** [DECIDED]

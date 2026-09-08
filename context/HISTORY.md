@@ -92,3 +92,25 @@ Newest last. Format: `_meta/SPEC.md` §6.6.
   already committed by the user out-of-band. Only 6e+6f are genuinely
   uncommitted. Same root cause as the original L-004 entry.
 - **Detail:** `sessions/2026-09-08-01-phase6-configuration-modules.md`
+
+## S-2026-09-08-02 · phase7-tournament-configuration · Claude Sonnet 5 (Claude Code)
+- **Focus:** Merged a brief covering two pieces of work done immediately
+  after S-2026-09-08-01: Phase 7 — Tournament configuration, delivered in
+  full (all 12 tasks) and committed as `3dbc6f2`; and a Postman collection
+  covering everything through Phase 7, validated by actually running it
+  against a live API with `newman`, which surfaced and led to fixing two
+  real bugs (a collection-ordering bug, and a genuine backend bug in 3 of 4
+  rule-upsert handlers — same class as L-007, recorded as L-010). Corrected
+  the brief's claim that Phase 7 and Phase 6e/6f were still uncommitted —
+  `git log` showed both already committed by the user out-of-band, the third
+  recurrence of the pattern in L-004.
+- **Changed:** `CURRENT.md` (§2–§10 rewritten), `DECISIONS.md` (D-023, D-024
+  appended), `TASKS.md` (T-015, T-016 closed; T-018, T-019 added; V-009
+  added), `LESSONS.md` (L-004 third recurrence appended, L-010 added),
+  `HISTORY.md` (this block).
+- **Added:** D-023, D-024, T-018, T-019, V-009, L-010.
+- **Superseded:** none — all new information extended or closed existing
+  entries; T-015/T-016 closed on the same premise they were opened under
+  (commit decision resolved by action, Phase 7 implemented), not
+  contradicted.
+- **Detail:** `sessions/2026-09-08-02-phase7-tournament-configuration.md`

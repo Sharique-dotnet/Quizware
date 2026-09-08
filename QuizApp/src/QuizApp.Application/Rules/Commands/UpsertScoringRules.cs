@@ -47,15 +47,28 @@ public sealed class UpsertScoringRulesCommandHandler : IRequestHandler<UpsertSco
             .ToListAsync(cancellationToken);
         var existingById = existing.ToDictionary(r => r.Id);
 
+        // UX_ScoringRule is a unique (ProgramId, StageId, SegmentTemplateId,
+        // FormatCode, Outcome, ContextKey) index — a "create" whose natural
+        // key already matches a program-wide rule (e.g. one seeded by
+        // Reset Defaults) must update that row instead of inserting a
+        // duplicate, or the unique index throws an unhandled 500. See L-007.
         var actor = _currentUser.Email ?? "unknown";
         foreach (var dto in request.Rules)
         {
             var formatCode = Enum.Parse<QuestionFormatCode>(dto.FormatCode, ignoreCase: true);
             var outcome = Enum.Parse<AnswerOutcome>(dto.Outcome, ignoreCase: true);
 
-            if (dto.Id != Guid.Empty && existingById.TryGetValue(dto.Id, out var rule))
+            if (dto.Id != Guid.Empty && existingById.TryGetValue(dto.Id, out var ruleById))
             {
-                rule.UpdatePoints(dto.Points, description: null, actor);
+                ruleById.UpdatePoints(dto.Points, description: null, actor);
+                continue;
+            }
+
+            var ruleByNaturalKey = existing.SingleOrDefault(
+                r => r.FormatCode == formatCode && r.Outcome == outcome && r.ContextKey == dto.ContextKey);
+            if (ruleByNaturalKey is not null)
+            {
+                ruleByNaturalKey.UpdatePoints(dto.Points, description: null, actor);
                 continue;
             }
 

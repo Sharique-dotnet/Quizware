@@ -50,15 +50,26 @@ public sealed class UpsertTieBreakRulesCommandHandler : IRequestHandler<UpsertTi
             .ToListAsync(cancellationToken);
         var existingById = existing.ToDictionary(r => r.Id);
 
+        // UX_TieBreakRule is a unique (ProgramId, StageId, Scope) index — a
+        // "create" for a stage that already has a MatchRanking rule must
+        // update it instead of inserting a duplicate, or the unique index
+        // throws an unhandled 500 (see L-007).
         var actor = _currentUser.Email ?? "unknown";
         foreach (var dto in request.Rules)
         {
             var formatCode = Enum.Parse<QuestionFormatCode>(dto.TieBreakFormat, ignoreCase: true);
             var onStillTied = Enum.Parse<OnStillTiedPolicy>(dto.OnStillTied, ignoreCase: true);
 
-            if (dto.Id != Guid.Empty && existingById.TryGetValue(dto.Id, out var rule))
+            if (dto.Id != Guid.Empty && existingById.TryGetValue(dto.Id, out var ruleById))
             {
-                rule.Update(dto.Criteria, formatCode, dto.QuestionCount, dto.SuddenDeath, dto.MaxExtraRounds, dto.ScoreCountsTowardStage, onStillTied, actor);
+                ruleById.Update(dto.Criteria, formatCode, dto.QuestionCount, dto.SuddenDeath, dto.MaxExtraRounds, dto.ScoreCountsTowardStage, onStillTied, actor);
+                continue;
+            }
+
+            var ruleByStage = existing.SingleOrDefault(r => r.StageId == dto.StageId && r.Scope == TieBreakScope.MatchRanking);
+            if (ruleByStage is not null)
+            {
+                ruleByStage.Update(dto.Criteria, formatCode, dto.QuestionCount, dto.SuddenDeath, dto.MaxExtraRounds, dto.ScoreCountsTowardStage, onStillTied, actor);
                 continue;
             }
 

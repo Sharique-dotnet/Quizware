@@ -39,12 +39,24 @@ public sealed class UpsertQualificationRulesCommandHandler : IRequestHandler<Ups
             .ToListAsync(cancellationToken);
         var existingById = existing.ToDictionary(r => r.Id);
 
+        // UX_QualificationRule is a unique (ProgramId, FromStageId) index —
+        // a "create" for a stage that already has a rule must update it
+        // instead of inserting a duplicate, or the unique index throws an
+        // unhandled 500 (see L-007, same class of bug hit and fixed for
+        // UpsertScoringRulesCommandHandler).
         var actor = _currentUser.Email ?? "unknown";
         foreach (var dto in request.Rules)
         {
-            if (dto.Id != Guid.Empty && existingById.TryGetValue(dto.Id, out var rule))
+            if (dto.Id != Guid.Empty && existingById.TryGetValue(dto.Id, out var ruleById))
             {
-                rule.Update(dto.WinnersPerMatch, dto.BestRemainingAcrossStage, dto.ManualWildcardSlots, actor);
+                ruleById.Update(dto.WinnersPerMatch, dto.BestRemainingAcrossStage, dto.ManualWildcardSlots, actor);
+                continue;
+            }
+
+            var ruleByStage = existing.SingleOrDefault(r => r.FromStageId == dto.StageId);
+            if (ruleByStage is not null)
+            {
+                ruleByStage.Update(dto.WinnersPerMatch, dto.BestRemainingAcrossStage, dto.ManualWildcardSlots, actor);
                 continue;
             }
 

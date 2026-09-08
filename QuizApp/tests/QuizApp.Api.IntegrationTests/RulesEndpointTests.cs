@@ -111,6 +111,29 @@ public class RulesEndpointTests : IClassFixture<CustomWebApplicationFactory>
         rules.Should().Contain(r => r.FormatCode == "Buzzer" && r.Outcome == "Incorrect" && r.Points == -15);
     }
 
+    /// <summary>Regression for a bug found via the Postman collection: after
+    /// reset-defaults seeds a program-wide Mcq/Correct rule, upserting a
+    /// "new" rule (Id = empty) with the same FormatCode/Outcome/ContextKey
+    /// used to violate UX_ScoringRule and 500 instead of updating the
+    /// existing row. See L-007 in context/LESSONS.md.</summary>
+    [Fact]
+    public async Task UpsertScoring_SameNaturalKeyAsExistingDefault_UpdatesInsteadOf500()
+    {
+        var admin = await CreateUnscopedSuperAdminClientAsync();
+        var programId = await CreateProgramAsync(admin);
+        var client = await CreateProgramScopedClientAsync(programId, Roles.ProgramAdmin);
+        await client.PostAsync($"/api/v1/programs/{programId}/rules/scoring/reset-defaults", null);
+
+        var upsert = await client.PutAsJsonAsync(
+            $"/api/v1/programs/{programId}/rules/scoring",
+            new UpsertScoringRulesRequest([new ScoringRuleDto(Guid.Empty, "Mcq", "Correct", null, 25)]));
+
+        upsert.StatusCode.Should().Be(HttpStatusCode.OK);
+        var rules = await upsert.Content.ReadFromJsonAsync<List<ScoringRuleDto>>();
+        rules!.Should().ContainSingle(r => r.FormatCode == "Mcq" && r.Outcome == "Correct" && r.ContextKey == null)
+            .Which.Points.Should().Be(25);
+    }
+
     [Fact]
     public async Task UpsertTieBreak_ThenGet_RoundTrips()
     {

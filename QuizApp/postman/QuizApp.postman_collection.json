@@ -1,0 +1,1061 @@
+{
+  "info": {
+    "name": "QuizApp API",
+    "description": "Covers every implemented endpoint through Phase 7 (Tournament configuration). Run top-to-bottom, folder by folder — each request saves the ids/tokens the next one needs into collection variables. See postman/README.md for the full run order and prerequisites.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:5299" },
+    { "key": "adminEmail", "value": "admin@quizapp.local" },
+    { "key": "adminPassword", "value": "ChangeMe!123" },
+    { "key": "accessToken", "value": "" },
+    { "key": "refreshToken", "value": "" },
+    { "key": "scopedAccessToken", "value": "" },
+    { "key": "programId", "value": "" },
+    { "key": "invitedUserId", "value": "" },
+    { "key": "invitedUserTempPassword", "value": "" },
+    { "key": "teamId", "value": "" },
+    { "key": "teamImportBatchId", "value": "" },
+    { "key": "topicId", "value": "" },
+    { "key": "tagId", "value": "" },
+    { "key": "mediaAssetId", "value": "" },
+    { "key": "mcqQuestionId", "value": "" },
+    { "key": "mcqQuestionIdV2", "value": "" },
+    { "key": "questionImportBatchId", "value": "" },
+    { "key": "stageId", "value": "" },
+    { "key": "secondStageId", "value": "" },
+    { "key": "segmentId", "value": "" },
+    { "key": "secondSegmentId", "value": "" }
+  ],
+  "item": [
+    {
+      "name": "00 Health",
+      "item": [
+        {
+          "name": "Liveness",
+          "request": { "method": "GET", "url": "{{baseUrl}}/health/live" },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('200 OK', () => pm.response.to.have.status(200));"
+          ] } }]
+        },
+        {
+          "name": "Readiness (DB-backed)",
+          "request": { "method": "GET", "url": "{{baseUrl}}/health/ready" },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('200 OK', () => pm.response.to.have.status(200));"
+          ] } }]
+        }
+      ]
+    },
+    {
+      "name": "01 Auth",
+      "item": [
+        {
+          "name": "Login (seeded SuperAdmin)",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/v1/auth/login",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"email\": \"{{adminEmail}}\",\n  \"password\": \"{{adminPassword}}\"\n}" }
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('200 OK', () => pm.response.to.have.status(200));",
+            "const body = pm.response.json();",
+            "pm.collectionVariables.set('accessToken', body.accessToken);",
+            "pm.collectionVariables.set('refreshToken', body.refreshToken);"
+          ] } }]
+        },
+        {
+          "name": "Me",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/v1/auth/me",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }]
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('200 OK', () => pm.response.to.have.status(200));"
+          ] } }]
+        },
+        {
+          "name": "Refresh",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/v1/auth/refresh",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"refreshToken\": \"{{refreshToken}}\"\n}" }
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('200 OK', () => pm.response.to.have.status(200));",
+            "const body = pm.response.json();",
+            "pm.collectionVariables.set('accessToken', body.accessToken);",
+            "pm.collectionVariables.set('refreshToken', body.refreshToken);"
+          ] } }]
+        },
+        {
+          "name": "Change Password (then change back)",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/v1/auth/change-password",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }, { "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"currentPassword\": \"{{adminPassword}}\",\n  \"newPassword\": \"{{adminPassword}}\"\n}" }
+          },
+          "description": "Sends the same password as old/new so it is safe to run repeatedly without breaking later logins. Change newPassword if you want to actually rotate it.",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('204 No Content or 400 (same password rejected by policy) is acceptable', () => pm.expect([204,400]).to.include(pm.response.code));"
+          ] } }]
+        }
+      ]
+    },
+    {
+      "name": "02 Programs",
+      "item": [
+        {
+          "name": "List Programs",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/v1/programs",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }]
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('200 OK', () => pm.response.to.have.status(200));"
+          ] } }]
+        },
+        {
+          "name": "Create Program",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/v1/programs",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }, { "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"code\": \"PM-{{$randomInt}}\",\n  \"name\": \"Postman Test Program\",\n  \"description\": \"Created by the QuizApp Postman collection\"\n}" }
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('201 Created', () => pm.response.to.have.status(201));",
+            "const body = pm.response.json();",
+            "pm.collectionVariables.set('programId', body.id);"
+          ] } }]
+        },
+        {
+          "name": "Get Program By Id",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/v1/programs/{{programId}}",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }]
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('200 OK', () => pm.response.to.have.status(200));"
+          ] } }]
+        },
+        {
+          "name": "Update Program",
+          "request": {
+            "method": "PUT",
+            "url": "{{baseUrl}}/api/v1/programs/{{programId}}",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }, { "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"name\": \"Postman Test Program\",\n  \"description\": \"Updated via Postman\",\n  \"organisationName\": \"QuizApp QA\",\n  \"logoUrl\": null,\n  \"themePrimaryColor\": null,\n  \"themeSecondaryColor\": null,\n  \"fontFamily\": null,\n  \"maxTeams\": 20\n}" }
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('200 OK', () => pm.response.to.have.status(200));"
+          ] } }]
+        },
+        {
+          "name": "Select Program (mint program-scoped token)",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/v1/auth/select-program",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }, { "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"programId\": \"{{programId}}\"\n}" }
+          },
+          "description": "Every request in folders 04 onward uses {{scopedAccessToken}}, which this sets. Re-run this any time the scoped token expires (15 min).",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('200 OK', () => pm.response.to.have.status(200));",
+            "const body = pm.response.json();",
+            "pm.collectionVariables.set('scopedAccessToken', body.accessToken);"
+          ] } }]
+        },
+        {
+          "name": "Display Token (read-only, cannot write)",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/v1/auth/display-token",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }, { "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"programId\": \"{{programId}}\",\n  \"expiresInMinutes\": 60\n}" }
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('200 OK', () => pm.response.to.have.status(200));"
+          ] } }]
+        },
+        {
+          "name": "Get Formats",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/v1/programs/{{programId}}/formats",
+            "header": [{ "key": "Authorization", "value": "Bearer {{scopedAccessToken}}" }]
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('200 OK', () => pm.response.to.have.status(200));"
+          ] } }]
+        },
+        {
+          "name": "Update Formats",
+          "request": {
+            "method": "PUT",
+            "url": "{{baseUrl}}/api/v1/programs/{{programId}}/formats",
+            "header": [{ "key": "Authorization", "value": "Bearer {{scopedAccessToken}}" }, { "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"formats\": [\n    { \"formatCode\": \"Mcq\", \"isEnabled\": true, \"displayOrder\": 1, \"disabledReason\": null },\n    { \"formatCode\": \"Passing\", \"isEnabled\": false, \"displayOrder\": null, \"disabledReason\": \"Not running Passing this year\" }\n  ]\n}" }
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('200 OK', () => pm.response.to.have.status(200));"
+          ] } }]
+        },
+        {
+          "name": "Get Settings",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/v1/programs/{{programId}}/settings",
+            "header": [{ "key": "Authorization", "value": "Bearer {{scopedAccessToken}}" }]
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('200 OK', () => pm.response.to.have.status(200));"
+          ] } }]
+        },
+        {
+          "name": "Update Settings",
+          "request": {
+            "method": "PUT",
+            "url": "{{baseUrl}}/api/v1/programs/{{programId}}/settings",
+            "header": [{ "key": "Authorization", "value": "Bearer {{scopedAccessToken}}" }, { "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"settings\": [\n    { \"category\": \"Display\", \"key\": \"ShowLeaderboard\", \"value\": \"true\" }\n  ]\n}" }
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('200 OK', () => pm.response.to.have.status(200));"
+          ] } }]
+        },
+        {
+          "name": "Clone Program",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/v1/programs/{{programId}}/clone",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }, { "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"newProgramCode\": \"PM-CLONE-{{$randomInt}}\",\n  \"newProgramName\": \"Postman Test Program (Clone)\"\n}" }
+          },
+          "description": "Clones the program's configuration (P6-04) without results — the clone starts Draft with no matches or scores. Does not overwrite {{programId}}.",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('201 Created', () => pm.response.to.have.status(201));"
+          ] } }]
+        },
+        {
+          "name": "Dashboard",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/v1/programs/{{programId}}/dashboard",
+            "header": [{ "key": "Authorization", "value": "Bearer {{scopedAccessToken}}" }]
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('200 OK', () => pm.response.to.have.status(200));"
+          ] } }]
+        }
+      ]
+    },
+    {
+      "name": "03 Admin",
+      "item": [
+        {
+          "name": "List Users",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/v1/admin/users",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }]
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('200 OK', () => pm.response.to.have.status(200));"
+          ] } }]
+        },
+        {
+          "name": "Invite User",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/v1/admin/users",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }, { "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"email\": \"postman-user-{{$randomInt}}@quizapp.test\",\n  \"fullName\": \"Postman Test User\",\n  \"roles\": [\"ProgramAdmin\"]\n}" }
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('201 Created', () => pm.response.to.have.status(201));",
+            "const body = pm.response.json();",
+            "pm.collectionVariables.set('invitedUserId', body.user.id);",
+            "pm.collectionVariables.set('invitedUserTempPassword', body.temporaryPassword);"
+          ] } }]
+        },
+        {
+          "name": "Assign Roles (uses {{programId}} from 02 Programs > Create Program)",
+          "request": {
+            "method": "PUT",
+            "url": "{{baseUrl}}/api/v1/admin/users/{{invitedUserId}}/roles",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }, { "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"programId\": \"{{programId}}\",\n  \"roles\": [\"ProgramAdmin\"]\n}" }
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('200 OK', () => pm.response.to.have.status(200));"
+          ] } }]
+        },
+        {
+          "name": "Reset Password",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/v1/admin/users/{{invitedUserId}}/reset-password",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }]
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('200 OK', () => pm.response.to.have.status(200));"
+          ] } }]
+        },
+        {
+          "name": "Deactivate User",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/v1/admin/users/{{invitedUserId}}/deactivate",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }]
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('204 No Content', () => pm.response.to.have.status(204));"
+          ] } }]
+        }
+      ]
+    },
+    {
+      "name": "04 Teams",
+      "item": [
+        {
+          "name": "List Teams",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/v1/programs/{{programId}}/teams",
+            "header": [{ "key": "Authorization", "value": "Bearer {{scopedAccessToken}}" }]
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('200 OK', () => pm.response.to.have.status(200));"
+          ] } }]
+        },
+        {
+          "name": "Create Team",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/v1/programs/{{programId}}/teams",
+            "header": [{ "key": "Authorization", "value": "Bearer {{scopedAccessToken}}" }, { "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"code\": \"T-{{$randomInt}}\",\n  \"schoolName\": \"Al Hamd School\",\n  \"displayName\": \"Al Hamd\",\n  \"memberNames\": [\"Ali\", \"Sara\"]\n}" }
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('201 Created', () => pm.response.to.have.status(201));",
+            "const body = pm.response.json();",
+            "pm.collectionVariables.set('teamId', body.id);"
+          ] } }]
+        },
+        {
+          "name": "Get Team By Id",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/v1/programs/{{programId}}/teams/{{teamId}}",
+            "header": [{ "key": "Authorization", "value": "Bearer {{scopedAccessToken}}" }]
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('200 OK', () => pm.response.to.have.status(200));"
+          ] } }]
+        },
+        {
+          "name": "Update Team",
+          "request": {
+            "method": "PUT",
+            "url": "{{baseUrl}}/api/v1/programs/{{programId}}/teams/{{teamId}}",
+            "header": [{ "key": "Authorization", "value": "Bearer {{scopedAccessToken}}" }, { "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"schoolName\": \"Al Hamd School\",\n  \"displayName\": \"Al Hamd Renamed\",\n  \"shortName\": \"AH\",\n  \"contactName\": \"Principal Khan\",\n  \"contactPhone\": \"+92-300-0000000\",\n  \"contactEmail\": \"contact@alhamd.example\"\n}" }
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('200 OK', () => pm.response.to.have.status(200));"
+          ] } }]
+        },
+        {
+          "name": "Change Team Status",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/v1/programs/{{programId}}/teams/{{teamId}}/status",
+            "header": [{ "key": "Authorization", "value": "Bearer {{scopedAccessToken}}" }, { "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"status\": \"Active\",\n  \"reason\": \"Registration confirmed\"\n}" }
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('200 OK', () => pm.response.to.have.status(200));"
+          ] } }]
+        },
+        {
+          "name": "Set Team Images",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/v1/programs/{{programId}}/teams/{{teamId}}/images",
+            "header": [{ "key": "Authorization", "value": "Bearer {{scopedAccessToken}}" }, { "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"scoreImageUrl\": \"https://cdn.example.com/score.png\",\n  \"selectionImageUrl\": \"https://cdn.example.com/selection.png\"\n}" }
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('200 OK', () => pm.response.to.have.status(200));"
+          ] } }]
+        },
+        {
+          "name": "Import Teams — Validate (attach an .xlsx file)",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/v1/programs/{{programId}}/teams/import/validate",
+            "header": [{ "key": "Authorization", "value": "Bearer {{scopedAccessToken}}" }],
+            "body": {
+              "mode": "formdata",
+              "formdata": [{ "key": "file", "type": "file", "src": [], "description": "Columns: Code, SchoolName, DisplayName, ShortName, ContactName, ContactPhone, ContactEmail — see TeamExcelParser.cs" }]
+            }
+          },
+          "description": "Manual step: click the 'file' field and attach an .xlsx team-import sheet before sending. Reports valid/invalid rows without saving anything.",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('200 OK', () => pm.response.to.have.status(200));",
+            "const body = pm.response.json();",
+            "pm.collectionVariables.set('teamImportBatchId', body.batchId);"
+          ] } }]
+        },
+        {
+          "name": "Import Teams — Commit",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/v1/programs/{{programId}}/teams/import/{{teamImportBatchId}}/commit",
+            "header": [{ "key": "Authorization", "value": "Bearer {{scopedAccessToken}}" }]
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('200 OK', () => pm.response.to.have.status(200));"
+          ] } }]
+        },
+        {
+          "name": "Team History",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/v1/programs/{{programId}}/teams/{{teamId}}/history",
+            "header": [{ "key": "Authorization", "value": "Bearer {{scopedAccessToken}}" }]
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('200 OK', () => pm.response.to.have.status(200));"
+          ] } }]
+        }
+      ]
+    },
+    {
+      "name": "05 Topics & Tags",
+      "item": [
+        {
+          "name": "List Topics",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/v1/programs/{{programId}}/topics",
+            "header": [{ "key": "Authorization", "value": "Bearer {{scopedAccessToken}}" }]
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('200 OK', () => pm.response.to.have.status(200));"
+          ] } }]
+        },
+        {
+          "name": "Create Topic",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/v1/programs/{{programId}}/topics",
+            "header": [{ "key": "Authorization", "value": "Bearer {{scopedAccessToken}}" }, { "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"name\": \"History\",\n  \"parentTopicId\": null,\n  \"shared\": false\n}" }
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('201 Created', () => pm.response.to.have.status(201));",
+            "const body = pm.response.json();",
+            "pm.collectionVariables.set('topicId', body.id);"
+          ] } }]
+        },
+        {
+          "name": "Get Topic By Id",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/v1/programs/{{programId}}/topics/{{topicId}}",
+            "header": [{ "key": "Authorization", "value": "Bearer {{scopedAccessToken}}" }]
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('200 OK', () => pm.response.to.have.status(200));"
+          ] } }]
+        },
+        {
+          "name": "Update Topic",
+          "request": {
+            "method": "PUT",
+            "url": "{{baseUrl}}/api/v1/programs/{{programId}}/topics/{{topicId}}",
+            "header": [{ "key": "Authorization", "value": "Bearer {{scopedAccessToken}}" }, { "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"name\": \"History & Geography\",\n  \"parentTopicId\": null\n}" }
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('200 OK', () => pm.response.to.have.status(200));"
+          ] } }]
+        },
+        {
+          "name": "List Tags",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/v1/programs/{{programId}}/tags",
+            "header": [{ "key": "Authorization", "value": "Bearer {{scopedAccessToken}}" }]
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('200 OK', () => pm.response.to.have.status(200));"
+          ] } }]
+        },
+        {
+          "name": "Create Tag",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/v1/programs/{{programId}}/tags",
+            "header": [{ "key": "Authorization", "value": "Bearer {{scopedAccessToken}}" }, { "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"name\": \"World War II\",\n  \"shared\": false\n}" }
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('201 Created', () => pm.response.to.have.status(201));",
+            "const body = pm.response.json();",
+            "pm.collectionVariables.set('tagId', body.id);"
+          ] } }]
+        },
+        {
+          "name": "Update Tag",
+          "request": {
+            "method": "PUT",
+            "url": "{{baseUrl}}/api/v1/programs/{{programId}}/tags/{{tagId}}",
+            "header": [{ "key": "Authorization", "value": "Bearer {{scopedAccessToken}}" }, { "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"name\": \"WWII\"\n}" }
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('200 OK', () => pm.response.to.have.status(200));"
+          ] } }]
+        }
+      ]
+    },
+    {
+      "name": "06 Media",
+      "item": [
+        {
+          "name": "Upload Media (attach an image/audio/video file)",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/v1/programs/{{programId}}/questions/media",
+            "header": [{ "key": "Authorization", "value": "Bearer {{scopedAccessToken}}" }],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                { "key": "file", "type": "file", "src": [], "description": "jpg/jpeg/png/gif/mp3/wav/mp4/webm only, magic-byte checked, 25 MB cap" },
+                { "key": "shared", "value": "false", "type": "text" }
+              ]
+            }
+          },
+          "description": "Manual step: attach a real media file before sending. Uploading the same bytes twice returns the same asset with wasDeduplicated: true.",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('200 OK', () => pm.response.to.have.status(200));",
+            "const body = pm.response.json();",
+            "pm.collectionVariables.set('mediaAssetId', body.id);"
+          ] } }]
+        }
+      ]
+    },
+    {
+      "name": "07 Questions",
+      "item": [
+        {
+          "name": "List Questions",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/v1/programs/{{programId}}/questions?formatCode=Mcq",
+            "header": [{ "key": "Authorization", "value": "Bearer {{scopedAccessToken}}" }]
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('200 OK', () => pm.response.to.have.status(200));"
+          ] } }]
+        },
+        {
+          "name": "Create MCQ Question",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/v1/programs/{{programId}}/questions/mcq",
+            "header": [{ "key": "Authorization", "value": "Bearer {{scopedAccessToken}}" }, { "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"formatCode\": \"Mcq\",\n  \"questionText\": \"What is the capital of France?\",\n  \"difficultyLevelId\": 2,\n  \"topicId\": \"{{topicId}}\",\n  \"language\": \"en\",\n  \"tagIds\": [\"{{tagId}}\"],\n  \"options\": [\n    { \"text\": \"Paris\", \"isCorrect\": true, \"displayOrder\": 1, \"mediaAssetId\": null },\n    { \"text\": \"Rome\", \"isCorrect\": false, \"displayOrder\": 2, \"mediaAssetId\": null }\n  ],\n  \"allowMultipleCorrect\": false,\n  \"shuffleOptions\": true,\n  \"negativeMarkingEnabled\": false\n}" }
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('201 Created', () => pm.response.to.have.status(201));",
+            "const body = pm.response.json();",
+            "pm.collectionVariables.set('mcqQuestionId', body.id);"
+          ] } }]
+        },
+        {
+          "name": "Create Buzzer Question",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/v1/programs/{{programId}}/questions/buzzer",
+            "header": [{ "key": "Authorization", "value": "Bearer {{scopedAccessToken}}" }, { "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"formatCode\": \"Buzzer\",\n  \"questionText\": \"Name the largest planet in the solar system.\",\n  \"difficultyLevelId\": 2,\n  \"language\": \"en\",\n  \"tagIds\": [],\n  \"options\": [\n    { \"text\": \"Jupiter\", \"isCorrect\": true, \"displayOrder\": 1, \"mediaAssetId\": null },\n    { \"text\": \"Saturn\", \"isCorrect\": false, \"displayOrder\": 2, \"mediaAssetId\": null }\n  ],\n  \"buzzWindowSeconds\": 30,\n  \"lockoutOnWrongAnswer\": true,\n  \"allowStealAfterWrong\": true\n}" }
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('201 Created', () => pm.response.to.have.status(201));"
+          ] } }]
+        },
+        {
+          "name": "Get Question By Id",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/v1/programs/{{programId}}/questions/{{mcqQuestionId}}",
+            "header": [{ "key": "Authorization", "value": "Bearer {{scopedAccessToken}}" }]
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('200 OK', () => pm.response.to.have.status(200));"
+          ] } }]
+        },
+        {
+          "name": "Update Question (creates a new version, links SupersedesQuestionId)",
+          "request": {
+            "method": "PUT",
+            "url": "{{baseUrl}}/api/v1/programs/{{programId}}/questions/mcq/{{mcqQuestionId}}",
+            "header": [{ "key": "Authorization", "value": "Bearer {{scopedAccessToken}}" }, { "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"formatCode\": \"Mcq\",\n  \"questionText\": \"What is the capital city of France?\",\n  \"difficultyLevelId\": 2,\n  \"topicId\": \"{{topicId}}\",\n  \"language\": \"en\",\n  \"tagIds\": [\"{{tagId}}\"],\n  \"options\": [\n    { \"text\": \"Paris\", \"isCorrect\": true, \"displayOrder\": 1, \"mediaAssetId\": null },\n    { \"text\": \"Rome\", \"isCorrect\": false, \"displayOrder\": 2, \"mediaAssetId\": null }\n  ],\n  \"allowMultipleCorrect\": false,\n  \"shuffleOptions\": true,\n  \"negativeMarkingEnabled\": false\n}" }
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('200 OK', () => pm.response.to.have.status(200));",
+            "const body = pm.response.json();",
+            "pm.collectionVariables.set('mcqQuestionIdV2', body.id);"
+          ] } }]
+        },
+        {
+          "name": "Approve Question (v2)",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/v1/programs/{{programId}}/questions/{{mcqQuestionIdV2}}/approve",
+            "header": [{ "key": "Authorization", "value": "Bearer {{scopedAccessToken}}" }, { "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"notes\": \"Reviewed and approved via Postman\"\n}" }
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('200 OK', () => pm.response.to.have.status(200));"
+          ] } }]
+        },
+        {
+          "name": "Question Usage",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/v1/programs/{{programId}}/questions/{{mcqQuestionIdV2}}/usage",
+            "header": [{ "key": "Authorization", "value": "Bearer {{scopedAccessToken}}" }]
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('200 OK', () => pm.response.to.have.status(200));"
+          ] } }]
+        },
+        {
+          "name": "Question Coverage",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/v1/programs/{{programId}}/questions/coverage",
+            "header": [{ "key": "Authorization", "value": "Bearer {{scopedAccessToken}}" }]
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('200 OK', () => pm.response.to.have.status(200));"
+          ] } }]
+        },
+        {
+          "name": "Duplicate Questions",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/v1/programs/{{programId}}/questions/duplicates",
+            "header": [{ "key": "Authorization", "value": "Bearer {{scopedAccessToken}}" }]
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('200 OK', () => pm.response.to.have.status(200));"
+          ] } }]
+        },
+        {
+          "name": "Import MCQ Questions — Validate (attach an .xlsx file)",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/v1/programs/{{programId}}/questions/import/mcq/validate",
+            "header": [{ "key": "Authorization", "value": "Bearer {{scopedAccessToken}}" }],
+            "body": {
+              "mode": "formdata",
+              "formdata": [{ "key": "file", "type": "file", "src": [], "description": "Columns: QuestionText, DifficultyLevelId, Language, Option1..4, Option1..4Correct — see McqQuestionExcelParser.cs" }]
+            }
+          },
+          "description": "Manual step: attach an .xlsx MCQ import sheet before sending. Import is scoped to MCQ only in this phase (D-022).",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('200 OK', () => pm.response.to.have.status(200));",
+            "const body = pm.response.json();",
+            "pm.collectionVariables.set('questionImportBatchId', body.batchId);"
+          ] } }]
+        },
+        {
+          "name": "Import MCQ Questions — Commit",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/v1/programs/{{programId}}/questions/import/{{questionImportBatchId}}/commit",
+            "header": [{ "key": "Authorization", "value": "Bearer {{scopedAccessToken}}" }]
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('200 OK', () => pm.response.to.have.status(200));"
+          ] } }]
+        },
+        {
+          "name": "Retire Question",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/v1/programs/{{programId}}/questions/{{mcqQuestionIdV2}}/retire",
+            "header": [{ "key": "Authorization", "value": "Bearer {{scopedAccessToken}}" }, { "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"reason\": \"Superseded by a corrected version\"\n}" }
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('200 OK', () => pm.response.to.have.status(200));"
+          ] } }]
+        }
+      ]
+    },
+    {
+      "name": "08 Stages",
+      "item": [
+        {
+          "name": "List Stages",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/v1/programs/{{programId}}/stages",
+            "header": [{ "key": "Authorization", "value": "Bearer {{scopedAccessToken}}" }]
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('200 OK', () => pm.response.to.have.status(200));"
+          ] } }]
+        },
+        {
+          "name": "Create Stage (League)",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/v1/programs/{{programId}}/stages",
+            "header": [{ "key": "Authorization", "value": "Bearer {{scopedAccessToken}}" }, { "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"name\": \"League\",\n  \"orderIndex\": 0,\n  \"stageType\": \"League\"\n}" }
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('201 Created', () => pm.response.to.have.status(201));",
+            "const body = pm.response.json();",
+            "pm.collectionVariables.set('stageId', body.id);"
+          ] } }]
+        },
+        {
+          "name": "Create Stage (Final)",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/v1/programs/{{programId}}/stages",
+            "header": [{ "key": "Authorization", "value": "Bearer {{scopedAccessToken}}" }, { "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"name\": \"Final\",\n  \"orderIndex\": 1,\n  \"stageType\": \"Final\"\n}" }
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('201 Created', () => pm.response.to.have.status(201));",
+            "const body = pm.response.json();",
+            "pm.collectionVariables.set('secondStageId', body.id);"
+          ] } }]
+        },
+        {
+          "name": "Get Stage By Id",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/v1/programs/{{programId}}/stages/{{stageId}}",
+            "header": [{ "key": "Authorization", "value": "Bearer {{scopedAccessToken}}" }]
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('200 OK', () => pm.response.to.have.status(200));"
+          ] } }]
+        },
+        {
+          "name": "Update Stage",
+          "request": {
+            "method": "PUT",
+            "url": "{{baseUrl}}/api/v1/programs/{{programId}}/stages/{{stageId}}",
+            "header": [{ "key": "Authorization", "value": "Bearer {{scopedAccessToken}}" }, { "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"name\": \"League Stage\"\n}" }
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('200 OK', () => pm.response.to.have.status(200));"
+          ] } }]
+        },
+        {
+          "name": "Validate Stage (before segments — expect not runnable)",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/v1/programs/{{programId}}/stages/{{stageId}}/validate",
+            "header": [{ "key": "Authorization", "value": "Bearer {{scopedAccessToken}}" }]
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('200 OK', () => pm.response.to.have.status(200));",
+            "pm.test('isRunnable is false (STAGE_HAS_NO_SEGMENTS)', () => pm.expect(pm.response.json().isRunnable).to.eql(false));"
+          ] } }]
+        },
+        {
+          "name": "Add Segment (MCQ)",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/v1/programs/{{programId}}/stages/{{stageId}}/segments",
+            "header": [{ "key": "Authorization", "value": "Bearer {{scopedAccessToken}}" }, { "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"formatCode\": \"Mcq\",\n  \"questionCount\": 5,\n  \"isOrderLocked\": true\n}" }
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('200 OK', () => pm.response.to.have.status(200));",
+            "const body = pm.response.json();",
+            "pm.collectionVariables.set('segmentId', body.id);"
+          ] } }]
+        },
+        {
+          "name": "Add Segment (Buzzer)",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/v1/programs/{{programId}}/stages/{{stageId}}/segments",
+            "header": [{ "key": "Authorization", "value": "Bearer {{scopedAccessToken}}" }, { "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"formatCode\": \"Buzzer\",\n  \"questionCount\": 4,\n  \"isOrderLocked\": false\n}" }
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('200 OK', () => pm.response.to.have.status(200));",
+            "const body = pm.response.json();",
+            "pm.collectionVariables.set('secondSegmentId', body.id);"
+          ] } }]
+        },
+        {
+          "name": "Validate Stage (after segments — expect runnable)",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/v1/programs/{{programId}}/stages/{{stageId}}/validate",
+            "header": [{ "key": "Authorization", "value": "Bearer {{scopedAccessToken}}" }]
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('200 OK', () => pm.response.to.have.status(200));",
+            "pm.test('isRunnable is true', () => pm.expect(pm.response.json().isRunnable).to.eql(true));"
+          ] } }]
+        },
+        {
+          "name": "Get Segments",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/v1/programs/{{programId}}/stages/{{stageId}}/segments",
+            "header": [{ "key": "Authorization", "value": "Bearer {{scopedAccessToken}}" }]
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('200 OK', () => pm.response.to.have.status(200));"
+          ] } }]
+        },
+        {
+          "name": "Update Segment",
+          "request": {
+            "method": "PUT",
+            "url": "{{baseUrl}}/api/v1/programs/{{programId}}/stages/{{stageId}}/segments/{{secondSegmentId}}",
+            "header": [{ "key": "Authorization", "value": "Bearer {{scopedAccessToken}}" }, { "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"questionCount\": 6,\n  \"isOrderLocked\": false\n}" }
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('200 OK', () => pm.response.to.have.status(200));"
+          ] } }]
+        },
+        {
+          "name": "Reorder Segments (locked MCQ segment keeps its index)",
+          "request": {
+            "method": "PUT",
+            "url": "{{baseUrl}}/api/v1/programs/{{programId}}/stages/{{stageId}}/segments/reorder",
+            "header": [{ "key": "Authorization", "value": "Bearer {{scopedAccessToken}}" }, { "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"orderedSegmentTemplateIds\": [\"{{secondSegmentId}}\", \"{{segmentId}}\"]\n}" }
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('200 OK', () => pm.response.to.have.status(200));"
+          ] } }]
+        },
+        {
+          "name": "Set Segment Order Mode",
+          "request": {
+            "method": "PUT",
+            "url": "{{baseUrl}}/api/v1/programs/{{programId}}/stages/{{stageId}}/segment-order-mode",
+            "header": [{ "key": "Authorization", "value": "Bearer {{scopedAccessToken}}" }, { "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"segmentOrderMode\": \"RandomPerMatch\"\n}" }
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('200 OK', () => pm.response.to.have.status(200));"
+          ] } }]
+        },
+        {
+          "name": "Reorder Stages",
+          "request": {
+            "method": "PUT",
+            "url": "{{baseUrl}}/api/v1/programs/{{programId}}/stages/reorder",
+            "header": [{ "key": "Authorization", "value": "Bearer {{scopedAccessToken}}" }, { "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"orderedStageIds\": [\"{{secondStageId}}\", \"{{stageId}}\"]\n}" }
+          },
+          "description": "Sends every stage id exactly once. A partial list is rejected with 400 VALIDATION_FAILED — try removing one id to see that.",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('200 OK', () => pm.response.to.have.status(200));"
+          ] } }]
+        },
+        {
+          "name": "Program Readiness Validate",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/v1/programs/{{programId}}/validate",
+            "header": [{ "key": "Authorization", "value": "Bearer {{scopedAccessToken}}" }]
+          },
+          "description": "P7-11: program-wide check — blocked if any stage has zero segments (Final has none yet, so this should report a STAGE_HAS_NO_SEGMENTS blocker for it).",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('200 OK', () => pm.response.to.have.status(200));"
+          ] } }]
+        },
+        {
+          "name": "Remove Segment",
+          "request": {
+            "method": "DELETE",
+            "url": "{{baseUrl}}/api/v1/programs/{{programId}}/stages/{{stageId}}/segments/{{secondSegmentId}}",
+            "header": [{ "key": "Authorization", "value": "Bearer {{scopedAccessToken}}" }]
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('204 No Content', () => pm.response.to.have.status(204));"
+          ] } }]
+        },
+        {
+          "name": "Delete Stage (Final — no matches yet)",
+          "request": {
+            "method": "DELETE",
+            "url": "{{baseUrl}}/api/v1/programs/{{programId}}/stages/{{secondStageId}}",
+            "header": [{ "key": "Authorization", "value": "Bearer {{scopedAccessToken}}" }]
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('204 No Content', () => pm.response.to.have.status(204));"
+          ] } }]
+        }
+      ]
+    },
+    {
+      "name": "09 Rules",
+      "item": [
+        {
+          "name": "Get Scoring Rules",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/v1/programs/{{programId}}/rules/scoring",
+            "header": [{ "key": "Authorization", "value": "Bearer {{scopedAccessToken}}" }]
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('200 OK', () => pm.response.to.have.status(200));"
+          ] } }]
+        },
+        {
+          "name": "Reset Scoring Defaults",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/v1/programs/{{programId}}/rules/scoring/reset-defaults",
+            "header": [{ "key": "Authorization", "value": "Bearer {{scopedAccessToken}}" }]
+          },
+          "description": "Seeds the 18 legacy point values (DefaultScoringValues) — run this before Upsert Scoring Rules to see a realistic starting set.",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('200 OK', () => pm.response.to.have.status(200));",
+            "pm.test('18 rules seeded', () => pm.expect(pm.response.json().length).to.eql(18));"
+          ] } }]
+        },
+        {
+          "name": "Upsert Scoring Rules",
+          "request": {
+            "method": "PUT",
+            "url": "{{baseUrl}}/api/v1/programs/{{programId}}/rules/scoring",
+            "header": [{ "key": "Authorization", "value": "Bearer {{scopedAccessToken}}" }, { "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"rules\": [\n    { \"id\": \"00000000-0000-0000-0000-000000000000\", \"formatCode\": \"Mcq\", \"outcome\": \"Correct\", \"contextKey\": null, \"points\": 12 }\n  ]\n}" }
+          },
+          "description": "Id of all-zeros creates a new rule; pass back a real id from Get Scoring Rules to update Points on an existing one instead.",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('200 OK', () => pm.response.to.have.status(200));"
+          ] } }]
+        },
+        {
+          "name": "Get Selection Rules",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/v1/programs/{{programId}}/rules/selection",
+            "header": [{ "key": "Authorization", "value": "Bearer {{scopedAccessToken}}" }]
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('200 OK', () => pm.response.to.have.status(200));"
+          ] } }]
+        },
+        {
+          "name": "Upsert Selection Rules",
+          "request": {
+            "method": "PUT",
+            "url": "{{baseUrl}}/api/v1/programs/{{programId}}/rules/selection",
+            "header": [{ "key": "Authorization", "value": "Bearer {{scopedAccessToken}}" }, { "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"rules\": [\n    { \"id\": \"00000000-0000-0000-0000-000000000000\", \"formatCode\": \"Mcq\", \"stageId\": \"{{stageId}}\", \"difficultyMixJson\": null, \"repeatPolicy\": \"NeverInStage\", \"topicSpreadPolicy\": \"OnePerTopicIfPossible\", \"fallbackPolicy\": \"WidenThenFail\" }\n  ]\n}" }
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('200 OK', () => pm.response.to.have.status(200));"
+          ] } }]
+        },
+        {
+          "name": "Preview Selection",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/v1/programs/{{programId}}/rules/selection/preview",
+            "header": [{ "key": "Authorization", "value": "Bearer {{scopedAccessToken}}" }, { "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"stageId\": \"{{stageId}}\",\n  \"formatCode\": \"Mcq\",\n  \"questionCount\": 5\n}" }
+          },
+          "description": "Pool-size sanity check only (Phase 8's IQuestionSelector does the real draw). Run after approving at least one MCQ question to see canSatisfy flip to true.",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('200 OK', () => pm.response.to.have.status(200));"
+          ] } }]
+        },
+        {
+          "name": "Get Qualification Rules",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/v1/programs/{{programId}}/rules/qualification",
+            "header": [{ "key": "Authorization", "value": "Bearer {{scopedAccessToken}}" }]
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('200 OK', () => pm.response.to.have.status(200));"
+          ] } }]
+        },
+        {
+          "name": "Upsert Qualification Rules",
+          "request": {
+            "method": "PUT",
+            "url": "{{baseUrl}}/api/v1/programs/{{programId}}/rules/qualification",
+            "header": [{ "key": "Authorization", "value": "Bearer {{scopedAccessToken}}" }, { "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"rules\": [\n    { \"id\": \"00000000-0000-0000-0000-000000000000\", \"stageId\": \"{{stageId}}\", \"winnersPerMatch\": 1, \"bestRemainingAcrossStage\": 2, \"manualWildcardSlots\": 0 }\n  ]\n}" }
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('200 OK', () => pm.response.to.have.status(200));"
+          ] } }]
+        },
+        {
+          "name": "Get Tie-Break Rules",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/v1/programs/{{programId}}/rules/tie-break",
+            "header": [{ "key": "Authorization", "value": "Bearer {{scopedAccessToken}}" }]
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('200 OK', () => pm.response.to.have.status(200));"
+          ] } }]
+        },
+        {
+          "name": "Reset Tie-Break Defaults",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/v1/programs/{{programId}}/rules/tie-break/reset-defaults",
+            "header": [{ "key": "Authorization", "value": "Bearer {{scopedAccessToken}}" }]
+          },
+          "description": "Seeds the 3 recommended rows from 04-Database-Schema.md §TieBreakRule (League/Semi-Final/Final).",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('200 OK', () => pm.response.to.have.status(200));",
+            "pm.test('3 rules seeded', () => pm.expect(pm.response.json().length).to.eql(3));"
+          ] } }]
+        },
+        {
+          "name": "Upsert Tie-Break Rules",
+          "request": {
+            "method": "PUT",
+            "url": "{{baseUrl}}/api/v1/programs/{{programId}}/rules/tie-break",
+            "header": [{ "key": "Authorization", "value": "Bearer {{scopedAccessToken}}" }, { "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"rules\": [\n    { \"id\": \"00000000-0000-0000-0000-000000000000\", \"stageId\": \"{{stageId}}\", \"criteria\": [\"HeadToHead\", \"HigherDifficultyCorrect\"], \"tieBreakFormat\": \"Mcq\", \"questionCount\": 3, \"suddenDeath\": false, \"maxExtraRounds\": 3, \"scoreCountsTowardStage\": false, \"onStillTied\": \"ManualDecision\" }\n  ]\n}" }
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('200 OK', () => pm.response.to.have.status(200));"
+          ] } }]
+        }
+      ]
+    }
+  ]
+}
