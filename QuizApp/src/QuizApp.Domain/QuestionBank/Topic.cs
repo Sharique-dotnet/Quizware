@@ -44,4 +44,28 @@ public sealed class Topic : BaseEntity, IAuditable, ISoftDeletable
 
     public bool IsDeleted { get; private set; }
     public DateTime? DeletedAtUtc { get; private set; }
+
+    /// <summary>Cycle/self-parent/scope validation happens in the
+    /// Application handler — it needs database access to walk the parent
+    /// chain, which this aggregate doesn't have.</summary>
+    public void UpdateDetails(string name, Guid? parentTopicId, string updatedBy)
+    {
+        if (string.IsNullOrWhiteSpace(name))
+        {
+            throw new ArgumentException("Name is required.", nameof(name));
+        }
+
+        Name = name;
+        ParentTopicId = parentTopicId;
+        UpdatedAtUtc = DateTime.UtcNow;
+        UpdatedBy = updatedBy;
+    }
+
+    public void Delete(string deletedBy)
+    {
+        IsDeleted = true;
+        DeletedAtUtc = DateTime.UtcNow;
+        UpdatedAtUtc = DateTime.UtcNow;
+        UpdatedBy = deletedBy;
+    }
 }

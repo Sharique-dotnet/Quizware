@@ -34,8 +34,9 @@ public class ControllerStubReachabilityTests : IClassFixture<CustomWebApplicatio
         // longer stubs (Phase 6a) — covered by ProgramsEndpointTests.cs instead.
         // GET /api/v1/programs/{programId}/teams is no longer a stub
         // (Phase 6c) — covered by TeamsEndpointTests.cs instead.
-        [HttpMethod.Get, "/api/v1/programs/{programId}/topics"],
-        [HttpMethod.Get, "/api/v1/programs/{programId}/tags"],
+        // GET /api/v1/programs/{programId}/topics and .../tags are no
+        // longer stubs (Phase 6d) — covered by TopicsEndpointTests.cs and
+        // TagsEndpointTests.cs instead.
         [HttpMethod.Get, "/api/v1/programs/{programId}/questions"],
         [HttpMethod.Get, "/api/v1/programs/{programId}/questions/coverage"],
         [HttpMethod.Get, "/api/v1/programs/{programId}/stages"],

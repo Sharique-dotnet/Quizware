@@ -126,6 +126,12 @@ public sealed class TopicConfiguration : IEntityTypeConfiguration<Topic>
         builder.HasKey(t => t.Id);
         builder.Property(t => t.Name).HasMaxLength(150).IsRequired();
         builder.HasIndex(t => new { t.ProgramId, t.Name }).IsUnique().HasFilter("IsDeleted = 0");
+        builder.HasIndex(t => t.ParentTopicId);
+        // Self FK (04-Database-Schema.md calls ParentTopicId one), no
+        // navigation property needed. Restrict, not cascade — deleting a
+        // topic must never silently orphan/cascade a subtree; the
+        // Application-layer delete guard is what actually prevents that.
+        builder.HasOne<Topic>().WithMany().HasForeignKey(t => t.ParentTopicId).OnDelete(DeleteBehavior.Restrict);
     }
 }
 
@@ -135,6 +141,7 @@ public sealed class TagConfiguration : IEntityTypeConfiguration<Tag>
     {
         builder.HasKey(t => t.Id);
         builder.Property(t => t.Name).HasMaxLength(80).IsRequired();
+        builder.HasIndex(t => new { t.ProgramId, t.Name }).IsUnique().HasFilter("IsDeleted = 0");
     }
 }
 
