@@ -1,15 +1,15 @@
 services:
   sqlserver:
     image: mcr.microsoft.com/mssql/server:2022-latest
-    container_name: quizapp-sqlserver
+    container_name: quizware-sqlserver
     environment:
       ACCEPT_EULA: "Y"
-      MSSQL_SA_PASSWORD: "QuizApp!Dev2026"
+      MSSQL_SA_PASSWORD: "Quizware!Dev2026"
       MSSQL_PID: "Developer"
     ports:
       - "1433:1433"
     volumes:
-      - quizapp-sqlserver-data:/var/opt/mssql
+      - quizware-sqlserver-data:/var/opt/mssql
     healthcheck:
       test: ["CMD-SHELL", "/opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P \"$$MSSQL_SA_PASSWORD\" -C -Q 'SELECT 1' || exit 1"]
       interval: 10s
@@ -17,4 +17,4 @@ services:
       retries: 10
 
 volumes:
-  quizapp-sqlserver-data:
+  quizware-sqlserver-data:

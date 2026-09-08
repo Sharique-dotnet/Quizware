@@ -1,6 +1,6 @@
-# QuizApp Postman collection
+# Quizware Postman collection
 
-`QuizApp.postman_collection.json` covers every implemented endpoint through
+`Quizware.postman_collection.json` covers every implemented endpoint through
 **Phase 7 (Tournament configuration)**. Endpoints that are still `501`
 stubs — Matches, Live match engine, Scores, Standings, Qualification
 commit, Buzzer, Display, Reports (Phase 8 onward) — are intentionally not
@@ -12,13 +12,13 @@ Postman environment file is needed.
 
 ## Setup
 
-1. Have the API running locally: from `QuizApp/src/QuizApp.Api`,
+1. Have the API running locally: from `Quizware/src/Quizware.Api`,
    ```bash
    dotnet run --no-launch-profile
    ```
    (defaults to `http://localhost:5299`; if yours differs, edit the
    `baseUrl` collection variable after import.)
-2. In Postman: **Import** → select `QuizApp.postman_collection.json`.
+2. In Postman: **Import** → select `Quizware.postman_collection.json`.
 3. The seeded admin credentials (`adminEmail` / `adminPassword` variables)
    default to `admin@quizapp.local` / `ChangeMe!123` — the values
    `AdminUserSeeder` creates on a fresh dev database. Update them if your
@@ -71,7 +71,7 @@ variable.
 
 - Every request's test script asserts the expected status code, so you can
   run the whole collection via **Collection Runner** (or `newman run
-  postman/QuizApp.postman_collection.json`) and get a clean pass/fail
+  postman/Quizware.postman_collection.json`) and get a clean pass/fail
   summary instead of reading responses by hand.
 - `{{$randomInt}}` in a few request bodies (program code, team code, invited
   user email) avoids unique-constraint collisions on repeated runs — you can

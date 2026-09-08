@@ -1,6 +1,6 @@
 {
   "info": {
-    "name": "QuizApp API",
+    "name": "Quizware API",
     "description": "Covers every implemented endpoint through Phase 7 (Tournament configuration). Run top-to-bottom, folder by folder — each request saves the ids/tokens the next one needs into collection variables. See postman/README.md for the full run order and prerequisites.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
@@ -126,7 +126,7 @@
             "method": "POST",
             "url": "{{baseUrl}}/api/v1/programs",
             "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }, { "key": "Content-Type", "value": "application/json" }],
-            "body": { "mode": "raw", "raw": "{\n  \"code\": \"PM-{{$randomInt}}\",\n  \"name\": \"Postman Test Program\",\n  \"description\": \"Created by the QuizApp Postman collection\"\n}" }
+            "body": { "mode": "raw", "raw": "{\n  \"code\": \"PM-{{$randomInt}}\",\n  \"name\": \"Postman Test Program\",\n  \"description\": \"Created by the Quizware Postman collection\"\n}" }
           },
           "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
             "pm.test('201 Created', () => pm.response.to.have.status(201));",
@@ -151,7 +151,7 @@
             "method": "PUT",
             "url": "{{baseUrl}}/api/v1/programs/{{programId}}",
             "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }, { "key": "Content-Type", "value": "application/json" }],
-            "body": { "mode": "raw", "raw": "{\n  \"name\": \"Postman Test Program\",\n  \"description\": \"Updated via Postman\",\n  \"organisationName\": \"QuizApp QA\",\n  \"logoUrl\": null,\n  \"themePrimaryColor\": null,\n  \"themeSecondaryColor\": null,\n  \"fontFamily\": null,\n  \"maxTeams\": 20\n}" }
+            "body": { "mode": "raw", "raw": "{\n  \"name\": \"Postman Test Program\",\n  \"description\": \"Updated via Postman\",\n  \"organisationName\": \"Quizware QA\",\n  \"logoUrl\": null,\n  \"themePrimaryColor\": null,\n  \"themeSecondaryColor\": null,\n  \"fontFamily\": null,\n  \"maxTeams\": 20\n}" }
           },
           "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
             "pm.test('200 OK', () => pm.response.to.have.status(200));"
