@@ -108,6 +108,15 @@ public sealed class Program : BaseEntity, IAuditable, ISoftDeletable
         UpdatedBy = updatedBy;
     }
 
+    /// <summary>No hardcoded team limit — this is the only cap, and it's
+    /// optional. Null means unlimited.</summary>
+    public void SetMaxTeams(int? maxTeams, string updatedBy)
+    {
+        MaxTeams = maxTeams;
+        UpdatedAtUtc = DateTime.UtcNow;
+        UpdatedBy = updatedBy;
+    }
+
     public void Configure()
     {
         RequireState(ProgramState.Draft, ProgramState.Configured);

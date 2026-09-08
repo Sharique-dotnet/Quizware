@@ -125,9 +125,9 @@ Authorization: Bearer {{accessToken}}
 Content-Type: application/json
 
 {
-  "registrationCode": "T-001",
+  "code": "T-001",
   "schoolName": "Al Hamd School",
-  "teamName": "الحمد",
+  "displayName": "الحمد",
   "memberNames": ["Ali", "Sara"]
 }
 
@@ -140,6 +140,36 @@ Content-Type: application/json
   "status": "Disqualified",
   "reason": "Used a mobile phone during the match"
 }
+
+### Set team images (client-supplied URLs — no upload pipeline until P6-15)
+POST {{host}}/api/v1/programs/{{programId}}/teams/{{teamId}}/images
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{
+  "scoreImageUrl": "https://cdn.example.com/score.png",
+  "selectionImageUrl": "https://cdn.example.com/selection.png"
+}
+
+### Import teams from Excel — validate (multipart file upload; use a REST client that supports it)
+POST {{host}}/api/v1/programs/{{programId}}/teams/import/validate
+Authorization: Bearer {{accessToken}}
+Content-Type: multipart/form-data; boundary=teamimport
+
+--teamimport
+Content-Disposition: form-data; name="file"; filename="teams.xlsx"
+Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet
+
+< ./teams-import-sample.xlsx
+--teamimport--
+
+### Import teams from Excel — commit a validated batch
+POST {{host}}/api/v1/programs/{{programId}}/teams/import/00000000-0000-0000-0000-000000000000/commit
+Authorization: Bearer {{accessToken}}
+
+### Team match history
+GET {{host}}/api/v1/programs/{{programId}}/teams/{{teamId}}/history
+Authorization: Bearer {{accessToken}}
 
 ### ==================== Topics & Tags ====================
 

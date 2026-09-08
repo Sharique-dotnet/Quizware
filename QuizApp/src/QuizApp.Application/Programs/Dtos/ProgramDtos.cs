@@ -11,6 +11,7 @@ public sealed record ProgramDto(
     string? ThemePrimaryColor,
     string? ThemeSecondaryColor,
     string? FontFamily,
+    int? MaxTeams,
     DateTime CreatedAtUtc,
     DateTime? UpdatedAtUtc);
 

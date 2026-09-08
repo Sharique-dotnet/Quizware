@@ -15,6 +15,7 @@ internal static class ProgramMappings
         program.ThemePrimaryColor,
         program.ThemeSecondaryColor,
         program.FontFamily,
+        program.MaxTeams,
         program.CreatedAtUtc,
         program.UpdatedAtUtc);
 

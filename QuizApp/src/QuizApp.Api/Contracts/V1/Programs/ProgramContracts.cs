@@ -13,6 +13,7 @@ public sealed record ProgramDetailResponse(
     string? ThemePrimaryColor,
     string? ThemeSecondaryColor,
     string? FontFamily,
+    int? MaxTeams,
     DateTime CreatedAtUtc,
     DateTime? UpdatedAtUtc);
 
@@ -25,7 +26,8 @@ public sealed record UpdateProgramRequest(
     string? LogoUrl,
     string? ThemePrimaryColor,
     string? ThemeSecondaryColor,
-    string? FontFamily);
+    string? FontFamily,
+    int? MaxTeams);
 
 public sealed record CloneProgramRequest(Guid SourceProgramId, string NewProgramCode, string NewProgramName);
 

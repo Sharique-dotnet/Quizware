@@ -33,7 +33,7 @@ public class ProgramCommandValidatorsTests
     [Fact]
     public void UpdateProgram_MissingId_Fails()
     {
-        var command = new UpdateProgramCommand(Guid.Empty, "Name", null, null, null, null, null, null);
+        var command = new UpdateProgramCommand(Guid.Empty, "Name", null, null, null, null, null, null, null);
 
         new UpdateProgramCommandValidator().TestValidate(command).ShouldHaveValidationErrorFor(x => x.Id);
     }
@@ -41,9 +41,17 @@ public class ProgramCommandValidatorsTests
     [Fact]
     public void UpdateProgram_ValidRequest_Passes()
     {
-        var command = new UpdateProgramCommand(Guid.NewGuid(), "Name", "Description", null, null, null, null, null);
+        var command = new UpdateProgramCommand(Guid.NewGuid(), "Name", "Description", null, null, null, null, null, 20);
 
         new UpdateProgramCommandValidator().TestValidate(command).ShouldNotHaveAnyValidationErrors();
+    }
+
+    [Fact]
+    public void UpdateProgram_NonPositiveMaxTeams_Fails()
+    {
+        var command = new UpdateProgramCommand(Guid.NewGuid(), "Name", null, null, null, null, null, null, 0);
+
+        new UpdateProgramCommandValidator().TestValidate(command).ShouldHaveValidationErrorFor(x => x.MaxTeams);
     }
 
     [Fact]

@@ -62,7 +62,8 @@ public sealed class ProgramsController : ControllerBase
                 request.LogoUrl,
                 request.ThemePrimaryColor,
                 request.ThemeSecondaryColor,
-                request.FontFamily),
+                request.FontFamily,
+                request.MaxTeams),
             cancellationToken);
         return Ok(ToDetailResponse(program));
     }
@@ -181,6 +182,7 @@ public sealed class ProgramsController : ControllerBase
         dto.ThemePrimaryColor,
         dto.ThemeSecondaryColor,
         dto.FontFamily,
+        dto.MaxTeams,
         dto.CreatedAtUtc,
         dto.UpdatedAtUtc);
 

@@ -49,8 +49,13 @@ public sealed class MatchParticipantConfiguration : IEntityTypeConfiguration<Mat
         builder.HasIndex(p => new { p.MatchId, p.Status, p.TurnOrder })
             .IncludeProperties(p => new { p.TeamId, p.SeatNumber })
             .HasFilter("IsDeleted = 0");
+        // ParticipantStatus.Active = 0 (no explicit enum values) — a
+        // participant is only exempt from carrying a removal reason/
+        // timestamp while Active. The literal here previously said
+        // "Status = 1", which is Disqualified, not Active — a pre-existing
+        // bug that rejected every legitimate Active-participant insert.
         builder.ToTable(t => t.HasCheckConstraint(
-            "CK_MP_Removal", "Status = 1 OR (RemovalReason IS NOT NULL AND RemovedAtUtc IS NOT NULL)"));
+            "CK_MP_Removal", "Status = 0 OR (RemovalReason IS NOT NULL AND RemovedAtUtc IS NOT NULL)"));
     }
 }
 

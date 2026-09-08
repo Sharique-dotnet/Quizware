@@ -6,6 +6,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <PackageReference Include="ClosedXML" Version="0.105.1" />
     <PackageReference Include="Microsoft.AspNetCore.Http" Version="2.3.12" />
     <PackageReference Include="Microsoft.AspNetCore.Http.Abstractions" Version="2.3.12" />
     <PackageReference Include="Microsoft.AspNetCore.Identity" Version="2.3.12" />

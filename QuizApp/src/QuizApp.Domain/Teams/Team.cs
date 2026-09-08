@@ -87,4 +87,52 @@ public sealed class Team : BaseEntity, ITenantScoped, IAuditable, ISoftDeletable
         UpdatedAtUtc = DateTime.UtcNow;
         UpdatedBy = updatedBy;
     }
+
+    public void UpdateDetails(
+        string schoolName,
+        string displayName,
+        string? shortName,
+        string? contactName,
+        string? contactPhone,
+        string? contactEmail,
+        string updatedBy)
+    {
+        if (string.IsNullOrWhiteSpace(schoolName))
+        {
+            throw new ArgumentException("SchoolName is required.", nameof(schoolName));
+        }
+
+        if (string.IsNullOrWhiteSpace(displayName))
+        {
+            throw new ArgumentException("DisplayName is required.", nameof(displayName));
+        }
+
+        SchoolName = schoolName;
+        DisplayName = displayName;
+        ShortName = shortName;
+        ContactName = contactName;
+        ContactPhone = contactPhone;
+        ContactEmail = contactEmail;
+        UpdatedAtUtc = DateTime.UtcNow;
+        UpdatedBy = updatedBy;
+    }
+
+    public void SetImages(string? scoreImageUrl, string? selectionImageUrl, string updatedBy)
+    {
+        ScoreImageUrl = scoreImageUrl;
+        SelectionImageUrl = selectionImageUrl;
+        UpdatedAtUtc = DateTime.UtcNow;
+        UpdatedBy = updatedBy;
+    }
+
+    /// <summary>Soft delete. Callers must first confirm the team was never
+    /// used in a match (FR-2.6) — that check needs match data this
+    /// aggregate doesn't have, so it lives in the caller, not here.</summary>
+    public void Delete(string deletedBy)
+    {
+        IsDeleted = true;
+        DeletedAtUtc = DateTime.UtcNow;
+        UpdatedAtUtc = DateTime.UtcNow;
+        UpdatedBy = deletedBy;
+    }
 }

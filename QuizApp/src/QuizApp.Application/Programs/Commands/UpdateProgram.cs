@@ -14,7 +14,8 @@ public sealed record UpdateProgramCommand(
     string? LogoUrl,
     string? ThemePrimaryColor,
     string? ThemeSecondaryColor,
-    string? FontFamily) : IRequest<ProgramDto>;
+    string? FontFamily,
+    int? MaxTeams) : IRequest<ProgramDto>;
 
 public sealed class UpdateProgramCommandValidator : AbstractValidator<UpdateProgramCommand>
 {
@@ -22,6 +23,7 @@ public sealed class UpdateProgramCommandValidator : AbstractValidator<UpdateProg
     {
         RuleFor(x => x.Id).NotEmpty();
         RuleFor(x => x.Name).NotEmpty().MaximumLength(200);
+        RuleFor(x => x.MaxTeams).GreaterThan(0).When(x => x.MaxTeams.HasValue);
     }
 }
 
@@ -50,6 +52,8 @@ public sealed class UpdateProgramCommandHandler : IRequestHandler<UpdateProgramC
             request.ThemeSecondaryColor,
             request.FontFamily,
             _currentUser.Email ?? "unknown");
+
+        program.SetMaxTeams(request.MaxTeams, _currentUser.Email ?? "unknown");
 
         await _db.SaveChangesAsync(cancellationToken);
 

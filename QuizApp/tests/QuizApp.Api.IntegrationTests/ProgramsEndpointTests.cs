@@ -105,7 +105,7 @@ public class ProgramsEndpointTests : IClassFixture<CustomWebApplicationFactory>
         var program = await CreateProgramAsync(client);
 
         var update = new UpdateProgramRequest(
-            "Renamed Quiz", "Updated description", "Acme Schools Trust", "https://cdn.test/logo.png", "#112233", "#445566", "Inter");
+            "Renamed Quiz", "Updated description", "Acme Schools Trust", "https://cdn.test/logo.png", "#112233", "#445566", "Inter", 20);
         var response = await client.PutAsJsonAsync($"/api/v1/programs/{program.Id}", update);
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
@@ -113,6 +113,7 @@ public class ProgramsEndpointTests : IClassFixture<CustomWebApplicationFactory>
         updated!.Name.Should().Be("Renamed Quiz");
         updated.OrganisationName.Should().Be("Acme Schools Trust");
         updated.LogoUrl.Should().Be("https://cdn.test/logo.png");
+        updated.MaxTeams.Should().Be(20);
     }
 
     [Fact]
