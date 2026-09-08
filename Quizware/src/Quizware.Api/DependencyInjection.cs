@@ -1,4 +1,6 @@
+using System.Reflection;
 using System.Text;
+using System.Text.Json.Serialization;
 using FluentValidation;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
@@ -105,12 +107,23 @@ public static class DependencyInjection
             // a discriminated union instead of a single flattened type
             // (05-API-Design.md §5.8). Swashbuckle does not walk
             // [JsonDerivedType] attributes on its own; SelectSubTypesUsing
-            // supplies the same list explicitly.
+            // supplies the same list explicitly. SelectDiscriminatorValueUsing
+            // must also read the same attributes' TypeDiscriminator strings —
+            // without it, Swashbuckle falls back to each schema's component
+            // id for the discriminator `mapping`, which never matches the
+            // short format-name strings ("Buzzer", "Mcq", ...) System.Text.Json
+            // actually writes at runtime, and NSwag then can't disambiguate
+            // the oneOf branches when generating the TypeScript client.
             options.UseOneOfForPolymorphism();
             options.SelectDiscriminatorNameUsing(_ => "formatCode");
             options.SelectSubTypesUsing(baseType => baseType == typeof(Contracts.V1.Questions.QuestionResponse)
                 ? baseType.Assembly.GetTypes().Where(t => !t.IsAbstract && t.IsSubclassOf(baseType))
                 : []);
+            options.SelectDiscriminatorValueUsing(subType => typeof(Contracts.V1.Questions.QuestionResponse)
+                .GetCustomAttributes<JsonDerivedTypeAttribute>()
+                .First(a => a.DerivedType == subType)
+                .TypeDiscriminator as string
+                ?? throw new InvalidOperationException($"No [JsonDerivedType] discriminator found for {subType.Name}."));
         });
     }
 }

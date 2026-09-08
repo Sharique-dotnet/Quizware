@@ -23,18 +23,23 @@ export interface IQuizAppApiClient {
      * @param body (optional) 
      * @return OK
      */
-    usersPOST(body: InviteUserRequest | undefined): Promise<AdminUserSummaryDto>;
+    usersPOST(body: InviteUserRequest | undefined): Promise<InviteUserResponse>;
 
     /**
      * @param body (optional) 
      * @return OK
      */
-    roles(id: string, body: AssignUserRolesRequest | undefined): Promise<AdminUserSummaryDto>;
+    roles(id: string, body: AssignUserRolesRequest | undefined): Promise<AssignUserRolesResponse>;
 
     /**
      * @return OK
      */
     deactivate(id: string): Promise<void>;
+
+    /**
+     * @return OK
+     */
+    resetPassword(id: string): Promise<ResetPasswordResponse>;
 
     /**
      * @return OK
@@ -532,11 +537,9 @@ export interface IQuizAppApiClient {
     questionsAll(programId: string, formatCode: string | undefined, difficultyLevelId: number | undefined, topicId: string | undefined, tagId: string | undefined, status: string | undefined, text: string | undefined): Promise<QuestionSummaryResponse[]>;
 
     /**
-     * Polymorphic by format — the response is one of the 10
-                QuestionResponse subtypes, discriminated by formatCode (§5.8).
      * @return OK
      */
-    questionsGET2(programId: string, id: string): Promise<McqQuestionResponse>;
+    questionsGET2(programId: string, id: string): Promise<QuestionResponse>;
 
     /**
      * @return OK
@@ -547,83 +550,95 @@ export interface IQuizAppApiClient {
      * @param body (optional) 
      * @return OK
      */
-    mcq(programId: string, body: CreateMcqQuestionRequest | undefined): Promise<McqQuestionResponse>;
+    mcq(programId: string, body: CreateMcqQuestionRequest | undefined): Promise<QuestionResponse>;
 
     /**
      * @param body (optional) 
      * @return OK
      */
-    buzzer(programId: string, body: CreateBuzzerQuestionRequest | undefined): Promise<McqQuestionResponse>;
+    buzzer(programId: string, body: CreateBuzzerQuestionRequest | undefined): Promise<QuestionResponse>;
 
     /**
      * @param body (optional) 
      * @return OK
      */
-    passing(programId: string, body: CreatePassingQuestionRequest | undefined): Promise<McqQuestionResponse>;
+    passing(programId: string, body: CreatePassingQuestionRequest | undefined): Promise<QuestionResponse>;
 
     /**
      * @param body (optional) 
      * @return OK
      */
-    card(programId: string, body: CreateCardQuestionRequest | undefined): Promise<McqQuestionResponse>;
+    card(programId: string, body: CreateCardQuestionRequest | undefined): Promise<QuestionResponse>;
 
     /**
      * @param body (optional) 
      * @return OK
      */
-    choice(programId: string, body: CreateChoiceQuestionRequest | undefined): Promise<McqQuestionResponse>;
+    choice(programId: string, body: CreateChoiceQuestionRequest | undefined): Promise<QuestionResponse>;
 
     /**
      * @param body (optional) 
      * @return OK
      */
-    rapidFire(programId: string, body: CreateRapidFireQuestionRequest | undefined): Promise<McqQuestionResponse>;
+    rapidFire(programId: string, body: CreateRapidFireQuestionRequest | undefined): Promise<QuestionResponse>;
 
     /**
      * @param body (optional) 
      * @return OK
      */
-    tieBreaker(programId: string, body: CreateTieBreakerQuestionRequest | undefined): Promise<McqQuestionResponse>;
+    tieBreaker(programId: string, body: CreateTieBreakerQuestionRequest | undefined): Promise<QuestionResponse>;
 
     /**
      * @param body (optional) 
      * @return OK
      */
-    sequence(programId: string, body: CreateSequenceQuestionRequest | undefined): Promise<McqQuestionResponse>;
+    sequence(programId: string, body: CreateSequenceQuestionRequest | undefined): Promise<QuestionResponse>;
 
     /**
      * @param body (optional) 
      * @return OK
      */
-    audioVisual(programId: string, body: CreateAudioVisualQuestionRequest | undefined): Promise<McqQuestionResponse>;
+    audioVisual(programId: string, body: CreateAudioVisualQuestionRequest | undefined): Promise<QuestionResponse>;
 
     /**
      * @param body (optional) 
      * @return OK
      */
-    visualRapidFire(programId: string, body: CreateVisualRapidFireQuestionRequest | undefined): Promise<McqQuestionResponse>;
+    visualRapidFire(programId: string, body: CreateVisualRapidFireQuestionRequest | undefined): Promise<QuestionResponse>;
 
     /**
+     * P6-17: PUT never mutates in place — it always creates a new
+                version via the same per-format Create command, linking back via
+                ReplacesQuestionId. The body is the same per-format create shape;
+                formatCode picks which one to deserialize into.
+     * @param body (optional) 
      * @return OK
      */
-    questionsPUT(programId: string, formatCode: string, id: string): Promise<McqQuestionResponse>;
+    questionsPUT(programId: string, formatCode: string, id: string, body: any | undefined): Promise<QuestionResponse>;
 
     /**
      * @param body (optional) 
      * @return OK
      */
-    approve(programId: string, id: string, body: ApproveQuestionRequest | undefined): Promise<McqQuestionResponse>;
+    approve(programId: string, id: string, body: ApproveQuestionRequest | undefined): Promise<QuestionResponse>;
 
     /**
      * @param body (optional) 
      * @return OK
      */
-    retire(programId: string, id: string, body: RetireQuestionRequest | undefined): Promise<McqQuestionResponse>;
+    retire(programId: string, id: string, body: RetireQuestionRequest | undefined): Promise<QuestionResponse>;
 
     /**
+     * Scoped to MCQ (P6-19's reference format — see
+                McqQuestionExcelParser). Mirrors TeamsController's import
+                validate/commit pattern exactly: ImportBatch/ImportBatchRow are
+                Infrastructure-only, so this bypasses Application/MediatR for the
+                batch bookkeeping, but reuses CreateMcqQuestionCommand at commit
+                time for the actual question creation.
+     * @param file (optional) 
      * @return OK
      */
-    validate2(programId: string, formatCode: string): Promise<QuestionImportValidateResponse>;
+    validate2(programId: string, formatCode: string, file: FileParameter | undefined): Promise<QuestionImportValidateResponse>;
 
     /**
      * @return OK
@@ -641,9 +656,11 @@ export interface IQuizAppApiClient {
     usage(programId: string, id: string): Promise<QuestionUsageResponse>;
 
     /**
+     * @param file (optional) 
+     * @param shared (optional) 
      * @return OK
      */
-    media(programId: string): Promise<void>;
+    media(programId: string, file: FileParameter | undefined, shared: boolean | undefined): Promise<MediaAssetResponse>;
 
     /**
      * @return OK
@@ -916,14 +933,19 @@ export interface IQuizAppApiClient {
     status(programId: string, id: string, body: ChangeTeamStatusRequest | undefined): Promise<TeamDetailResponse>;
 
     /**
+     * @param body (optional) 
      * @return OK
      */
-    images(programId: string, id: string): Promise<TeamDetailResponse>;
+    images(programId: string, id: string, body: SetTeamImagesRequest | undefined): Promise<TeamDetailResponse>;
 
     /**
+     * Every data row becomes exactly one ImportBatchRow, valid or
+                not — this is what "no silent row skipping" means (01-Analysis-
+                Findings.md's own complaint about the legacy importer).
+     * @param file (optional) 
      * @return OK
      */
-    validate4(programId: string): Promise<TeamImportValidateResponse>;
+    validate4(programId: string, file: FileParameter | undefined): Promise<TeamImportValidateResponse>;
 
     /**
      * @return OK
@@ -1047,7 +1069,7 @@ export class QuizAppApiClient implements IQuizAppApiClient {
      * @param body (optional) 
      * @return OK
      */
-    usersPOST(body: InviteUserRequest | undefined): Promise<AdminUserSummaryDto> {
+    usersPOST(body: InviteUserRequest | undefined): Promise<InviteUserResponse> {
         let url_ = this.baseUrl + "/api/v1/admin/users";
         url_ = url_.replace(/[?&]$/, "");
 
@@ -1067,14 +1089,14 @@ export class QuizAppApiClient implements IQuizAppApiClient {
         });
     }
 
-    protected processUsersPOST(response: Response): Promise<AdminUserSummaryDto> {
+    protected processUsersPOST(response: Response): Promise<InviteUserResponse> {
         const status = response.status;
         let _headers: any = {}; if (response.headers && response.headers.forEach) { response.headers.forEach((v: any, k: any) => _headers[k] = v); };
         if (status === 200) {
             return response.text().then((_responseText) => {
             let result200: any = null;
             let resultData200 = _responseText === "" ? null : JSON.parse(_responseText, this.jsonParseReviver);
-            result200 = AdminUserSummaryDto.fromJS(resultData200);
+            result200 = InviteUserResponse.fromJS(resultData200);
             return result200;
             });
         } else if (status !== 200 && status !== 204) {
@@ -1082,14 +1104,14 @@ export class QuizAppApiClient implements IQuizAppApiClient {
             return throwException("An unexpected server error occurred.", status, _responseText, _headers);
             });
         }
-        return Promise.resolve<AdminUserSummaryDto>(null as any);
+        return Promise.resolve<InviteUserResponse>(null as any);
     }
 
     /**
      * @param body (optional) 
      * @return OK
      */
-    roles(id: string, body: AssignUserRolesRequest | undefined): Promise<AdminUserSummaryDto> {
+    roles(id: string, body: AssignUserRolesRequest | undefined): Promise<AssignUserRolesResponse> {
         let url_ = this.baseUrl + "/api/v1/admin/users/{id}/roles";
         if (id === undefined || id === null)
             throw new globalThis.Error("The parameter 'id' must be defined.");
@@ -1112,14 +1134,14 @@ export class QuizAppApiClient implements IQuizAppApiClient {
         });
     }
 
-    protected processRoles(response: Response): Promise<AdminUserSummaryDto> {
+    protected processRoles(response: Response): Promise<AssignUserRolesResponse> {
         const status = response.status;
         let _headers: any = {}; if (response.headers && response.headers.forEach) { response.headers.forEach((v: any, k: any) => _headers[k] = v); };
         if (status === 200) {
             return response.text().then((_responseText) => {
             let result200: any = null;
             let resultData200 = _responseText === "" ? null : JSON.parse(_responseText, this.jsonParseReviver);
-            result200 = AdminUserSummaryDto.fromJS(resultData200);
+            result200 = AssignUserRolesResponse.fromJS(resultData200);
             return result200;
             });
         } else if (status !== 200 && status !== 204) {
@@ -1127,7 +1149,7 @@ export class QuizAppApiClient implements IQuizAppApiClient {
             return throwException("An unexpected server error occurred.", status, _responseText, _headers);
             });
         }
-        return Promise.resolve<AdminUserSummaryDto>(null as any);
+        return Promise.resolve<AssignUserRolesResponse>(null as any);
     }
 
     /**
@@ -1164,6 +1186,46 @@ export class QuizAppApiClient implements IQuizAppApiClient {
             });
         }
         return Promise.resolve<void>(null as any);
+    }
+
+    /**
+     * @return OK
+     */
+    resetPassword(id: string): Promise<ResetPasswordResponse> {
+        let url_ = this.baseUrl + "/api/v1/admin/users/{id}/reset-password";
+        if (id === undefined || id === null)
+            throw new globalThis.Error("The parameter 'id' must be defined.");
+        url_ = url_.replace("{id}", encodeURIComponent("" + id));
+        url_ = url_.replace(/[?&]$/, "");
+
+        let options_: RequestInit = {
+            method: "POST",
+            headers: {
+                "Accept": "application/json"
+            }
+        };
+
+        return this.http.fetch(url_, options_).then((_response: Response) => {
+            return this.processResetPassword(_response);
+        });
+    }
+
+    protected processResetPassword(response: Response): Promise<ResetPasswordResponse> {
+        const status = response.status;
+        let _headers: any = {}; if (response.headers && response.headers.forEach) { response.headers.forEach((v: any, k: any) => _headers[k] = v); };
+        if (status === 200) {
+            return response.text().then((_responseText) => {
+            let result200: any = null;
+            let resultData200 = _responseText === "" ? null : JSON.parse(_responseText, this.jsonParseReviver);
+            result200 = ResetPasswordResponse.fromJS(resultData200);
+            return result200;
+            });
+        } else if (status !== 200 && status !== 204) {
+            return response.text().then((_responseText) => {
+            return throwException("An unexpected server error occurred.", status, _responseText, _headers);
+            });
+        }
+        return Promise.resolve<ResetPasswordResponse>(null as any);
     }
 
     /**
@@ -5008,11 +5070,9 @@ export class QuizAppApiClient implements IQuizAppApiClient {
     }
 
     /**
-     * Polymorphic by format — the response is one of the 10
-                QuestionResponse subtypes, discriminated by formatCode (§5.8).
      * @return OK
      */
-    questionsGET2(programId: string, id: string): Promise<McqQuestionResponse> {
+    questionsGET2(programId: string, id: string): Promise<QuestionResponse> {
         let url_ = this.baseUrl + "/api/v1/programs/{programId}/questions/{id}";
         if (programId === undefined || programId === null)
             throw new globalThis.Error("The parameter 'programId' must be defined.");
@@ -5034,14 +5094,14 @@ export class QuizAppApiClient implements IQuizAppApiClient {
         });
     }
 
-    protected processQuestionsGET2(response: Response): Promise<McqQuestionResponse> {
+    protected processQuestionsGET2(response: Response): Promise<QuestionResponse> {
         const status = response.status;
         let _headers: any = {}; if (response.headers && response.headers.forEach) { response.headers.forEach((v: any, k: any) => _headers[k] = v); };
         if (status === 200) {
             return response.text().then((_responseText) => {
             let result200: any = null;
             let resultData200 = _responseText === "" ? null : JSON.parse(_responseText, this.jsonParseReviver);
-            result200 = McqQuestionResponse.fromJS(resultData200);
+            result200 = QuestionResponse.fromJS(resultData200);
             return result200;
             });
         } else if (status !== 200 && status !== 204) {
@@ -5049,7 +5109,7 @@ export class QuizAppApiClient implements IQuizAppApiClient {
             return throwException("An unexpected server error occurred.", status, _responseText, _headers);
             });
         }
-        return Promise.resolve<McqQuestionResponse>(null as any);
+        return Promise.resolve<QuestionResponse>(null as any);
     }
 
     /**
@@ -5095,7 +5155,7 @@ export class QuizAppApiClient implements IQuizAppApiClient {
      * @param body (optional) 
      * @return OK
      */
-    mcq(programId: string, body: CreateMcqQuestionRequest | undefined): Promise<McqQuestionResponse> {
+    mcq(programId: string, body: CreateMcqQuestionRequest | undefined): Promise<QuestionResponse> {
         let url_ = this.baseUrl + "/api/v1/programs/{programId}/questions/mcq";
         if (programId === undefined || programId === null)
             throw new globalThis.Error("The parameter 'programId' must be defined.");
@@ -5118,14 +5178,14 @@ export class QuizAppApiClient implements IQuizAppApiClient {
         });
     }
 
-    protected processMcq(response: Response): Promise<McqQuestionResponse> {
+    protected processMcq(response: Response): Promise<QuestionResponse> {
         const status = response.status;
         let _headers: any = {}; if (response.headers && response.headers.forEach) { response.headers.forEach((v: any, k: any) => _headers[k] = v); };
         if (status === 200) {
             return response.text().then((_responseText) => {
             let result200: any = null;
             let resultData200 = _responseText === "" ? null : JSON.parse(_responseText, this.jsonParseReviver);
-            result200 = McqQuestionResponse.fromJS(resultData200);
+            result200 = QuestionResponse.fromJS(resultData200);
             return result200;
             });
         } else if (status !== 200 && status !== 204) {
@@ -5133,14 +5193,14 @@ export class QuizAppApiClient implements IQuizAppApiClient {
             return throwException("An unexpected server error occurred.", status, _responseText, _headers);
             });
         }
-        return Promise.resolve<McqQuestionResponse>(null as any);
+        return Promise.resolve<QuestionResponse>(null as any);
     }
 
     /**
      * @param body (optional) 
      * @return OK
      */
-    buzzer(programId: string, body: CreateBuzzerQuestionRequest | undefined): Promise<McqQuestionResponse> {
+    buzzer(programId: string, body: CreateBuzzerQuestionRequest | undefined): Promise<QuestionResponse> {
         let url_ = this.baseUrl + "/api/v1/programs/{programId}/questions/buzzer";
         if (programId === undefined || programId === null)
             throw new globalThis.Error("The parameter 'programId' must be defined.");
@@ -5163,14 +5223,14 @@ export class QuizAppApiClient implements IQuizAppApiClient {
         });
     }
 
-    protected processBuzzer(response: Response): Promise<McqQuestionResponse> {
+    protected processBuzzer(response: Response): Promise<QuestionResponse> {
         const status = response.status;
         let _headers: any = {}; if (response.headers && response.headers.forEach) { response.headers.forEach((v: any, k: any) => _headers[k] = v); };
         if (status === 200) {
             return response.text().then((_responseText) => {
             let result200: any = null;
             let resultData200 = _responseText === "" ? null : JSON.parse(_responseText, this.jsonParseReviver);
-            result200 = McqQuestionResponse.fromJS(resultData200);
+            result200 = QuestionResponse.fromJS(resultData200);
             return result200;
             });
         } else if (status !== 200 && status !== 204) {
@@ -5178,14 +5238,14 @@ export class QuizAppApiClient implements IQuizAppApiClient {
             return throwException("An unexpected server error occurred.", status, _responseText, _headers);
             });
         }
-        return Promise.resolve<McqQuestionResponse>(null as any);
+        return Promise.resolve<QuestionResponse>(null as any);
     }
 
     /**
      * @param body (optional) 
      * @return OK
      */
-    passing(programId: string, body: CreatePassingQuestionRequest | undefined): Promise<McqQuestionResponse> {
+    passing(programId: string, body: CreatePassingQuestionRequest | undefined): Promise<QuestionResponse> {
         let url_ = this.baseUrl + "/api/v1/programs/{programId}/questions/passing";
         if (programId === undefined || programId === null)
             throw new globalThis.Error("The parameter 'programId' must be defined.");
@@ -5208,14 +5268,14 @@ export class QuizAppApiClient implements IQuizAppApiClient {
         });
     }
 
-    protected processPassing(response: Response): Promise<McqQuestionResponse> {
+    protected processPassing(response: Response): Promise<QuestionResponse> {
         const status = response.status;
         let _headers: any = {}; if (response.headers && response.headers.forEach) { response.headers.forEach((v: any, k: any) => _headers[k] = v); };
         if (status === 200) {
             return response.text().then((_responseText) => {
             let result200: any = null;
             let resultData200 = _responseText === "" ? null : JSON.parse(_responseText, this.jsonParseReviver);
-            result200 = McqQuestionResponse.fromJS(resultData200);
+            result200 = QuestionResponse.fromJS(resultData200);
             return result200;
             });
         } else if (status !== 200 && status !== 204) {
@@ -5223,14 +5283,14 @@ export class QuizAppApiClient implements IQuizAppApiClient {
             return throwException("An unexpected server error occurred.", status, _responseText, _headers);
             });
         }
-        return Promise.resolve<McqQuestionResponse>(null as any);
+        return Promise.resolve<QuestionResponse>(null as any);
     }
 
     /**
      * @param body (optional) 
      * @return OK
      */
-    card(programId: string, body: CreateCardQuestionRequest | undefined): Promise<McqQuestionResponse> {
+    card(programId: string, body: CreateCardQuestionRequest | undefined): Promise<QuestionResponse> {
         let url_ = this.baseUrl + "/api/v1/programs/{programId}/questions/card";
         if (programId === undefined || programId === null)
             throw new globalThis.Error("The parameter 'programId' must be defined.");
@@ -5253,14 +5313,14 @@ export class QuizAppApiClient implements IQuizAppApiClient {
         });
     }
 
-    protected processCard(response: Response): Promise<McqQuestionResponse> {
+    protected processCard(response: Response): Promise<QuestionResponse> {
         const status = response.status;
         let _headers: any = {}; if (response.headers && response.headers.forEach) { response.headers.forEach((v: any, k: any) => _headers[k] = v); };
         if (status === 200) {
             return response.text().then((_responseText) => {
             let result200: any = null;
             let resultData200 = _responseText === "" ? null : JSON.parse(_responseText, this.jsonParseReviver);
-            result200 = McqQuestionResponse.fromJS(resultData200);
+            result200 = QuestionResponse.fromJS(resultData200);
             return result200;
             });
         } else if (status !== 200 && status !== 204) {
@@ -5268,14 +5328,14 @@ export class QuizAppApiClient implements IQuizAppApiClient {
             return throwException("An unexpected server error occurred.", status, _responseText, _headers);
             });
         }
-        return Promise.resolve<McqQuestionResponse>(null as any);
+        return Promise.resolve<QuestionResponse>(null as any);
     }
 
     /**
      * @param body (optional) 
      * @return OK
      */
-    choice(programId: string, body: CreateChoiceQuestionRequest | undefined): Promise<McqQuestionResponse> {
+    choice(programId: string, body: CreateChoiceQuestionRequest | undefined): Promise<QuestionResponse> {
         let url_ = this.baseUrl + "/api/v1/programs/{programId}/questions/choice";
         if (programId === undefined || programId === null)
             throw new globalThis.Error("The parameter 'programId' must be defined.");
@@ -5298,14 +5358,14 @@ export class QuizAppApiClient implements IQuizAppApiClient {
         });
     }
 
-    protected processChoice(response: Response): Promise<McqQuestionResponse> {
+    protected processChoice(response: Response): Promise<QuestionResponse> {
         const status = response.status;
         let _headers: any = {}; if (response.headers && response.headers.forEach) { response.headers.forEach((v: any, k: any) => _headers[k] = v); };
         if (status === 200) {
             return response.text().then((_responseText) => {
             let result200: any = null;
             let resultData200 = _responseText === "" ? null : JSON.parse(_responseText, this.jsonParseReviver);
-            result200 = McqQuestionResponse.fromJS(resultData200);
+            result200 = QuestionResponse.fromJS(resultData200);
             return result200;
             });
         } else if (status !== 200 && status !== 204) {
@@ -5313,14 +5373,14 @@ export class QuizAppApiClient implements IQuizAppApiClient {
             return throwException("An unexpected server error occurred.", status, _responseText, _headers);
             });
         }
-        return Promise.resolve<McqQuestionResponse>(null as any);
+        return Promise.resolve<QuestionResponse>(null as any);
     }
 
     /**
      * @param body (optional) 
      * @return OK
      */
-    rapidFire(programId: string, body: CreateRapidFireQuestionRequest | undefined): Promise<McqQuestionResponse> {
+    rapidFire(programId: string, body: CreateRapidFireQuestionRequest | undefined): Promise<QuestionResponse> {
         let url_ = this.baseUrl + "/api/v1/programs/{programId}/questions/rapid-fire";
         if (programId === undefined || programId === null)
             throw new globalThis.Error("The parameter 'programId' must be defined.");
@@ -5343,14 +5403,14 @@ export class QuizAppApiClient implements IQuizAppApiClient {
         });
     }
 
-    protected processRapidFire(response: Response): Promise<McqQuestionResponse> {
+    protected processRapidFire(response: Response): Promise<QuestionResponse> {
         const status = response.status;
         let _headers: any = {}; if (response.headers && response.headers.forEach) { response.headers.forEach((v: any, k: any) => _headers[k] = v); };
         if (status === 200) {
             return response.text().then((_responseText) => {
             let result200: any = null;
             let resultData200 = _responseText === "" ? null : JSON.parse(_responseText, this.jsonParseReviver);
-            result200 = McqQuestionResponse.fromJS(resultData200);
+            result200 = QuestionResponse.fromJS(resultData200);
             return result200;
             });
         } else if (status !== 200 && status !== 204) {
@@ -5358,14 +5418,14 @@ export class QuizAppApiClient implements IQuizAppApiClient {
             return throwException("An unexpected server error occurred.", status, _responseText, _headers);
             });
         }
-        return Promise.resolve<McqQuestionResponse>(null as any);
+        return Promise.resolve<QuestionResponse>(null as any);
     }
 
     /**
      * @param body (optional) 
      * @return OK
      */
-    tieBreaker(programId: string, body: CreateTieBreakerQuestionRequest | undefined): Promise<McqQuestionResponse> {
+    tieBreaker(programId: string, body: CreateTieBreakerQuestionRequest | undefined): Promise<QuestionResponse> {
         let url_ = this.baseUrl + "/api/v1/programs/{programId}/questions/tie-breaker";
         if (programId === undefined || programId === null)
             throw new globalThis.Error("The parameter 'programId' must be defined.");
@@ -5388,14 +5448,14 @@ export class QuizAppApiClient implements IQuizAppApiClient {
         });
     }
 
-    protected processTieBreaker(response: Response): Promise<McqQuestionResponse> {
+    protected processTieBreaker(response: Response): Promise<QuestionResponse> {
         const status = response.status;
         let _headers: any = {}; if (response.headers && response.headers.forEach) { response.headers.forEach((v: any, k: any) => _headers[k] = v); };
         if (status === 200) {
             return response.text().then((_responseText) => {
             let result200: any = null;
             let resultData200 = _responseText === "" ? null : JSON.parse(_responseText, this.jsonParseReviver);
-            result200 = McqQuestionResponse.fromJS(resultData200);
+            result200 = QuestionResponse.fromJS(resultData200);
             return result200;
             });
         } else if (status !== 200 && status !== 204) {
@@ -5403,14 +5463,14 @@ export class QuizAppApiClient implements IQuizAppApiClient {
             return throwException("An unexpected server error occurred.", status, _responseText, _headers);
             });
         }
-        return Promise.resolve<McqQuestionResponse>(null as any);
+        return Promise.resolve<QuestionResponse>(null as any);
     }
 
     /**
      * @param body (optional) 
      * @return OK
      */
-    sequence(programId: string, body: CreateSequenceQuestionRequest | undefined): Promise<McqQuestionResponse> {
+    sequence(programId: string, body: CreateSequenceQuestionRequest | undefined): Promise<QuestionResponse> {
         let url_ = this.baseUrl + "/api/v1/programs/{programId}/questions/sequence";
         if (programId === undefined || programId === null)
             throw new globalThis.Error("The parameter 'programId' must be defined.");
@@ -5433,14 +5493,14 @@ export class QuizAppApiClient implements IQuizAppApiClient {
         });
     }
 
-    protected processSequence(response: Response): Promise<McqQuestionResponse> {
+    protected processSequence(response: Response): Promise<QuestionResponse> {
         const status = response.status;
         let _headers: any = {}; if (response.headers && response.headers.forEach) { response.headers.forEach((v: any, k: any) => _headers[k] = v); };
         if (status === 200) {
             return response.text().then((_responseText) => {
             let result200: any = null;
             let resultData200 = _responseText === "" ? null : JSON.parse(_responseText, this.jsonParseReviver);
-            result200 = McqQuestionResponse.fromJS(resultData200);
+            result200 = QuestionResponse.fromJS(resultData200);
             return result200;
             });
         } else if (status !== 200 && status !== 204) {
@@ -5448,14 +5508,14 @@ export class QuizAppApiClient implements IQuizAppApiClient {
             return throwException("An unexpected server error occurred.", status, _responseText, _headers);
             });
         }
-        return Promise.resolve<McqQuestionResponse>(null as any);
+        return Promise.resolve<QuestionResponse>(null as any);
     }
 
     /**
      * @param body (optional) 
      * @return OK
      */
-    audioVisual(programId: string, body: CreateAudioVisualQuestionRequest | undefined): Promise<McqQuestionResponse> {
+    audioVisual(programId: string, body: CreateAudioVisualQuestionRequest | undefined): Promise<QuestionResponse> {
         let url_ = this.baseUrl + "/api/v1/programs/{programId}/questions/audio-visual";
         if (programId === undefined || programId === null)
             throw new globalThis.Error("The parameter 'programId' must be defined.");
@@ -5478,14 +5538,14 @@ export class QuizAppApiClient implements IQuizAppApiClient {
         });
     }
 
-    protected processAudioVisual(response: Response): Promise<McqQuestionResponse> {
+    protected processAudioVisual(response: Response): Promise<QuestionResponse> {
         const status = response.status;
         let _headers: any = {}; if (response.headers && response.headers.forEach) { response.headers.forEach((v: any, k: any) => _headers[k] = v); };
         if (status === 200) {
             return response.text().then((_responseText) => {
             let result200: any = null;
             let resultData200 = _responseText === "" ? null : JSON.parse(_responseText, this.jsonParseReviver);
-            result200 = McqQuestionResponse.fromJS(resultData200);
+            result200 = QuestionResponse.fromJS(resultData200);
             return result200;
             });
         } else if (status !== 200 && status !== 204) {
@@ -5493,14 +5553,14 @@ export class QuizAppApiClient implements IQuizAppApiClient {
             return throwException("An unexpected server error occurred.", status, _responseText, _headers);
             });
         }
-        return Promise.resolve<McqQuestionResponse>(null as any);
+        return Promise.resolve<QuestionResponse>(null as any);
     }
 
     /**
      * @param body (optional) 
      * @return OK
      */
-    visualRapidFire(programId: string, body: CreateVisualRapidFireQuestionRequest | undefined): Promise<McqQuestionResponse> {
+    visualRapidFire(programId: string, body: CreateVisualRapidFireQuestionRequest | undefined): Promise<QuestionResponse> {
         let url_ = this.baseUrl + "/api/v1/programs/{programId}/questions/visual-rapid-fire";
         if (programId === undefined || programId === null)
             throw new globalThis.Error("The parameter 'programId' must be defined.");
@@ -5523,14 +5583,14 @@ export class QuizAppApiClient implements IQuizAppApiClient {
         });
     }
 
-    protected processVisualRapidFire(response: Response): Promise<McqQuestionResponse> {
+    protected processVisualRapidFire(response: Response): Promise<QuestionResponse> {
         const status = response.status;
         let _headers: any = {}; if (response.headers && response.headers.forEach) { response.headers.forEach((v: any, k: any) => _headers[k] = v); };
         if (status === 200) {
             return response.text().then((_responseText) => {
             let result200: any = null;
             let resultData200 = _responseText === "" ? null : JSON.parse(_responseText, this.jsonParseReviver);
-            result200 = McqQuestionResponse.fromJS(resultData200);
+            result200 = QuestionResponse.fromJS(resultData200);
             return result200;
             });
         } else if (status !== 200 && status !== 204) {
@@ -5538,13 +5598,18 @@ export class QuizAppApiClient implements IQuizAppApiClient {
             return throwException("An unexpected server error occurred.", status, _responseText, _headers);
             });
         }
-        return Promise.resolve<McqQuestionResponse>(null as any);
+        return Promise.resolve<QuestionResponse>(null as any);
     }
 
     /**
+     * P6-17: PUT never mutates in place — it always creates a new
+                version via the same per-format Create command, linking back via
+                ReplacesQuestionId. The body is the same per-format create shape;
+                formatCode picks which one to deserialize into.
+     * @param body (optional) 
      * @return OK
      */
-    questionsPUT(programId: string, formatCode: string, id: string): Promise<McqQuestionResponse> {
+    questionsPUT(programId: string, formatCode: string, id: string, body: any | undefined): Promise<QuestionResponse> {
         let url_ = this.baseUrl + "/api/v1/programs/{programId}/questions/{formatCode}/{id}";
         if (programId === undefined || programId === null)
             throw new globalThis.Error("The parameter 'programId' must be defined.");
@@ -5557,9 +5622,13 @@ export class QuizAppApiClient implements IQuizAppApiClient {
         url_ = url_.replace("{id}", encodeURIComponent("" + id));
         url_ = url_.replace(/[?&]$/, "");
 
+        const content_ = JSON.stringify(body);
+
         let options_: RequestInit = {
+            body: content_,
             method: "PUT",
             headers: {
+                "Content-Type": "application/json",
                 "Accept": "application/json"
             }
         };
@@ -5569,14 +5638,14 @@ export class QuizAppApiClient implements IQuizAppApiClient {
         });
     }
 
-    protected processQuestionsPUT(response: Response): Promise<McqQuestionResponse> {
+    protected processQuestionsPUT(response: Response): Promise<QuestionResponse> {
         const status = response.status;
         let _headers: any = {}; if (response.headers && response.headers.forEach) { response.headers.forEach((v: any, k: any) => _headers[k] = v); };
         if (status === 200) {
             return response.text().then((_responseText) => {
             let result200: any = null;
             let resultData200 = _responseText === "" ? null : JSON.parse(_responseText, this.jsonParseReviver);
-            result200 = McqQuestionResponse.fromJS(resultData200);
+            result200 = QuestionResponse.fromJS(resultData200);
             return result200;
             });
         } else if (status !== 200 && status !== 204) {
@@ -5584,14 +5653,14 @@ export class QuizAppApiClient implements IQuizAppApiClient {
             return throwException("An unexpected server error occurred.", status, _responseText, _headers);
             });
         }
-        return Promise.resolve<McqQuestionResponse>(null as any);
+        return Promise.resolve<QuestionResponse>(null as any);
     }
 
     /**
      * @param body (optional) 
      * @return OK
      */
-    approve(programId: string, id: string, body: ApproveQuestionRequest | undefined): Promise<McqQuestionResponse> {
+    approve(programId: string, id: string, body: ApproveQuestionRequest | undefined): Promise<QuestionResponse> {
         let url_ = this.baseUrl + "/api/v1/programs/{programId}/questions/{id}/approve";
         if (programId === undefined || programId === null)
             throw new globalThis.Error("The parameter 'programId' must be defined.");
@@ -5617,14 +5686,14 @@ export class QuizAppApiClient implements IQuizAppApiClient {
         });
     }
 
-    protected processApprove(response: Response): Promise<McqQuestionResponse> {
+    protected processApprove(response: Response): Promise<QuestionResponse> {
         const status = response.status;
         let _headers: any = {}; if (response.headers && response.headers.forEach) { response.headers.forEach((v: any, k: any) => _headers[k] = v); };
         if (status === 200) {
             return response.text().then((_responseText) => {
             let result200: any = null;
             let resultData200 = _responseText === "" ? null : JSON.parse(_responseText, this.jsonParseReviver);
-            result200 = McqQuestionResponse.fromJS(resultData200);
+            result200 = QuestionResponse.fromJS(resultData200);
             return result200;
             });
         } else if (status !== 200 && status !== 204) {
@@ -5632,14 +5701,14 @@ export class QuizAppApiClient implements IQuizAppApiClient {
             return throwException("An unexpected server error occurred.", status, _responseText, _headers);
             });
         }
-        return Promise.resolve<McqQuestionResponse>(null as any);
+        return Promise.resolve<QuestionResponse>(null as any);
     }
 
     /**
      * @param body (optional) 
      * @return OK
      */
-    retire(programId: string, id: string, body: RetireQuestionRequest | undefined): Promise<McqQuestionResponse> {
+    retire(programId: string, id: string, body: RetireQuestionRequest | undefined): Promise<QuestionResponse> {
         let url_ = this.baseUrl + "/api/v1/programs/{programId}/questions/{id}/retire";
         if (programId === undefined || programId === null)
             throw new globalThis.Error("The parameter 'programId' must be defined.");
@@ -5665,14 +5734,14 @@ export class QuizAppApiClient implements IQuizAppApiClient {
         });
     }
 
-    protected processRetire(response: Response): Promise<McqQuestionResponse> {
+    protected processRetire(response: Response): Promise<QuestionResponse> {
         const status = response.status;
         let _headers: any = {}; if (response.headers && response.headers.forEach) { response.headers.forEach((v: any, k: any) => _headers[k] = v); };
         if (status === 200) {
             return response.text().then((_responseText) => {
             let result200: any = null;
             let resultData200 = _responseText === "" ? null : JSON.parse(_responseText, this.jsonParseReviver);
-            result200 = McqQuestionResponse.fromJS(resultData200);
+            result200 = QuestionResponse.fromJS(resultData200);
             return result200;
             });
         } else if (status !== 200 && status !== 204) {
@@ -5680,13 +5749,20 @@ export class QuizAppApiClient implements IQuizAppApiClient {
             return throwException("An unexpected server error occurred.", status, _responseText, _headers);
             });
         }
-        return Promise.resolve<McqQuestionResponse>(null as any);
+        return Promise.resolve<QuestionResponse>(null as any);
     }
 
     /**
+     * Scoped to MCQ (P6-19's reference format — see
+                McqQuestionExcelParser). Mirrors TeamsController's import
+                validate/commit pattern exactly: ImportBatch/ImportBatchRow are
+                Infrastructure-only, so this bypasses Application/MediatR for the
+                batch bookkeeping, but reuses CreateMcqQuestionCommand at commit
+                time for the actual question creation.
+     * @param file (optional) 
      * @return OK
      */
-    validate2(programId: string, formatCode: string): Promise<QuestionImportValidateResponse> {
+    validate2(programId: string, formatCode: string, file: FileParameter | undefined): Promise<QuestionImportValidateResponse> {
         let url_ = this.baseUrl + "/api/v1/programs/{programId}/questions/import/{formatCode}/validate";
         if (programId === undefined || programId === null)
             throw new globalThis.Error("The parameter 'programId' must be defined.");
@@ -5696,7 +5772,14 @@ export class QuizAppApiClient implements IQuizAppApiClient {
         url_ = url_.replace("{formatCode}", encodeURIComponent("" + formatCode));
         url_ = url_.replace(/[?&]$/, "");
 
+        const content_ = new FormData();
+        if (file === null || file === undefined)
+            throw new globalThis.Error("The parameter 'file' cannot be null.");
+        else
+            content_.append("file", file.data, file.fileName ? file.fileName : "file");
+
         let options_: RequestInit = {
+            body: content_,
             method: "POST",
             headers: {
                 "Accept": "application/json"
@@ -5853,18 +5936,32 @@ export class QuizAppApiClient implements IQuizAppApiClient {
     }
 
     /**
+     * @param file (optional) 
+     * @param shared (optional) 
      * @return OK
      */
-    media(programId: string): Promise<void> {
+    media(programId: string, file: FileParameter | undefined, shared: boolean | undefined): Promise<MediaAssetResponse> {
         let url_ = this.baseUrl + "/api/v1/programs/{programId}/questions/media";
         if (programId === undefined || programId === null)
             throw new globalThis.Error("The parameter 'programId' must be defined.");
         url_ = url_.replace("{programId}", encodeURIComponent("" + programId));
         url_ = url_.replace(/[?&]$/, "");
 
+        const content_ = new FormData();
+        if (file === null || file === undefined)
+            throw new globalThis.Error("The parameter 'file' cannot be null.");
+        else
+            content_.append("file", file.data, file.fileName ? file.fileName : "file");
+        if (shared === null || shared === undefined)
+            throw new globalThis.Error("The parameter 'shared' cannot be null.");
+        else
+            content_.append("shared", shared.toString());
+
         let options_: RequestInit = {
+            body: content_,
             method: "POST",
             headers: {
+                "Accept": "application/json"
             }
         };
 
@@ -5873,19 +5970,22 @@ export class QuizAppApiClient implements IQuizAppApiClient {
         });
     }
 
-    protected processMedia(response: Response): Promise<void> {
+    protected processMedia(response: Response): Promise<MediaAssetResponse> {
         const status = response.status;
         let _headers: any = {}; if (response.headers && response.headers.forEach) { response.headers.forEach((v: any, k: any) => _headers[k] = v); };
         if (status === 200) {
             return response.text().then((_responseText) => {
-            return;
+            let result200: any = null;
+            let resultData200 = _responseText === "" ? null : JSON.parse(_responseText, this.jsonParseReviver);
+            result200 = MediaAssetResponse.fromJS(resultData200);
+            return result200;
             });
         } else if (status !== 200 && status !== 204) {
             return response.text().then((_responseText) => {
             return throwException("An unexpected server error occurred.", status, _responseText, _headers);
             });
         }
-        return Promise.resolve<void>(null as any);
+        return Promise.resolve<MediaAssetResponse>(null as any);
     }
 
     /**
@@ -8152,9 +8252,10 @@ export class QuizAppApiClient implements IQuizAppApiClient {
     }
 
     /**
+     * @param body (optional) 
      * @return OK
      */
-    images(programId: string, id: string): Promise<TeamDetailResponse> {
+    images(programId: string, id: string, body: SetTeamImagesRequest | undefined): Promise<TeamDetailResponse> {
         let url_ = this.baseUrl + "/api/v1/programs/{programId}/teams/{id}/images";
         if (programId === undefined || programId === null)
             throw new globalThis.Error("The parameter 'programId' must be defined.");
@@ -8164,9 +8265,13 @@ export class QuizAppApiClient implements IQuizAppApiClient {
         url_ = url_.replace("{id}", encodeURIComponent("" + id));
         url_ = url_.replace(/[?&]$/, "");
 
+        const content_ = JSON.stringify(body);
+
         let options_: RequestInit = {
+            body: content_,
             method: "POST",
             headers: {
+                "Content-Type": "application/json",
                 "Accept": "application/json"
             }
         };
@@ -8195,16 +8300,27 @@ export class QuizAppApiClient implements IQuizAppApiClient {
     }
 
     /**
+     * Every data row becomes exactly one ImportBatchRow, valid or
+                not — this is what "no silent row skipping" means (01-Analysis-
+                Findings.md's own complaint about the legacy importer).
+     * @param file (optional) 
      * @return OK
      */
-    validate4(programId: string): Promise<TeamImportValidateResponse> {
+    validate4(programId: string, file: FileParameter | undefined): Promise<TeamImportValidateResponse> {
         let url_ = this.baseUrl + "/api/v1/programs/{programId}/teams/import/validate";
         if (programId === undefined || programId === null)
             throw new globalThis.Error("The parameter 'programId' must be defined.");
         url_ = url_.replace("{programId}", encodeURIComponent("" + programId));
         url_ = url_.replace(/[?&]$/, "");
 
+        const content_ = new FormData();
+        if (file === null || file === undefined)
+            throw new globalThis.Error("The parameter 'file' cannot be null.");
+        else
+            content_.append("file", file.data, file.fileName ? file.fileName : "file");
+
         let options_: RequestInit = {
+            body: content_,
             method: "POST",
             headers: {
                 "Accept": "application/json"
@@ -9103,7 +9219,59 @@ export interface IAssignUserRolesRequest {
     roles?: string[] | undefined;
 }
 
-/** Polymorphic question detail (05-API-Design.md §5.8): one response type per format, discriminated by QuizApp.Api.Contracts.V1.Questions.QuestionResponse.FormatCode. System.Text.Json's polymorphic serialization emits/reads the discriminator, and Swashbuckle maps it to an OpenAPI `oneOf` + `discriminator/mapping`, which is what generates a discriminated union in the TypeScript client. */
+export class AssignUserRolesResponse implements IAssignUserRolesResponse {
+    userId?: string;
+    programId?: string;
+    rolesInProgram?: string[] | undefined;
+
+    constructor(data?: IAssignUserRolesResponse) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (this as any)[property] = (data as any)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.userId = _data["userId"];
+            this.programId = _data["programId"];
+            if (Array.isArray(_data["rolesInProgram"])) {
+                this.rolesInProgram = [] as any;
+                for (let item of _data["rolesInProgram"])
+                    this.rolesInProgram!.push(item);
+            }
+        }
+    }
+
+    static fromJS(data: any): AssignUserRolesResponse {
+        data = typeof data === 'object' ? data : {};
+        let result = new AssignUserRolesResponse();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["userId"] = this.userId;
+        data["programId"] = this.programId;
+        if (Array.isArray(this.rolesInProgram)) {
+            data["rolesInProgram"] = [];
+            for (let item of this.rolesInProgram)
+                data["rolesInProgram"].push(item);
+        }
+        return data;
+    }
+}
+
+export interface IAssignUserRolesResponse {
+    userId?: string;
+    programId?: string;
+    rolesInProgram?: string[] | undefined;
+}
+
+/** Polymorphic question detail (05-API-Design.md §5.8): one response type per format, discriminated by Quizware.Api.Contracts.V1.Questions.QuestionResponse.FormatCode. System.Text.Json's polymorphic serialization emits/reads the discriminator, and Swashbuckle maps it to an OpenAPI `oneOf` + `discriminator/mapping`, which is what generates a discriminated union in the TypeScript client. */
 export class QuestionResponse implements IQuestionResponse {
     id!: string;
     difficultyLevel!: number;
@@ -9137,52 +9305,52 @@ export class QuestionResponse implements IQuestionResponse {
 
     static fromJS(data: any): QuestionResponse {
         data = typeof data === 'object' ? data : {};
-        if (data["formatCode"] === "McqQuestionResponse") {
+        if (data["formatCode"] === "Mcq") {
             let result = new McqQuestionResponse();
             result.init(data);
             return result;
         }
-        if (data["formatCode"] === "BuzzerQuestionResponse") {
+        if (data["formatCode"] === "Buzzer") {
             let result = new BuzzerQuestionResponse();
             result.init(data);
             return result;
         }
-        if (data["formatCode"] === "PassingQuestionResponse") {
+        if (data["formatCode"] === "Passing") {
             let result = new PassingQuestionResponse();
             result.init(data);
             return result;
         }
-        if (data["formatCode"] === "CardQuestionResponse") {
+        if (data["formatCode"] === "Card") {
             let result = new CardQuestionResponse();
             result.init(data);
             return result;
         }
-        if (data["formatCode"] === "ChoiceQuestionResponse") {
+        if (data["formatCode"] === "Choice") {
             let result = new ChoiceQuestionResponse();
             result.init(data);
             return result;
         }
-        if (data["formatCode"] === "RapidFireQuestionResponse") {
+        if (data["formatCode"] === "RapidFire") {
             let result = new RapidFireQuestionResponse();
             result.init(data);
             return result;
         }
-        if (data["formatCode"] === "TieBreakerQuestionResponse") {
+        if (data["formatCode"] === "TieBreaker") {
             let result = new TieBreakerQuestionResponse();
             result.init(data);
             return result;
         }
-        if (data["formatCode"] === "SequenceQuestionResponse") {
+        if (data["formatCode"] === "Sequence") {
             let result = new SequenceQuestionResponse();
             result.init(data);
             return result;
         }
-        if (data["formatCode"] === "AudioVisualQuestionResponse") {
+        if (data["formatCode"] === "AudioVisual") {
             let result = new AudioVisualQuestionResponse();
             result.init(data);
             return result;
         }
-        if (data["formatCode"] === "VisualRapidFireQuestionResponse") {
+        if (data["formatCode"] === "VisualRapidFire") {
             let result = new VisualRapidFireQuestionResponse();
             result.init(data);
             return result;
@@ -9205,7 +9373,7 @@ export class QuestionResponse implements IQuestionResponse {
     }
 }
 
-/** Polymorphic question detail (05-API-Design.md §5.8): one response type per format, discriminated by QuizApp.Api.Contracts.V1.Questions.QuestionResponse.FormatCode. System.Text.Json's polymorphic serialization emits/reads the discriminator, and Swashbuckle maps it to an OpenAPI `oneOf` + `discriminator/mapping`, which is what generates a discriminated union in the TypeScript client. */
+/** Polymorphic question detail (05-API-Design.md §5.8): one response type per format, discriminated by Quizware.Api.Contracts.V1.Questions.QuestionResponse.FormatCode. System.Text.Json's polymorphic serialization emits/reads the discriminator, and Swashbuckle maps it to an OpenAPI `oneOf` + `discriminator/mapping`, which is what generates a discriminated union in the TypeScript client. */
 export interface IQuestionResponse {
     id: string;
     difficultyLevel: number;
@@ -9225,7 +9393,7 @@ export class AudioVisualQuestionResponse extends QuestionResponse implements IAu
 
     constructor(data?: IAudioVisualQuestionResponse) {
         super(data);
-        this._discriminator = "AudioVisualQuestionResponse";
+        this._discriminator = "AudioVisual";
     }
 
     override init(_data?: any) {
@@ -9772,7 +9940,7 @@ export class BuzzerQuestionResponse extends QuestionResponse implements IBuzzerQ
 
     constructor(data?: IBuzzerQuestionResponse) {
         super(data);
-        this._discriminator = "BuzzerQuestionResponse";
+        this._discriminator = "Buzzer";
     }
 
     override init(_data?: any) {
@@ -9873,7 +10041,7 @@ export class CardQuestionResponse extends QuestionResponse implements ICardQuest
 
     constructor(data?: ICardQuestionResponse) {
         super(data);
-        this._discriminator = "CardQuestionResponse";
+        this._discriminator = "Card";
     }
 
     override init(_data?: any) {
@@ -10008,7 +10176,7 @@ export class ChoiceQuestionResponse extends QuestionResponse implements IChoiceQ
 
     constructor(data?: IChoiceQuestionResponse) {
         super(data);
-        this._discriminator = "ChoiceQuestionResponse";
+        this._discriminator = "Choice";
     }
 
     override init(_data?: any) {
@@ -10061,6 +10229,7 @@ export interface IChoiceQuestionResponse extends IQuestionResponse {
 
 export class CloneProgramRequest implements ICloneProgramRequest {
     sourceProgramId?: string;
+    newProgramCode?: string | undefined;
     newProgramName?: string | undefined;
 
     constructor(data?: ICloneProgramRequest) {
@@ -10075,6 +10244,7 @@ export class CloneProgramRequest implements ICloneProgramRequest {
     init(_data?: any) {
         if (_data) {
             this.sourceProgramId = _data["sourceProgramId"];
+            this.newProgramCode = _data["newProgramCode"];
             this.newProgramName = _data["newProgramName"];
         }
     }
@@ -10089,6 +10259,7 @@ export class CloneProgramRequest implements ICloneProgramRequest {
     toJSON(data?: any) {
         data = typeof data === 'object' ? data : {};
         data["sourceProgramId"] = this.sourceProgramId;
+        data["newProgramCode"] = this.newProgramCode;
         data["newProgramName"] = this.newProgramName;
         return data;
     }
@@ -10096,6 +10267,7 @@ export class CloneProgramRequest implements ICloneProgramRequest {
 
 export interface ICloneProgramRequest {
     sourceProgramId?: string;
+    newProgramCode?: string | undefined;
     newProgramName?: string | undefined;
 }
 
@@ -10447,6 +10619,7 @@ export interface ICreateCardQuestionRequest {
     options: OptionDto[] | undefined;
 }
 
+/** Contract fix: TopicLabel (the label shown on the Choice            board — distinct from the general TopicId category) is required by the            domain factory but was missing from the stub entirely. */
 export class CreateChoiceQuestionRequest implements ICreateChoiceQuestionRequest {
     formatCode!: string | undefined;
     questionText?: string | undefined;
@@ -10458,6 +10631,7 @@ export class CreateChoiceQuestionRequest implements ICreateChoiceQuestionRequest
     source?: string | undefined;
     tagIds?: string[] | undefined;
     options!: OptionDto[] | undefined;
+    topicLabel!: string | undefined;
     topicChoiceLimit?: number | undefined;
     isExclusiveTopic?: boolean;
 
@@ -10490,6 +10664,7 @@ export class CreateChoiceQuestionRequest implements ICreateChoiceQuestionRequest
                 for (let item of _data["options"])
                     this.options!.push(OptionDto.fromJS(item));
             }
+            this.topicLabel = _data["topicLabel"];
             this.topicChoiceLimit = _data["topicChoiceLimit"];
             this.isExclusiveTopic = _data["isExclusiveTopic"];
         }
@@ -10522,12 +10697,14 @@ export class CreateChoiceQuestionRequest implements ICreateChoiceQuestionRequest
             for (let item of this.options)
                 data["options"].push(item ? item.toJSON() : undefined as any);
         }
+        data["topicLabel"] = this.topicLabel;
         data["topicChoiceLimit"] = this.topicChoiceLimit;
         data["isExclusiveTopic"] = this.isExclusiveTopic;
         return data;
     }
 }
 
+/** Contract fix: TopicLabel (the label shown on the Choice            board — distinct from the general TopicId category) is required by the            domain factory but was missing from the stub entirely. */
 export interface ICreateChoiceQuestionRequest {
     formatCode: string | undefined;
     questionText?: string | undefined;
@@ -10539,6 +10716,7 @@ export interface ICreateChoiceQuestionRequest {
     source?: string | undefined;
     tagIds?: string[] | undefined;
     options: OptionDto[] | undefined;
+    topicLabel: string | undefined;
     topicChoiceLimit?: number | undefined;
     isExclusiveTopic?: boolean;
 }
@@ -10788,6 +10966,7 @@ export interface ICreatePassingQuestionRequest {
 }
 
 export class CreateProgramRequest implements ICreateProgramRequest {
+    code?: string | undefined;
     name?: string | undefined;
     description?: string | undefined;
 
@@ -10802,6 +10981,7 @@ export class CreateProgramRequest implements ICreateProgramRequest {
 
     init(_data?: any) {
         if (_data) {
+            this.code = _data["code"];
             this.name = _data["name"];
             this.description = _data["description"];
         }
@@ -10816,6 +10996,7 @@ export class CreateProgramRequest implements ICreateProgramRequest {
 
     toJSON(data?: any) {
         data = typeof data === 'object' ? data : {};
+        data["code"] = this.code;
         data["name"] = this.name;
         data["description"] = this.description;
         return data;
@@ -10823,10 +11004,12 @@ export class CreateProgramRequest implements ICreateProgramRequest {
 }
 
 export interface ICreateProgramRequest {
+    code?: string | undefined;
     name?: string | undefined;
     description?: string | undefined;
 }
 
+/** Contract fix: the stub declared an Options list, but            RapidFireQuestion has no options table at all — it's either a stored            answer or host-read off paper (IsHostRead). AnswerText is required            unless IsHostRead. */
 export class CreateRapidFireQuestionRequest implements ICreateRapidFireQuestionRequest {
     formatCode!: string | undefined;
     questionText?: string | undefined;
@@ -10837,7 +11020,8 @@ export class CreateRapidFireQuestionRequest implements ICreateRapidFireQuestionR
     timeLimitSeconds?: number | undefined;
     source?: string | undefined;
     tagIds?: string[] | undefined;
-    options!: OptionDto[] | undefined;
+    isHostRead?: boolean;
+    answerText?: string | undefined;
 
     constructor(data?: ICreateRapidFireQuestionRequest) {
         if (data) {
@@ -10863,11 +11047,8 @@ export class CreateRapidFireQuestionRequest implements ICreateRapidFireQuestionR
                 for (let item of _data["tagIds"])
                     this.tagIds!.push(item);
             }
-            if (Array.isArray(_data["options"])) {
-                this.options = [] as any;
-                for (let item of _data["options"])
-                    this.options!.push(OptionDto.fromJS(item));
-            }
+            this.isHostRead = _data["isHostRead"];
+            this.answerText = _data["answerText"];
         }
     }
 
@@ -10893,15 +11074,13 @@ export class CreateRapidFireQuestionRequest implements ICreateRapidFireQuestionR
             for (let item of this.tagIds)
                 data["tagIds"].push(item);
         }
-        if (Array.isArray(this.options)) {
-            data["options"] = [];
-            for (let item of this.options)
-                data["options"].push(item ? item.toJSON() : undefined as any);
-        }
+        data["isHostRead"] = this.isHostRead;
+        data["answerText"] = this.answerText;
         return data;
     }
 }
 
+/** Contract fix: the stub declared an Options list, but            RapidFireQuestion has no options table at all — it's either a stored            answer or host-read off paper (IsHostRead). AnswerText is required            unless IsHostRead. */
 export interface ICreateRapidFireQuestionRequest {
     formatCode: string | undefined;
     questionText?: string | undefined;
@@ -10912,7 +11091,8 @@ export interface ICreateRapidFireQuestionRequest {
     timeLimitSeconds?: number | undefined;
     source?: string | undefined;
     tagIds?: string[] | undefined;
-    options: OptionDto[] | undefined;
+    isHostRead?: boolean;
+    answerText?: string | undefined;
 }
 
 export class CreateSegmentTemplateRequest implements ICreateSegmentTemplateRequest {
@@ -11062,6 +11242,7 @@ export interface ICreateSequenceQuestionRequest {
 export class CreateStageRequest implements ICreateStageRequest {
     name?: string | undefined;
     orderIndex?: number;
+    stageType?: string | undefined;
 
     constructor(data?: ICreateStageRequest) {
         if (data) {
@@ -11076,6 +11257,7 @@ export class CreateStageRequest implements ICreateStageRequest {
         if (_data) {
             this.name = _data["name"];
             this.orderIndex = _data["orderIndex"];
+            this.stageType = _data["stageType"];
         }
     }
 
@@ -11090,6 +11272,7 @@ export class CreateStageRequest implements ICreateStageRequest {
         data = typeof data === 'object' ? data : {};
         data["name"] = this.name;
         data["orderIndex"] = this.orderIndex;
+        data["stageType"] = this.stageType;
         return data;
     }
 }
@@ -11097,10 +11280,12 @@ export class CreateStageRequest implements ICreateStageRequest {
 export interface ICreateStageRequest {
     name?: string | undefined;
     orderIndex?: number;
+    stageType?: string | undefined;
 }
 
 export class CreateTagRequest implements ICreateTagRequest {
     name?: string | undefined;
+    shared?: boolean;
 
     constructor(data?: ICreateTagRequest) {
         if (data) {
@@ -11114,6 +11299,7 @@ export class CreateTagRequest implements ICreateTagRequest {
     init(_data?: any) {
         if (_data) {
             this.name = _data["name"];
+            this.shared = _data["shared"];
         }
     }
 
@@ -11127,18 +11313,20 @@ export class CreateTagRequest implements ICreateTagRequest {
     toJSON(data?: any) {
         data = typeof data === 'object' ? data : {};
         data["name"] = this.name;
+        data["shared"] = this.shared;
         return data;
     }
 }
 
 export interface ICreateTagRequest {
     name?: string | undefined;
+    shared?: boolean;
 }
 
 export class CreateTeamRequest implements ICreateTeamRequest {
-    registrationCode?: string | undefined;
+    code?: string | undefined;
     schoolName?: string | undefined;
-    teamName?: string | undefined;
+    displayName?: string | undefined;
     memberNames?: string[] | undefined;
 
     constructor(data?: ICreateTeamRequest) {
@@ -11152,9 +11340,9 @@ export class CreateTeamRequest implements ICreateTeamRequest {
 
     init(_data?: any) {
         if (_data) {
-            this.registrationCode = _data["registrationCode"];
+            this.code = _data["code"];
             this.schoolName = _data["schoolName"];
-            this.teamName = _data["teamName"];
+            this.displayName = _data["displayName"];
             if (Array.isArray(_data["memberNames"])) {
                 this.memberNames = [] as any;
                 for (let item of _data["memberNames"])
@@ -11172,9 +11360,9 @@ export class CreateTeamRequest implements ICreateTeamRequest {
 
     toJSON(data?: any) {
         data = typeof data === 'object' ? data : {};
-        data["registrationCode"] = this.registrationCode;
+        data["code"] = this.code;
         data["schoolName"] = this.schoolName;
-        data["teamName"] = this.teamName;
+        data["displayName"] = this.displayName;
         if (Array.isArray(this.memberNames)) {
             data["memberNames"] = [];
             for (let item of this.memberNames)
@@ -11185,9 +11373,9 @@ export class CreateTeamRequest implements ICreateTeamRequest {
 }
 
 export interface ICreateTeamRequest {
-    registrationCode?: string | undefined;
+    code?: string | undefined;
     schoolName?: string | undefined;
-    teamName?: string | undefined;
+    displayName?: string | undefined;
     memberNames?: string[] | undefined;
 }
 
@@ -11335,6 +11523,7 @@ export interface ICreateTieBreakMatchResponse {
     nextStep?: string | undefined;
 }
 
+/** Contract fix: the stub had no way to select which of            TieBreakerQuestion's three answer modes to use. AnswerMode picks the            domain factory; only the matching field(s) are required. */
 export class CreateTieBreakerQuestionRequest implements ICreateTieBreakerQuestionRequest {
     formatCode!: string | undefined;
     questionText?: string | undefined;
@@ -11345,7 +11534,9 @@ export class CreateTieBreakerQuestionRequest implements ICreateTieBreakerQuestio
     timeLimitSeconds?: number | undefined;
     source?: string | undefined;
     tagIds?: string[] | undefined;
-    options!: OptionDto[] | undefined;
+    answerMode!: TieBreakAnswerMode;
+    options?: OptionDto[] | undefined;
+    answerText?: string | undefined;
     numericAnswer?: number | undefined;
 
     constructor(data?: ICreateTieBreakerQuestionRequest) {
@@ -11372,11 +11563,13 @@ export class CreateTieBreakerQuestionRequest implements ICreateTieBreakerQuestio
                 for (let item of _data["tagIds"])
                     this.tagIds!.push(item);
             }
+            this.answerMode = _data["answerMode"];
             if (Array.isArray(_data["options"])) {
                 this.options = [] as any;
                 for (let item of _data["options"])
                     this.options!.push(OptionDto.fromJS(item));
             }
+            this.answerText = _data["answerText"];
             this.numericAnswer = _data["numericAnswer"];
         }
     }
@@ -11403,16 +11596,19 @@ export class CreateTieBreakerQuestionRequest implements ICreateTieBreakerQuestio
             for (let item of this.tagIds)
                 data["tagIds"].push(item);
         }
+        data["answerMode"] = this.answerMode;
         if (Array.isArray(this.options)) {
             data["options"] = [];
             for (let item of this.options)
                 data["options"].push(item ? item.toJSON() : undefined as any);
         }
+        data["answerText"] = this.answerText;
         data["numericAnswer"] = this.numericAnswer;
         return data;
     }
 }
 
+/** Contract fix: the stub had no way to select which of            TieBreakerQuestion's three answer modes to use. AnswerMode picks the            domain factory; only the matching field(s) are required. */
 export interface ICreateTieBreakerQuestionRequest {
     formatCode: string | undefined;
     questionText?: string | undefined;
@@ -11423,13 +11619,17 @@ export interface ICreateTieBreakerQuestionRequest {
     timeLimitSeconds?: number | undefined;
     source?: string | undefined;
     tagIds?: string[] | undefined;
-    options: OptionDto[] | undefined;
+    answerMode: TieBreakAnswerMode;
+    options?: OptionDto[] | undefined;
+    answerText?: string | undefined;
     numericAnswer?: number | undefined;
 }
 
+/** Shared = true requests a cross-program topic (ProgramId            null) — SuperAdmin only. Without this field there would be no way to            invoke P6-14's "or shared" half through the API at all. */
 export class CreateTopicRequest implements ICreateTopicRequest {
     name?: string | undefined;
     parentTopicId?: string | undefined;
+    shared?: boolean;
 
     constructor(data?: ICreateTopicRequest) {
         if (data) {
@@ -11444,6 +11644,7 @@ export class CreateTopicRequest implements ICreateTopicRequest {
         if (_data) {
             this.name = _data["name"];
             this.parentTopicId = _data["parentTopicId"];
+            this.shared = _data["shared"];
         }
     }
 
@@ -11458,13 +11659,16 @@ export class CreateTopicRequest implements ICreateTopicRequest {
         data = typeof data === 'object' ? data : {};
         data["name"] = this.name;
         data["parentTopicId"] = this.parentTopicId;
+        data["shared"] = this.shared;
         return data;
     }
 }
 
+/** Shared = true requests a cross-program topic (ProgramId            null) — SuperAdmin only. Without this field there would be no way to            invoke P6-14's "or shared" half through the API at all. */
 export interface ICreateTopicRequest {
     name?: string | undefined;
     parentTopicId?: string | undefined;
+    shared?: boolean;
 }
 
 export class CreateVisualRapidFireQuestionRequest implements ICreateVisualRapidFireQuestionRequest {
@@ -12489,6 +12693,48 @@ export interface IInviteUserRequest {
     email?: string | undefined;
     fullName?: string | undefined;
     roles?: string[] | undefined;
+}
+
+/** No email infrastructure exists in this codebase — the generated            temporary password is returned directly to the inviting admin, the same            trust boundary as the seeded default admin account. */
+export class InviteUserResponse implements IInviteUserResponse {
+    user?: AdminUserSummaryDto;
+    temporaryPassword?: string | undefined;
+
+    constructor(data?: IInviteUserResponse) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (this as any)[property] = (data as any)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.user = _data["user"] ? AdminUserSummaryDto.fromJS(_data["user"]) : undefined as any;
+            this.temporaryPassword = _data["temporaryPassword"];
+        }
+    }
+
+    static fromJS(data: any): InviteUserResponse {
+        data = typeof data === 'object' ? data : {};
+        let result = new InviteUserResponse();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["user"] = this.user ? this.user.toJSON() : undefined as any;
+        data["temporaryPassword"] = this.temporaryPassword;
+        return data;
+    }
+}
+
+/** No email infrastructure exists in this codebase — the generated            temporary password is returned directly to the inviting admin, the same            trust boundary as the seeded default admin account. */
+export interface IInviteUserResponse {
+    user?: AdminUserSummaryDto;
+    temporaryPassword?: string | undefined;
 }
 
 export class LiveBuzzerStatusDto implements ILiveBuzzerStatusDto {
@@ -13666,7 +13912,7 @@ export class McqQuestionResponse extends QuestionResponse implements IMcqQuestio
 
     constructor(data?: IMcqQuestionResponse) {
         super(data);
-        this._discriminator = "McqQuestionResponse";
+        this._discriminator = "Mcq";
     }
 
     override init(_data?: any) {
@@ -13835,6 +14081,70 @@ export interface IMeResponse {
     fullName?: string | undefined;
     roles?: string[] | undefined;
     programs?: MeProgramMembership[] | undefined;
+}
+
+export class MediaAssetResponse implements IMediaAssetResponse {
+    id?: string;
+    fileName?: string | undefined;
+    mediaType?: string | undefined;
+    mimeType?: string | undefined;
+    fileSizeBytes?: number;
+    isValidated?: boolean;
+    programId?: string | undefined;
+    wasDeduplicated?: boolean;
+
+    constructor(data?: IMediaAssetResponse) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (this as any)[property] = (data as any)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.id = _data["id"];
+            this.fileName = _data["fileName"];
+            this.mediaType = _data["mediaType"];
+            this.mimeType = _data["mimeType"];
+            this.fileSizeBytes = _data["fileSizeBytes"];
+            this.isValidated = _data["isValidated"];
+            this.programId = _data["programId"];
+            this.wasDeduplicated = _data["wasDeduplicated"];
+        }
+    }
+
+    static fromJS(data: any): MediaAssetResponse {
+        data = typeof data === 'object' ? data : {};
+        let result = new MediaAssetResponse();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["id"] = this.id;
+        data["fileName"] = this.fileName;
+        data["mediaType"] = this.mediaType;
+        data["mimeType"] = this.mimeType;
+        data["fileSizeBytes"] = this.fileSizeBytes;
+        data["isValidated"] = this.isValidated;
+        data["programId"] = this.programId;
+        data["wasDeduplicated"] = this.wasDeduplicated;
+        return data;
+    }
+}
+
+export interface IMediaAssetResponse {
+    id?: string;
+    fileName?: string | undefined;
+    mediaType?: string | undefined;
+    mimeType?: string | undefined;
+    fileSizeBytes?: number;
+    isValidated?: boolean;
+    programId?: string | undefined;
+    wasDeduplicated?: boolean;
 }
 
 export enum MediaKind {
@@ -14124,7 +14434,7 @@ export class PassingQuestionResponse extends QuestionResponse implements IPassin
 
     constructor(data?: IPassingQuestionResponse) {
         super(data);
-        this._discriminator = "PassingQuestionResponse";
+        this._discriminator = "Passing";
     }
 
     override init(_data?: any) {
@@ -14237,9 +14547,16 @@ export interface IProgramDashboardResponse {
 
 export class ProgramDetailResponse implements IProgramDetailResponse {
     id?: string;
+    code?: string | undefined;
     name?: string | undefined;
     state?: string | undefined;
     description?: string | undefined;
+    organisationName?: string | undefined;
+    logoUrl?: string | undefined;
+    themePrimaryColor?: string | undefined;
+    themeSecondaryColor?: string | undefined;
+    fontFamily?: string | undefined;
+    maxTeams?: number | undefined;
     createdAtUtc?: Date;
     updatedAtUtc?: Date | undefined;
 
@@ -14255,9 +14572,16 @@ export class ProgramDetailResponse implements IProgramDetailResponse {
     init(_data?: any) {
         if (_data) {
             this.id = _data["id"];
+            this.code = _data["code"];
             this.name = _data["name"];
             this.state = _data["state"];
             this.description = _data["description"];
+            this.organisationName = _data["organisationName"];
+            this.logoUrl = _data["logoUrl"];
+            this.themePrimaryColor = _data["themePrimaryColor"];
+            this.themeSecondaryColor = _data["themeSecondaryColor"];
+            this.fontFamily = _data["fontFamily"];
+            this.maxTeams = _data["maxTeams"];
             this.createdAtUtc = _data["createdAtUtc"] ? new Date(_data["createdAtUtc"].toString()) : undefined as any;
             this.updatedAtUtc = _data["updatedAtUtc"] ? new Date(_data["updatedAtUtc"].toString()) : undefined as any;
         }
@@ -14273,9 +14597,16 @@ export class ProgramDetailResponse implements IProgramDetailResponse {
     toJSON(data?: any) {
         data = typeof data === 'object' ? data : {};
         data["id"] = this.id;
+        data["code"] = this.code;
         data["name"] = this.name;
         data["state"] = this.state;
         data["description"] = this.description;
+        data["organisationName"] = this.organisationName;
+        data["logoUrl"] = this.logoUrl;
+        data["themePrimaryColor"] = this.themePrimaryColor;
+        data["themeSecondaryColor"] = this.themeSecondaryColor;
+        data["fontFamily"] = this.fontFamily;
+        data["maxTeams"] = this.maxTeams;
         data["createdAtUtc"] = this.createdAtUtc ? this.createdAtUtc.toISOString() : undefined as any;
         data["updatedAtUtc"] = this.updatedAtUtc ? this.updatedAtUtc.toISOString() : undefined as any;
         return data;
@@ -14284,9 +14615,16 @@ export class ProgramDetailResponse implements IProgramDetailResponse {
 
 export interface IProgramDetailResponse {
     id?: string;
+    code?: string | undefined;
     name?: string | undefined;
     state?: string | undefined;
     description?: string | undefined;
+    organisationName?: string | undefined;
+    logoUrl?: string | undefined;
+    themePrimaryColor?: string | undefined;
+    themeSecondaryColor?: string | undefined;
+    fontFamily?: string | undefined;
+    maxTeams?: number | undefined;
     createdAtUtc?: Date;
     updatedAtUtc?: Date | undefined;
 }
@@ -14473,6 +14811,7 @@ export interface IProgramSettingsResponse {
 
 export class ProgramSummaryResponse implements IProgramSummaryResponse {
     id?: string;
+    code?: string | undefined;
     name?: string | undefined;
     state?: string | undefined;
     createdAtUtc?: Date;
@@ -14489,6 +14828,7 @@ export class ProgramSummaryResponse implements IProgramSummaryResponse {
     init(_data?: any) {
         if (_data) {
             this.id = _data["id"];
+            this.code = _data["code"];
             this.name = _data["name"];
             this.state = _data["state"];
             this.createdAtUtc = _data["createdAtUtc"] ? new Date(_data["createdAtUtc"].toString()) : undefined as any;
@@ -14505,6 +14845,7 @@ export class ProgramSummaryResponse implements IProgramSummaryResponse {
     toJSON(data?: any) {
         data = typeof data === 'object' ? data : {};
         data["id"] = this.id;
+        data["code"] = this.code;
         data["name"] = this.name;
         data["state"] = this.state;
         data["createdAtUtc"] = this.createdAtUtc ? this.createdAtUtc.toISOString() : undefined as any;
@@ -14514,6 +14855,7 @@ export class ProgramSummaryResponse implements IProgramSummaryResponse {
 
 export interface IProgramSummaryResponse {
     id?: string;
+    code?: string | undefined;
     name?: string | undefined;
     state?: string | undefined;
     createdAtUtc?: Date;
@@ -15431,28 +15773,21 @@ export interface IRankedTeamScoreDto {
     rank?: number;
 }
 
+/** Contract fix: RapidFireQuestion has no options table at all            (it's either a stored answer or read off paper) — the stub incorrectly            inherited the option-based shape. */
 export class RapidFireQuestionResponse extends QuestionResponse implements IRapidFireQuestionResponse {
-    options!: OptionResponse[] | undefined;
-    correctOptionIds?: string[] | undefined;
+    answerText?: string | undefined;
+    isHostRead?: boolean;
 
     constructor(data?: IRapidFireQuestionResponse) {
         super(data);
-        this._discriminator = "RapidFireQuestionResponse";
+        this._discriminator = "RapidFire";
     }
 
     override init(_data?: any) {
         super.init(_data);
         if (_data) {
-            if (Array.isArray(_data["options"])) {
-                this.options = [] as any;
-                for (let item of _data["options"])
-                    this.options!.push(OptionResponse.fromJS(item));
-            }
-            if (Array.isArray(_data["correctOptionIds"])) {
-                this.correctOptionIds = [] as any;
-                for (let item of _data["correctOptionIds"])
-                    this.correctOptionIds!.push(item);
-            }
+            this.answerText = _data["answerText"];
+            this.isHostRead = _data["isHostRead"];
         }
     }
 
@@ -15465,24 +15800,17 @@ export class RapidFireQuestionResponse extends QuestionResponse implements IRapi
 
     override toJSON(data?: any) {
         data = typeof data === 'object' ? data : {};
-        if (Array.isArray(this.options)) {
-            data["options"] = [];
-            for (let item of this.options)
-                data["options"].push(item ? item.toJSON() : undefined as any);
-        }
-        if (Array.isArray(this.correctOptionIds)) {
-            data["correctOptionIds"] = [];
-            for (let item of this.correctOptionIds)
-                data["correctOptionIds"].push(item);
-        }
+        data["answerText"] = this.answerText;
+        data["isHostRead"] = this.isHostRead;
         super.toJSON(data);
         return data;
     }
 }
 
+/** Contract fix: RapidFireQuestion has no options table at all            (it's either a stored answer or read off paper) — the stub incorrectly            inherited the option-based shape. */
 export interface IRapidFireQuestionResponse extends IQuestionResponse {
-    options: OptionResponse[] | undefined;
-    correctOptionIds?: string[] | undefined;
+    answerText?: string | undefined;
+    isHostRead?: boolean;
 }
 
 export class RecalculateScoresResponse implements IRecalculateScoresResponse {
@@ -15983,6 +16311,42 @@ export class ResetBuzzSessionRequest implements IResetBuzzSessionRequest {
 
 export interface IResetBuzzSessionRequest {
     reason?: string | undefined;
+}
+
+export class ResetPasswordResponse implements IResetPasswordResponse {
+    temporaryPassword?: string | undefined;
+
+    constructor(data?: IResetPasswordResponse) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (this as any)[property] = (data as any)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.temporaryPassword = _data["temporaryPassword"];
+        }
+    }
+
+    static fromJS(data: any): ResetPasswordResponse {
+        data = typeof data === 'object' ? data : {};
+        let result = new ResetPasswordResponse();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["temporaryPassword"] = this.temporaryPassword;
+        return data;
+    }
+}
+
+export interface IResetPasswordResponse {
+    temporaryPassword?: string | undefined;
 }
 
 export class ResolveTieManuallyRequest implements IResolveTieManuallyRequest {
@@ -16596,7 +16960,7 @@ export class SequenceQuestionResponse extends QuestionResponse implements ISeque
 
     constructor(data?: ISequenceQuestionResponse) {
         super(data);
-        this._discriminator = "SequenceQuestionResponse";
+        this._discriminator = "Sequence";
     }
 
     override init(_data?: any) {
@@ -16750,6 +17114,48 @@ export class SetSegmentOrderModeRequest implements ISetSegmentOrderModeRequest {
 
 export interface ISetSegmentOrderModeRequest {
     segmentOrderMode?: string | undefined;
+}
+
+/** No file-upload pipeline exists yet (IMediaService is P6-15) —            images are client-supplied URLs, same scope decision as Phase 6a's            Program.LogoUrl. */
+export class SetTeamImagesRequest implements ISetTeamImagesRequest {
+    scoreImageUrl?: string | undefined;
+    selectionImageUrl?: string | undefined;
+
+    constructor(data?: ISetTeamImagesRequest) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (this as any)[property] = (data as any)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.scoreImageUrl = _data["scoreImageUrl"];
+            this.selectionImageUrl = _data["selectionImageUrl"];
+        }
+    }
+
+    static fromJS(data: any): SetTeamImagesRequest {
+        data = typeof data === 'object' ? data : {};
+        let result = new SetTeamImagesRequest();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["scoreImageUrl"] = this.scoreImageUrl;
+        data["selectionImageUrl"] = this.selectionImageUrl;
+        return data;
+    }
+}
+
+/** No file-upload pipeline exists yet (IMediaService is P6-15) —            images are client-supplied URLs, same scope decision as Phase 6a's            Program.LogoUrl. */
+export interface ISetTeamImagesRequest {
+    scoreImageUrl?: string | undefined;
+    selectionImageUrl?: string | undefined;
 }
 
 export class SetWildcardsRequest implements ISetWildcardsRequest {
@@ -17454,10 +17860,18 @@ export interface ITagResponse {
 
 export class TeamDetailResponse implements ITeamDetailResponse {
     id?: string;
-    registrationCode?: string | undefined;
+    code?: string | undefined;
     schoolName?: string | undefined;
-    teamName?: string | undefined;
+    displayName?: string | undefined;
+    shortName?: string | undefined;
+    scoreImageUrl?: string | undefined;
+    selectionImageUrl?: string | undefined;
+    contactName?: string | undefined;
+    contactPhone?: string | undefined;
+    contactEmail?: string | undefined;
     status?: string | undefined;
+    statusReason?: string | undefined;
+    statusChangedAtUtc?: Date | undefined;
     members?: TeamMemberDto[] | undefined;
 
     constructor(data?: ITeamDetailResponse) {
@@ -17472,10 +17886,18 @@ export class TeamDetailResponse implements ITeamDetailResponse {
     init(_data?: any) {
         if (_data) {
             this.id = _data["id"];
-            this.registrationCode = _data["registrationCode"];
+            this.code = _data["code"];
             this.schoolName = _data["schoolName"];
-            this.teamName = _data["teamName"];
+            this.displayName = _data["displayName"];
+            this.shortName = _data["shortName"];
+            this.scoreImageUrl = _data["scoreImageUrl"];
+            this.selectionImageUrl = _data["selectionImageUrl"];
+            this.contactName = _data["contactName"];
+            this.contactPhone = _data["contactPhone"];
+            this.contactEmail = _data["contactEmail"];
             this.status = _data["status"];
+            this.statusReason = _data["statusReason"];
+            this.statusChangedAtUtc = _data["statusChangedAtUtc"] ? new Date(_data["statusChangedAtUtc"].toString()) : undefined as any;
             if (Array.isArray(_data["members"])) {
                 this.members = [] as any;
                 for (let item of _data["members"])
@@ -17494,10 +17916,18 @@ export class TeamDetailResponse implements ITeamDetailResponse {
     toJSON(data?: any) {
         data = typeof data === 'object' ? data : {};
         data["id"] = this.id;
-        data["registrationCode"] = this.registrationCode;
+        data["code"] = this.code;
         data["schoolName"] = this.schoolName;
-        data["teamName"] = this.teamName;
+        data["displayName"] = this.displayName;
+        data["shortName"] = this.shortName;
+        data["scoreImageUrl"] = this.scoreImageUrl;
+        data["selectionImageUrl"] = this.selectionImageUrl;
+        data["contactName"] = this.contactName;
+        data["contactPhone"] = this.contactPhone;
+        data["contactEmail"] = this.contactEmail;
         data["status"] = this.status;
+        data["statusReason"] = this.statusReason;
+        data["statusChangedAtUtc"] = this.statusChangedAtUtc ? this.statusChangedAtUtc.toISOString() : undefined as any;
         if (Array.isArray(this.members)) {
             data["members"] = [];
             for (let item of this.members)
@@ -17509,10 +17939,18 @@ export class TeamDetailResponse implements ITeamDetailResponse {
 
 export interface ITeamDetailResponse {
     id?: string;
-    registrationCode?: string | undefined;
+    code?: string | undefined;
     schoolName?: string | undefined;
-    teamName?: string | undefined;
+    displayName?: string | undefined;
+    shortName?: string | undefined;
+    scoreImageUrl?: string | undefined;
+    selectionImageUrl?: string | undefined;
+    contactName?: string | undefined;
+    contactPhone?: string | undefined;
+    contactEmail?: string | undefined;
     status?: string | undefined;
+    statusReason?: string | undefined;
+    statusChangedAtUtc?: Date | undefined;
     members?: TeamMemberDto[] | undefined;
 }
 
@@ -17644,11 +18082,64 @@ export interface ITeamImportCommitResponse {
     teamsCreated?: number;
 }
 
+export class TeamImportRowResult implements ITeamImportRowResult {
+    rowNumber?: number;
+    isValid?: boolean;
+    errors?: string[] | undefined;
+
+    constructor(data?: ITeamImportRowResult) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (this as any)[property] = (data as any)[property];
+            }
+        }
+    }
+
+    init(_data?: any) {
+        if (_data) {
+            this.rowNumber = _data["rowNumber"];
+            this.isValid = _data["isValid"];
+            if (Array.isArray(_data["errors"])) {
+                this.errors = [] as any;
+                for (let item of _data["errors"])
+                    this.errors!.push(item);
+            }
+        }
+    }
+
+    static fromJS(data: any): TeamImportRowResult {
+        data = typeof data === 'object' ? data : {};
+        let result = new TeamImportRowResult();
+        result.init(data);
+        return result;
+    }
+
+    toJSON(data?: any) {
+        data = typeof data === 'object' ? data : {};
+        data["rowNumber"] = this.rowNumber;
+        data["isValid"] = this.isValid;
+        if (Array.isArray(this.errors)) {
+            data["errors"] = [];
+            for (let item of this.errors)
+                data["errors"].push(item);
+        }
+        return data;
+    }
+}
+
+export interface ITeamImportRowResult {
+    rowNumber?: number;
+    isValid?: boolean;
+    errors?: string[] | undefined;
+}
+
 export class TeamImportValidateResponse implements ITeamImportValidateResponse {
     batchId?: string;
     rowCount?: number;
     validRowCount?: number;
-    errors?: string[] | undefined;
+    invalidRowCount?: number;
+    rows?: TeamImportRowResult[] | undefined;
 
     constructor(data?: ITeamImportValidateResponse) {
         if (data) {
@@ -17664,10 +18155,11 @@ export class TeamImportValidateResponse implements ITeamImportValidateResponse {
             this.batchId = _data["batchId"];
             this.rowCount = _data["rowCount"];
             this.validRowCount = _data["validRowCount"];
-            if (Array.isArray(_data["errors"])) {
-                this.errors = [] as any;
-                for (let item of _data["errors"])
-                    this.errors!.push(item);
+            this.invalidRowCount = _data["invalidRowCount"];
+            if (Array.isArray(_data["rows"])) {
+                this.rows = [] as any;
+                for (let item of _data["rows"])
+                    this.rows!.push(TeamImportRowResult.fromJS(item));
             }
         }
     }
@@ -17684,10 +18176,11 @@ export class TeamImportValidateResponse implements ITeamImportValidateResponse {
         data["batchId"] = this.batchId;
         data["rowCount"] = this.rowCount;
         data["validRowCount"] = this.validRowCount;
-        if (Array.isArray(this.errors)) {
-            data["errors"] = [];
-            for (let item of this.errors)
-                data["errors"].push(item);
+        data["invalidRowCount"] = this.invalidRowCount;
+        if (Array.isArray(this.rows)) {
+            data["rows"] = [];
+            for (let item of this.rows)
+                data["rows"].push(item ? item.toJSON() : undefined as any);
         }
         return data;
     }
@@ -17697,13 +18190,17 @@ export interface ITeamImportValidateResponse {
     batchId?: string;
     rowCount?: number;
     validRowCount?: number;
-    errors?: string[] | undefined;
+    invalidRowCount?: number;
+    rows?: TeamImportRowResult[] | undefined;
 }
 
 export class TeamMemberDto implements ITeamMemberDto {
     id?: string;
     fullName?: string | undefined;
-    role?: string | undefined;
+    rollNumber?: string | undefined;
+    className?: string | undefined;
+    isCaptain?: boolean;
+    photoUrl?: string | undefined;
 
     constructor(data?: ITeamMemberDto) {
         if (data) {
@@ -17718,7 +18215,10 @@ export class TeamMemberDto implements ITeamMemberDto {
         if (_data) {
             this.id = _data["id"];
             this.fullName = _data["fullName"];
-            this.role = _data["role"];
+            this.rollNumber = _data["rollNumber"];
+            this.className = _data["className"];
+            this.isCaptain = _data["isCaptain"];
+            this.photoUrl = _data["photoUrl"];
         }
     }
 
@@ -17733,7 +18233,10 @@ export class TeamMemberDto implements ITeamMemberDto {
         data = typeof data === 'object' ? data : {};
         data["id"] = this.id;
         data["fullName"] = this.fullName;
-        data["role"] = this.role;
+        data["rollNumber"] = this.rollNumber;
+        data["className"] = this.className;
+        data["isCaptain"] = this.isCaptain;
+        data["photoUrl"] = this.photoUrl;
         return data;
     }
 }
@@ -17741,7 +18244,10 @@ export class TeamMemberDto implements ITeamMemberDto {
 export interface ITeamMemberDto {
     id?: string;
     fullName?: string | undefined;
-    role?: string | undefined;
+    rollNumber?: string | undefined;
+    className?: string | undefined;
+    isCaptain?: boolean;
+    photoUrl?: string | undefined;
 }
 
 export class TeamPerformanceReportResponse implements ITeamPerformanceReportResponse {
@@ -17946,9 +18452,9 @@ export interface ITeamStandingResponse {
 
 export class TeamSummaryResponse implements ITeamSummaryResponse {
     id?: string;
-    registrationCode?: string | undefined;
+    code?: string | undefined;
     schoolName?: string | undefined;
-    teamName?: string | undefined;
+    displayName?: string | undefined;
     status?: string | undefined;
 
     constructor(data?: ITeamSummaryResponse) {
@@ -17963,9 +18469,9 @@ export class TeamSummaryResponse implements ITeamSummaryResponse {
     init(_data?: any) {
         if (_data) {
             this.id = _data["id"];
-            this.registrationCode = _data["registrationCode"];
+            this.code = _data["code"];
             this.schoolName = _data["schoolName"];
-            this.teamName = _data["teamName"];
+            this.displayName = _data["displayName"];
             this.status = _data["status"];
         }
     }
@@ -17980,9 +18486,9 @@ export class TeamSummaryResponse implements ITeamSummaryResponse {
     toJSON(data?: any) {
         data = typeof data === 'object' ? data : {};
         data["id"] = this.id;
-        data["registrationCode"] = this.registrationCode;
+        data["code"] = this.code;
         data["schoolName"] = this.schoolName;
-        data["teamName"] = this.teamName;
+        data["displayName"] = this.displayName;
         data["status"] = this.status;
         return data;
     }
@@ -17990,10 +18496,16 @@ export class TeamSummaryResponse implements ITeamSummaryResponse {
 
 export interface ITeamSummaryResponse {
     id?: string;
-    registrationCode?: string | undefined;
+    code?: string | undefined;
     schoolName?: string | undefined;
-    teamName?: string | undefined;
+    displayName?: string | undefined;
     status?: string | undefined;
+}
+
+export enum TieBreakAnswerMode {
+    _1 = 1,
+    _2 = 2,
+    _3 = 3,
 }
 
 export class TieBreakParticipantDto implements ITieBreakParticipantDto {
@@ -18240,29 +18752,28 @@ export interface ITieBreakSegmentDto {
     isSuddenDeath?: boolean;
 }
 
+/** Contract fix: the stub had no way to represent which of the            three answer modes a tie-breaker question uses. */
 export class TieBreakerQuestionResponse extends QuestionResponse implements ITieBreakerQuestionResponse {
-    options!: OptionResponse[] | undefined;
-    correctOptionIds?: string[] | undefined;
+    answerMode!: string | undefined;
+    options?: OptionResponse[] | undefined;
+    answerText?: string | undefined;
     numericAnswer?: number | undefined;
 
     constructor(data?: ITieBreakerQuestionResponse) {
         super(data);
-        this._discriminator = "TieBreakerQuestionResponse";
+        this._discriminator = "TieBreaker";
     }
 
     override init(_data?: any) {
         super.init(_data);
         if (_data) {
+            this.answerMode = _data["answerMode"];
             if (Array.isArray(_data["options"])) {
                 this.options = [] as any;
                 for (let item of _data["options"])
                     this.options!.push(OptionResponse.fromJS(item));
             }
-            if (Array.isArray(_data["correctOptionIds"])) {
-                this.correctOptionIds = [] as any;
-                for (let item of _data["correctOptionIds"])
-                    this.correctOptionIds!.push(item);
-            }
+            this.answerText = _data["answerText"];
             this.numericAnswer = _data["numericAnswer"];
         }
     }
@@ -18276,25 +18787,24 @@ export class TieBreakerQuestionResponse extends QuestionResponse implements ITie
 
     override toJSON(data?: any) {
         data = typeof data === 'object' ? data : {};
+        data["answerMode"] = this.answerMode;
         if (Array.isArray(this.options)) {
             data["options"] = [];
             for (let item of this.options)
                 data["options"].push(item ? item.toJSON() : undefined as any);
         }
-        if (Array.isArray(this.correctOptionIds)) {
-            data["correctOptionIds"] = [];
-            for (let item of this.correctOptionIds)
-                data["correctOptionIds"].push(item);
-        }
+        data["answerText"] = this.answerText;
         data["numericAnswer"] = this.numericAnswer;
         super.toJSON(data);
         return data;
     }
 }
 
+/** Contract fix: the stub had no way to represent which of the            three answer modes a tie-breaker question uses. */
 export interface ITieBreakerQuestionResponse extends IQuestionResponse {
-    options: OptionResponse[] | undefined;
-    correctOptionIds?: string[] | undefined;
+    answerMode: string | undefined;
+    options?: OptionResponse[] | undefined;
+    answerText?: string | undefined;
     numericAnswer?: number | undefined;
 }
 
@@ -18841,6 +19351,12 @@ export interface IUpdateProgramFormatsRequest {
 export class UpdateProgramRequest implements IUpdateProgramRequest {
     name?: string | undefined;
     description?: string | undefined;
+    organisationName?: string | undefined;
+    logoUrl?: string | undefined;
+    themePrimaryColor?: string | undefined;
+    themeSecondaryColor?: string | undefined;
+    fontFamily?: string | undefined;
+    maxTeams?: number | undefined;
 
     constructor(data?: IUpdateProgramRequest) {
         if (data) {
@@ -18855,6 +19371,12 @@ export class UpdateProgramRequest implements IUpdateProgramRequest {
         if (_data) {
             this.name = _data["name"];
             this.description = _data["description"];
+            this.organisationName = _data["organisationName"];
+            this.logoUrl = _data["logoUrl"];
+            this.themePrimaryColor = _data["themePrimaryColor"];
+            this.themeSecondaryColor = _data["themeSecondaryColor"];
+            this.fontFamily = _data["fontFamily"];
+            this.maxTeams = _data["maxTeams"];
         }
     }
 
@@ -18869,6 +19391,12 @@ export class UpdateProgramRequest implements IUpdateProgramRequest {
         data = typeof data === 'object' ? data : {};
         data["name"] = this.name;
         data["description"] = this.description;
+        data["organisationName"] = this.organisationName;
+        data["logoUrl"] = this.logoUrl;
+        data["themePrimaryColor"] = this.themePrimaryColor;
+        data["themeSecondaryColor"] = this.themeSecondaryColor;
+        data["fontFamily"] = this.fontFamily;
+        data["maxTeams"] = this.maxTeams;
         return data;
     }
 }
@@ -18876,6 +19404,12 @@ export class UpdateProgramRequest implements IUpdateProgramRequest {
 export interface IUpdateProgramRequest {
     name?: string | undefined;
     description?: string | undefined;
+    organisationName?: string | undefined;
+    logoUrl?: string | undefined;
+    themePrimaryColor?: string | undefined;
+    themeSecondaryColor?: string | undefined;
+    fontFamily?: string | undefined;
+    maxTeams?: number | undefined;
 }
 
 export class UpdateProgramSettingsRequest implements IUpdateProgramSettingsRequest {
@@ -19036,7 +19570,11 @@ export interface IUpdateTagRequest {
 
 export class UpdateTeamRequest implements IUpdateTeamRequest {
     schoolName?: string | undefined;
-    teamName?: string | undefined;
+    displayName?: string | undefined;
+    shortName?: string | undefined;
+    contactName?: string | undefined;
+    contactPhone?: string | undefined;
+    contactEmail?: string | undefined;
 
     constructor(data?: IUpdateTeamRequest) {
         if (data) {
@@ -19050,7 +19588,11 @@ export class UpdateTeamRequest implements IUpdateTeamRequest {
     init(_data?: any) {
         if (_data) {
             this.schoolName = _data["schoolName"];
-            this.teamName = _data["teamName"];
+            this.displayName = _data["displayName"];
+            this.shortName = _data["shortName"];
+            this.contactName = _data["contactName"];
+            this.contactPhone = _data["contactPhone"];
+            this.contactEmail = _data["contactEmail"];
         }
     }
 
@@ -19064,14 +19606,22 @@ export class UpdateTeamRequest implements IUpdateTeamRequest {
     toJSON(data?: any) {
         data = typeof data === 'object' ? data : {};
         data["schoolName"] = this.schoolName;
-        data["teamName"] = this.teamName;
+        data["displayName"] = this.displayName;
+        data["shortName"] = this.shortName;
+        data["contactName"] = this.contactName;
+        data["contactPhone"] = this.contactPhone;
+        data["contactEmail"] = this.contactEmail;
         return data;
     }
 }
 
 export interface IUpdateTeamRequest {
     schoolName?: string | undefined;
-    teamName?: string | undefined;
+    displayName?: string | undefined;
+    shortName?: string | undefined;
+    contactName?: string | undefined;
+    contactPhone?: string | undefined;
+    contactEmail?: string | undefined;
 }
 
 export class UpdateTopicRequest implements IUpdateTopicRequest {
@@ -19295,7 +19845,7 @@ export class VisualRapidFireQuestionResponse extends QuestionResponse implements
 
     constructor(data?: IVisualRapidFireQuestionResponse) {
         super(data);
-        this._discriminator = "VisualRapidFireQuestionResponse";
+        this._discriminator = "VisualRapidFire";
     }
 
     override init(_data?: any) {
@@ -19386,6 +19936,11 @@ export interface IVrfItemDto {
     answerText?: string | undefined;
     acceptableAnswers?: string[] | undefined;
     displayOrder?: number;
+}
+
+export interface FileParameter {
+    data: any;
+    fileName: string;
 }
 
 export class ApiException extends Error {
