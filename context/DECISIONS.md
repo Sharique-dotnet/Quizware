@@ -12,7 +12,7 @@ D-020 · D-021 · D-022 · D-023 · D-024
 
 ## Where the system-architecture decisions live
 
-The twelve architecture decisions for QuizApp — modular monolith, Clean
+The twelve architecture decisions for Quizware — modular monolith, Clean
 Architecture, shared schema with `ProgramId`, Table-Per-Type questions,
 configuration-driven tournament, event-sourced scoring, buzzer behind a port,
 agent-pushes-to-API, EF Core 10 code-first, SignalR, `OrderIndex` segment
@@ -360,7 +360,7 @@ remaining Phase 0 assumptions has still not happened — see Q-001 in `TASKS.md`
 - **Decision:** `docs/Implementation-Plan.md` Phase 0 ("Requirements confirmation")
   is treated as **skipped-by-substitution**: the six tasks that assumed a
   workshop with organisers/quiz-masters (`P0-01`–`P0-06`) do not apply, because
-  the user is the sole owner and stakeholder of QuizApp — there is no separate
+  the user is the sole owner and stakeholder of Quizware — there is no separate
   organiser or quiz-master to convene. The 16 assumptions listed in
   `docs/new-system/06-Development-Roadmap.md` §6.5 are accepted as-is and are
   now to be treated as **`[DECIDED]`**, not `[ASSUMED]`. This answers `Q-001` in
@@ -448,7 +448,7 @@ remaining Phase 0 assumptions has still not happened — see Q-001 in `TASKS.md`
 ### D-018 · NSwag, not openapi-generator-cli, generates the TypeScript client
 - **Status:** ACTIVE
 - **Added:** 2026-09-07 (S-2026-09-07-01)
-- **Decision:** `QuizApp/clients/typescript/quizapp-api-client.ts` is generated
+- **Decision:** `Quizware/clients/typescript/quizapp-api-client.ts` is generated
   with `NSwag.ConsoleCore` (`nswag openapi2tsclient`), a pure-.NET global dotnet
   tool, not the Java-based `openapi-generator-cli`.
 - **Why:** `openapi-generator-cli` could not run in this environment — no JVM
@@ -469,13 +469,13 @@ remaining Phase 0 assumptions has still not happened — see Q-001 in `TASKS.md`
 - **Added:** 2026-09-08 (S-2026-09-08-01)
 - **Decision:** When a phase's core entities are Domain types exposed on
   `IAppDbContext` (`Program`, `Team`, `Topic`, `Tag`, `Question`), business
-  logic goes through MediatR command/query handlers in `QuizApp.Application`.
+  logic goes through MediatR command/query handlers in `Quizware.Application`.
   When the entities are Infrastructure-only types — ASP.NET Core Identity's
   `AppUser`/`AppRole`/`ProgramUser` (Phase 6b), or `ImportBatch`/
   `ImportBatchRow` (Phase 6c/6f's Excel import) — business logic is written
   directly in the controller action, injecting the concrete `AppDbContext`.
-- **Why:** `Architecture.Tests` enforces that `QuizApp.Application` may only
-  reference `QuizApp.Domain`, never `QuizApp.Infrastructure`. Identity types and
+- **Why:** `Architecture.Tests` enforces that `Quizware.Application` may only
+  reference `Quizware.Domain`, never `Quizware.Infrastructure`. Identity types and
   import-batch types are deliberately Infrastructure-only (not modeled in
   Domain), so a MediatR handler for them is structurally impossible without
   breaking that rule. This mirrors a pattern already present before this

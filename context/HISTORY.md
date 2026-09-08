@@ -7,7 +7,7 @@ Newest last. Format: `_meta/SPEC.md` §6.6.
 
 ## S-2026-09-04-01 · context-system-bootstrap · Claude Opus 5 (Claude Code)
 - **Focus:** Designed and built the cross-AI context preservation system, and
-  bootstrapped `context/` with the real state of the QuizApp project.
+  bootstrapped `context/` with the real state of the Quizware project.
 - **Changed:** `context/` (created), `.claude/agents/`, `.claude/commands/`,
   `.cursor/rules/`, `AGENTS.md`, `CLAUDE.md` (all created — no existing AI
   conventions were present in the repo).
@@ -35,7 +35,7 @@ Newest last. Format: `_meta/SPEC.md` §6.6.
 
 ## S-2026-09-04-03 · phase0-owner-confirmed-phase1-domain · Claude Sonnet 5 (Claude Code)
 - **Focus:** Merged a brief covering two things: closing Phase 0 as
-  owner-confirmed (the user is QuizApp's sole stakeholder, so no external
+  owner-confirmed (the user is Quizware's sole stakeholder, so no external
   workshop applies), and the full implementation of Phase 1's domain model
   (P1-01–P1-14, 89 files, 95 passing tests). Verification against the
   repository found the brief's commit-state claim was stale — `git log` showed

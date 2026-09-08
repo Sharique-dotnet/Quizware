@@ -45,14 +45,16 @@ Full procedure and file formats: `context/_meta/SPEC.md`. Cross-tool rules:
 |---|---|
 | `docs/new-system/` | Design docs for the new system, numbered 01–06, read in order |
 | `docs/*-Technical-Analysis.md` | Line-by-line audits of the two legacy systems |
-| `QuizApp/` | The **new** system (ASP.NET Core). Currently an empty solution |
+| `Quizware/` | The **new** system (ASP.NET Core). |
 | `QuizApp-9AMM/` | The **legacy** ASP.NET MVC 4 system being replaced. Nested git repo |
 | `QuickBuzz/` | The **legacy** buzzer app, to become an optional module. Nested git repo |
 | `context/` | AI-session continuity. Start at `CURRENT.md` |
 
-**Naming trap:** `QuizApp`, `QuizApp-9AMM` and `QuickBuzz` are three different
-systems with similar names. See `context/PROJECT.md` §Domain glossary before
-editing, or you will change the wrong one.
+**Naming trap:** `Quizware`, `QuizApp-9AMM` and `QuickBuzz` are three different
+systems with similar names — `Quizware` was renamed from `QuizApp` and
+`QuizApp-9AMM` (the unrelated legacy system) keeps its old name. See
+`context/PROJECT.md` §Domain glossary before editing, or you will change the
+wrong one.
 
 ## Conventions
 

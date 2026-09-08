@@ -1,4 +1,4 @@
-# PROJECT — QuizApp
+# PROJECT — Quizware
 
 Slow-changing orientation. Read `CURRENT.md` first; come here when you need the
 stack, the map, or the conventions.
@@ -37,9 +37,9 @@ the wrong codebase.
 
 | Name | What it is |
 |---|---|
-| **QuizApp** | The **new** system. Solution `QuizApp/QuizApp.slnx`. `[FACT]` 10 projects exist: `src/QuizApp.{Domain,Application,Infrastructure,Modules.Buzzer,Api}`, `tests/QuizApp.{Domain,Application}.Tests`, `tests/QuizApp.Api.IntegrationTests`, `tests/QuizApp.Architecture.Tests`, `tools/QuizApp.BuzzerAgent`. |
+| **Quizware** | The **new** system. Solution `Quizware/Quizware.slnx`. `[FACT]` 10 projects exist: `src/Quizware.{Domain,Application,Infrastructure,Modules.Buzzer,Api}`, `tests/Quizware.{Domain,Application}.Tests`, `tests/Quizware.Api.IntegrationTests`, `tests/Quizware.Architecture.Tests`, `tools/Quizware.BuzzerAgent`. |
 | **QuizApp-9AMM** | The **existing** ASP.NET MVC 4 system being replaced. Read-only reference. |
-| **QuickBuzz** | The **existing** buzzer application, to be absorbed as the optional `QuizApp.Modules.Buzzer`. |
+| **QuickBuzz** | The **existing** buzzer application, to be absorbed as the optional `Quizware.Modules.Buzzer`. |
 
 Domain terms: a **Program** is the tenant root (one event/year). A **Stage** holds
 **Matches**; each match has **MatchParticipants** with a fixed `SeatNumber` and a
@@ -60,17 +60,17 @@ why this file points rather than duplicates.
 ## Repository map
 
 ```
-C:\Sharique\Projects\Personal\QuizApp\      <- context root (outer git repo)
+C:\Sharique\Projects\Personal\Quizware\      <- context root (outer git repo)
 ├── context/                 AI-session continuity. Start at CURRENT.md.
 ├── docs/
 │   ├── new-system/          Design docs 01-06 + README, read in numbered order (~6,000 lines)
 │   ├── Implementation-Plan.md              Phased task list, 658 lines, 185 tasks (P0-P17)
 │   ├── QuizApp-9AMM-Technical-Analysis.md   Legacy audit (1,492 lines)
 │   └── QuickBuzz-Technical-Analysis.md      Legacy audit (123 lines)
-├── QuizApp/                 NEW system. `[FACT]` Solution scaffolded, 10 projects,
+├── Quizware/                 NEW system. `[FACT]` Solution scaffolded, 10 projects,
 │                            Phases 0–7 of 18 all DONE (see `CURRENT.md` §2):
-│   ├── QuizApp.slnx
-│   ├── src/QuizApp.Domain/            no project/NuGet references. Phase 1 domain
+│   ├── Quizware.slnx
+│   ├── src/Quizware.Domain/            no project/NuGet references. Phase 1 domain
 │   │                                  model complete: Common/, Enums/, Teams/,
 │   │                                  QuestionBank/, Tournament/, Gameplay/,
 │   │                                  Scoring/, Qualification/, Buzzer/. Phase 7
@@ -80,7 +80,7 @@ C:\Sharique\Projects\Personal\QuizApp\      <- context root (outer git repo)
 │   │                                  ScoringRule, QualificationRule, TieBreakRule,
 │   │                                  QuestionSelectionRule) plus
 │   │                                  Qualification/DefaultTieBreakValues.cs
-│   ├── src/QuizApp.Application/       -> Domain. Phase 3: Authorization/ (Policies,
+│   ├── src/Quizware.Application/       -> Domain. Phase 3: Authorization/ (Policies,
 │   │                                  Roles), Common/Behaviors/ValidationBehavior,
 │   │                                  Abstractions/ (IClock, ICurrentUser,
 │   │                                  ICurrentProgram, IAppDbContext [Phase 6a]).
@@ -92,7 +92,7 @@ C:\Sharique\Projects\Personal\QuizApp\      <- context root (outer git repo)
 │   │                                  reorder), Rules/ (scoring/selection/
 │   │                                  qualification/tie-break upsert + reset-
 │   │                                  defaults + IRuleService resolution)
-│   ├── src/QuizApp.Infrastructure/    -> Application, Domain. Phase 3: Identity/
+│   ├── src/Quizware.Infrastructure/    -> Application, Domain. Phase 3: Identity/
 │   │                                  (JWT, AppUser/AppRole, RefreshToken),
 │   │                                  Idempotency/. Phase 4: Persistence/
 │   │                                  (AppDbContext, ~58-table EF model,
@@ -101,11 +101,11 @@ C:\Sharique\Projects\Personal\QuizApp\      <- context root (outer git repo)
 │   │                                  parsers). Phase 6e: Media/ (LocalFileStorage).
 │   │                                  Phase 7: Persistence/TournamentSeeder.cs
 │   │                                  (18-team demo tournament, dev-only seed)
-│   ├── src/QuizApp.Modules.Buzzer/    -> Application, Domain (optional module).
+│   ├── src/Quizware.Modules.Buzzer/    -> Application, Domain (optional module).
 │   │                                  Phase 4: Manual/ (BuzzSession, BuzzPress,
 │   │                                  BuzzDeviceMapping) + own EF configs, kept out
 │   │                                  of Infrastructure's direct references
-│   ├── src/QuizApp.Api/               -> all four above. Phase 3: Middleware/,
+│   ├── src/Quizware.Api/               -> all four above. Phase 3: Middleware/,
 │   │                                  Filters/. Phase 5: Contracts/V1/ (DTOs per
 │   │                                  area, discriminated-union QuestionResponse),
 │   │                                  Controllers/v1/ (16 controllers). Phases 6–7
@@ -113,10 +113,10 @@ C:\Sharique\Projects\Personal\QuizApp\      <- context root (outer git repo)
 │   │                                  real handlers — only Phase 8+ areas (Matches,
 │   │                                  Live engine, Scores, Standings, Qualification
 │   │                                  commit, Buzzer, Display, Reports) remain stubs.
-│   ├── tests/QuizApp.Domain.Tests/    xUnit + FluentAssertions; 95 tests
-│   ├── tests/QuizApp.Application.Tests/  17 tests (Phase 6/7 growth from 4)
-│   ├── tests/QuizApp.Architecture.Tests/ 4 tests (NetArchTest dependency rules)
-│   ├── tests/QuizApp.Api.IntegrationTests/ 122 tests `[UNVERIFIED]` this checkpoint,
+│   ├── tests/Quizware.Domain.Tests/    xUnit + FluentAssertions; 95 tests
+│   ├── tests/Quizware.Application.Tests/  17 tests (Phase 6/7 growth from 4)
+│   ├── tests/Quizware.Architecture.Tests/ 4 tests (NetArchTest dependency rules)
+│   ├── tests/Quizware.Api.IntegrationTests/ 122 tests `[UNVERIFIED]` this checkpoint,
 │   │                                  see `CURRENT.md` V-009 (persistence,
 │   │                                  auth/health, validators, controller-stub
 │   │                                  reachability, Teams/Topics/Tags/Media/
@@ -125,11 +125,11 @@ C:\Sharique\Projects\Personal\QuizApp\      <- context root (outer git repo)
 │   │                                  ~19,400 lines, committed (not regenerated
 │   │                                  since Phase 5 — stale relative to Phase 6/7
 │   │                                  endpoints if the Angular front end needs it)
-│   ├── postman/QuizApp.postman_collection.json + README.md  Phase 7 checkpoint:
+│   ├── postman/Quizware.postman_collection.json + README.md  Phase 7 checkpoint:
 │   │                                  80 requests, 10 folders, covers every
 │   │                                  implemented endpoint through Phase 7;
 │   │                                  staged, not committed as of this checkpoint
-│   └── tools/QuizApp.BuzzerAgent/     console tray app; no project refs yet (T-006)
+│   └── tools/Quizware.BuzzerAgent/     console tray app; no project refs yet (T-006)
 ├── QuizApp-9AMM/            LEGACY MVC 4. Nested git repo.
 ├── QuickBuzz/               LEGACY buzzer. Nested git repo.
 ├── AGENTS.md                Cross-tool AI instructions
@@ -164,7 +164,7 @@ the new work. `[FACT]` verified by `find -type d -name .git`.
 ## Environment
 
 - `[FACT]` Windows 10 Pro 10.0.19045, PowerShell 5.1 primary; Git Bash available.
-- `[FACT]` Context root: `C:\Sharique\Projects\Personal\QuizApp`.
+- `[FACT]` Context root: `C:\Sharique\Projects\Personal\Quizware`.
 - `[FACT]` Outer repo is on branch `master`. As of S-2026-09-08-02, `git log`
   shows 19 commits, most recent: `3dbc6f2` (Phase 7: Stage/segment CRUD +
   reorder, scoring/selection/qualification/tie-break rule management,
@@ -178,7 +178,7 @@ the new work. `[FACT]` verified by `find -type d -name .git`.
   (.gitignore + `CLAUDE.md` commit-practice instructions) · `893c4a7`
   (solution scaffolding) · `bf8cb06` (initial commit). `main` is the intended
   base branch for PRs but does not exist. **As of this checkpoint, only the
-  Postman collection (`QuizApp/postman/`) and 3 rule-handler bugfixes +
+  Postman collection (`Quizware/postman/`) and 3 rule-handler bugfixes +
   their regression test are staged but not committed** — see `TASKS.md`
   T-018. Everything else through Phase 7 is committed (see `CURRENT.md` §2's
   correction — a brief's "still uncommitted" claim has now gone stale by
@@ -194,16 +194,16 @@ the new work. `[FACT]` verified by `find -type d -name .git`.
 
 ## Commands
 
-`[FACT]` Verified working from `QuizApp/` (the solution root — note the same
-last-path-segment name as the repo root, `QuizApp\QuizApp\`, is easy to fumble in
+`[FACT]` Verified working from `Quizware/` (the solution root — note the same
+last-path-segment name as the repo root, `Quizware\Quizware\`, is easy to fumble in
 `cd`):
 
 ```bash
-dotnet sln QuizApp.slnx list       # list the 10 projects
-dotnet build QuizApp.slnx          # 0 warnings, 0 errors last independently verified S-2026-09-08-01
-dotnet test QuizApp.slnx --no-build  # 238 passed, 0 failed reported S-2026-09-08-02, [UNVERIFIED] this checkpoint (V-009)
+dotnet sln Quizware.slnx list       # list the 10 projects
+dotnet build Quizware.slnx          # 0 warnings, 0 errors last independently verified S-2026-09-08-01
+dotnet test Quizware.slnx --no-build  # 238 passed, 0 failed reported S-2026-09-08-02, [UNVERIFIED] this checkpoint (V-009)
 dotnet list <project> reference    # verify a project's dependency edges
-npx --yes newman run QuizApp/postman/QuizApp.postman_collection.json  # requires `dotnet run` already active; see postman/README.md for folder order
+npx --yes newman run Quizware/postman/Quizware.postman_collection.json  # requires `dotnet run` already active; see postman/README.md for folder order
 ```
 
 `[FACT]` EF Core migrations exist: `InitialIdentitySchema` (Phase 3) and

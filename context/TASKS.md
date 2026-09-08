@@ -10,11 +10,11 @@ already tried. Format: `_meta/SPEC.md` §6.4.
 
 ## Active work
 
-- **T-006** `TODO` · Decide whether `QuizApp.BuzzerAgent` references `QuizApp.Modules.Buzzer`
+- **T-006** `TODO` · Decide whether `Quizware.BuzzerAgent` references `Quizware.Modules.Buzzer`
   - Why: The agent needs the serial frame-parsing logic (`DeviceParser`/
     `SerialService`, ported from legacy QuickBuzz per roadmap task `P14-04`).
     Currently it has zero project references — an explicit gap, not an oversight.
-  - Where: `QuizApp/tools/QuizApp.BuzzerAgent/QuizApp.BuzzerAgent.csproj`
+  - Where: `Quizware/tools/Quizware.BuzzerAgent/Quizware.BuzzerAgent.csproj`
   - Blocked by: nothing urgent — this is Phase 14 work per
     `docs/Implementation-Plan.md`. Flagged now so it isn't assumed silently later.
 
@@ -23,10 +23,10 @@ already tried. Format: `_meta/SPEC.md` §6.4.
   - Why: `git status` confirms these are the only uncommitted work as of this
     checkpoint — Phase 6e/6f (`783bc1c`) and Phase 7 (`3dbc6f2`) are already
     committed (see T-015/T-016, both closed, and L-004's third recurrence).
-  - Where: `QuizApp/postman/QuizApp.postman_collection.json`,
-    `QuizApp/postman/README.md` (both new), plus modifications to
+  - Where: `Quizware/postman/Quizware.postman_collection.json`,
+    `Quizware/postman/README.md` (both new), plus modifications to
     `Application/Rules/Commands/{UpsertScoringRules,UpsertQualificationRules,
-    UpsertTieBreakRules}.cs` and `tests/QuizApp.Api.IntegrationTests/RulesEndpointTests.cs`
+    UpsertTieBreakRules}.cs` and `tests/Quizware.Api.IntegrationTests/RulesEndpointTests.cs`
     (the new regression test). All staged (`git add`'d) but not committed.
   - Blocked by: standing policy (V-005) — never commit without being asked.
     Offered message: "Add Postman collection covering all Phase 0-7 endpoints,
@@ -60,7 +60,7 @@ already tried. Format: `_meta/SPEC.md` §6.4.
 
 - **Q-001** `ANSWERED` (S-2026-09-04-03) · Which of the ~18 Phase 0 assumptions do
   you confirm?
-  - `[DECIDED]` via D-015: the user is QuizApp's sole owner/stakeholder, so Phase 0
+  - `[DECIDED]` via D-015: the user is Quizware's sole owner/stakeholder, so Phase 0
     is treated as owner-confirmed rather than run as an external workshop. All 16
     assumptions in `docs/new-system/06-Development-Roadmap.md` §6.5 are accepted
     as-is and are now `[DECIDED]`, not `[ASSUMED]`. Domain-model work (Phase 1) is
@@ -127,7 +127,7 @@ they stay unchecked.
     still unverified.
 
 - **V-006** (added S-2026-09-07-01) · `[UNVERIFIED]` `docker compose up`
-  (`QuizApp/docker-compose.yml`) and the GitHub Actions CI workflow
+  (`Quizware/docker-compose.yml`) and the GitHub Actions CI workflow
   (`.github/workflows/ci.yml`) both from Phase 3 — neither has been run in this
   dev environment (no Docker daemon, no CI runner). This is stated directly in
   `docs/Implementation-Plan.md`'s own Phase 3 exit-criteria text, not just this
@@ -149,13 +149,13 @@ they stay unchecked.
   generated this session (`FixMatchParticipantRemovalCheckConstraint`,
   `AddTopicParentForeignKeyAndTagUniqueIndex`, `AddQuestionDifficultyCheckConstraint`)
   were reportedly applied to the LocalDB (`(localdb)\MSSQLLocalDB`, database
-  `QuizApp-Dev`) and live-verified during the session that produced them — this
+  `Quizware-Dev`) and live-verified during the session that produced them — this
   checkpoint confirmed `[FACT]` that all 5 migrations are present on disk and
   recognized by `dotnet ef migrations list` against the configured connection,
   but did not independently query the LocalDB to confirm they were actually
   applied (not just generated).
   - Check: `dotnet ef database update` (should be a no-op if already applied)
-    or query `__EFMigrationsHistory` in `QuizApp-Dev` directly.
+    or query `__EFMigrationsHistory` in `Quizware-Dev` directly.
   - Matters for: trusting the dev DB schema matches the code before Phase 7
     work assumes the fixed `CK_MP_Removal` constraint or the new FK/indexes.
 
@@ -163,16 +163,16 @@ they stay unchecked.
   that Phase 7 landed with a clean `dotnet build`/`dotnet test` (238
   passed/0 failed) was **not independently re-verified this session** — a
   `dotnet build` attempted during the save itself failed with `MSB3027`/
-  `MSB3021` file-lock errors (`QuizApp.Api.exe` PID 5752 running, plus
+  `MSB3021` file-lock errors (`Quizware.Api.exe` PID 5752 running, plus
   Visual Studio holding some of the same DLLs). Killing a live dev-server
   process to force a clean rebuild was judged out of scope for a
   context-only checkpoint. The claim is plausible (git history shows a
   full, cleanly-organized commit with 22 new tests, and the diff content of
   the 3 rule-handler fixes read as complete and self-consistent) but rests
   on the brief's account, not this session's own run.
-  - Check: stop the running `QuizApp.Api.exe` (and close Visual Studio if it
-    also holds a lock), then `dotnet build QuizApp.slnx` and
-    `dotnet test QuizApp.slnx --no-build` from `QuizApp/`.
+  - Check: stop the running `Quizware.Api.exe` (and close Visual Studio if it
+    also holds a lock), then `dotnet build Quizware.slnx` and
+    `dotnet test Quizware.slnx --no-build` from `Quizware/`.
   - Matters for: trusting that Phase 7's 22 new tests and the 3 rule-handler
     bugfixes actually pass before starting Phase 8 on top of them.
 
@@ -226,7 +226,7 @@ they stay unchecked.
   - Testing: 22 new tests (`StagesEndpointTests.cs`, `RulesEndpointTests.cs`);
     `[UNVERIFIED]` this checkpoint — see V-009 — the brief's own claimed count
     (238 passed / 0 failed) was not independently re-run this session due to
-    a locked build (running `QuizApp.Api.exe` + Visual Studio holding DLLs).
+    a locked build (running `Quizware.Api.exe` + Visual Studio holding DLLs).
   - Full detail: `sessions/2026-09-08-02-phase7-tournament-configuration.md`.
 
 - **T-015** `DONE` (superseded its own premise) · Ask the user whether to
@@ -249,10 +249,10 @@ they stay unchecked.
 - **T-013** `DONE` · Implement Phase 5 — API contract, OpenAPI first (P5-01–P5-08)
   - Delivered per this session's (S-2026-09-07-01) conversation brief; verified
     `[FACT]` against the repo: 16 controllers under
-    `QuizApp/src/QuizApp.Api/Controllers/v1/`, `dotnet build` → 0 warnings/errors,
+    `Quizware/src/Quizware.Api/Controllers/v1/`, `dotnet build` → 0 warnings/errors,
     `dotnet test` → 147 passed/0 failed (95 Domain, 4 Application, 4
     Architecture, 44 Api.IntegrationTests), TS client
-    `QuizApp/clients/typescript/quizapp-api-client.ts` → 19,419 lines (brief
+    `Quizware/clients/typescript/quizapp-api-client.ts` → 19,419 lines (brief
     claimed ~19,400 — matches).
   - Contracts/V1/ (P5-01–P5-04): per-area request/response DTOs; the 10 per-format
     question create-request records in `Contracts/V1/Questions/Formats/`; the
@@ -264,7 +264,7 @@ they stay unchecked.
     the typing is load-bearing for Swagger, not cosmetic.
   - TypeScript client (P5-07) via NSwag, not openapi-generator-cli — see D-018,
     L-006 (no JVM in this environment).
-  - `.http` collection (P5-08): `QuizApp/src/QuizApp.Api/QuizApp.Api.http`,
+  - `.http` collection (P5-08): `Quizware/src/Quizware.Api/Quizware.Api.http`,
     covers all 16 areas plus a full login-to-qualification workflow.
   - Five scope decisions recorded inline in `docs/Implementation-Plan.md`'s
     Phase 5 section: (1) not every route has a bespoke response DTO — only
@@ -292,7 +292,7 @@ they stay unchecked.
     `ScoringRule`/`TieBreakRule` defaults seed per-program (Phase 6's "create a
     program" flow), not globally, since no program exists yet at migration time
     — legacy values captured meanwhile in
-    `QuizApp.Domain.Scoring.DefaultScoringValues`; (3) most FKs are plain `Guid`
+    `Quizware.Domain.Scoring.DefaultScoringValues`; (3) most FKs are plain `Guid`
     columns without formal EF relationships (Phase 1 has no navigation
     properties by design) — named indexes/unique/check constraints from the
     schema doc are all in place regardless.
@@ -346,7 +346,7 @@ they stay unchecked.
     only Identity/RefreshToken/IdempotencyRecord tables (migration
     `InitialIdentitySchema`) — the full 51-table business schema is added to
     this *same* context in Phase 4, not a second context.
-  - Testing note recorded in the plan doc: `QuizApp.Api.IntegrationTests` swaps
+  - Testing note recorded in the plan doc: `Quizware.Api.IntegrationTests` swaps
     `AppDbContext`'s SQL Server connection for an in-process SQLite database (a
     real relational engine enforcing constraints, not the forbidden EF Core
     InMemory provider) — `EnsureCreatedAsync()` under `Testing`,
@@ -394,8 +394,8 @@ they stay unchecked.
 
 - **T-010** `DONE` · Implement Phase 1 — the domain model (P1-01 through P1-14)
   - Delivered in S-2026-09-04-03, verified `[FACT]` against the repository this
-    session (89 `.cs` files under `QuizApp/src/QuizApp.Domain/`, 23 under
-    `QuizApp/tests/QuizApp.Domain.Tests/`, `dotnet test` on the Domain test
+    session (89 `.cs` files under `Quizware/src/Quizware.Domain/`, 23 under
+    `Quizware/tests/Quizware.Domain.Tests/`, `dotnet test` on the Domain test
     project → 95 passed, 0 failed; `dotnet build` on the full solution → 0
     warnings/0 errors). All committed as `d6171cd`, `4697df7`, `6e6a13e` on top
     of `2b2bcfb` (P1-02, from an earlier session).
@@ -459,9 +459,9 @@ they stay unchecked.
     Deliberate pattern across the whole phase: exceptions were introduced
     incrementally, when the entity that needed them was built, rather than all
     stubbed out upfront under P1-14.
-  - Test project: `QuizApp.Domain.Tests` uses xUnit + FluentAssertions 6.12.2
+  - Test project: `Quizware.Domain.Tests` uses xUnit + FluentAssertions 6.12.2
     (added as a package reference this session, `[FACT]` verified present in
-    the committed `.csproj`). `QuizApp.Domain.csproj` itself has **zero** NuGet
+    the committed `.csproj`). `Quizware.Domain.csproj` itself has **zero** NuGet
     package references, `[FACT]` verified — the domain layer stays dependency-free.
   - Full detail: `sessions/2026-09-04-03-phase0-owner-confirmed-phase1-domain.md`.
 
@@ -477,7 +477,7 @@ they stay unchecked.
 - **T-001** `DONE` (via D-015) · Confirm the Phase 0 requirement assumptions
   - Resolved in S-2026-09-04-03: not through a stakeholder workshop (the
     original plan for this task) but through an explicit decision that the user
-    is QuizApp's sole owner and there is no separate stakeholder to run a
+    is Quizware's sole owner and there is no separate stakeholder to run a
     workshop with. See D-015. The Implementation-Plan.md doc itself has not yet
     been re-edited to reflect this — see T-008.
 
@@ -487,10 +487,10 @@ they stay unchecked.
     `/load-context`, and adapters for Claude, Cursor, and the `AGENTS.md`
     convention. Detail: `sessions/2026-09-04-01-context-system-bootstrap.md`.
 
-- **T-002** `DONE` · Scaffold the QuizApp solution skeleton
-  - Delivered in S-2026-09-04-02: `QuizApp/QuizApp.slnx` now lists 10 projects
-    (`QuizApp.Domain`, `.Application`, `.Infrastructure`, `.Modules.Buzzer`,
-    `.Api`, plus 4 test projects and the `QuizApp.BuzzerAgent` tool), all
+- **T-002** `DONE` · Scaffold the Quizware solution skeleton
+  - Delivered in S-2026-09-04-02: `Quizware/Quizware.slnx` now lists 10 projects
+    (`Quizware.Domain`, `.Application`, `.Infrastructure`, `.Modules.Buzzer`,
+    `.Api`, plus 4 test projects and the `Quizware.BuzzerAgent` tool), all
     targeting `net10.0`, wired with project references exactly matching
     `docs/new-system/02-Architecture-Proposal.md` §2.4's dependency rule
     (`[FACT]`, verified by grepping every `.csproj`). Subfolder layout created per
@@ -521,7 +521,7 @@ they stay unchecked.
 
 - **V-002** · `[FACT]` The .NET 10 SDK is installed on this machine.
   - Verified S-2026-09-04-02: `dotnet --list-sdks` → `8.0.421` and `10.0.400`,
-    both under `C:\Program Files\dotnet\sdk`. Used to build all 10 QuizApp
+    both under `C:\Program Files\dotnet\sdk`. Used to build all 10 Quizware
     projects (T-002) with 0 warnings/0 errors.
 
 - **V-004** · Resolved as D-014 · Deployment is to an on-premises venue server

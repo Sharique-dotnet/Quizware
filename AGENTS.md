@@ -74,14 +74,15 @@ and where it lives, never its value.
 |---|---|
 | `docs/new-system/` | Design documents for the new system — read in numbered order. |
 | `docs/*-Technical-Analysis.md` | Line-by-line audits of the two legacy systems. |
-| `QuizApp/` | The **new** system (ASP.NET Core). Currently an empty solution. |
+| `Quizware/` | The **new** system (ASP.NET Core). |
 | `QuizApp-9AMM/` | The **legacy** ASP.NET MVC 4 system being replaced. Nested git repo. |
 | `QuickBuzz/` | The **legacy** buzzer app, to be absorbed as an optional module. Nested git repo. |
 | `context/` | AI-session continuity. Start at `CURRENT.md`. |
 
-`QuizApp`, `QuizApp-9AMM` and `QuickBuzz` are three different things with similar
-names — `context/PROJECT.md` §Domain glossary disambiguates them. Get this wrong
-and you will edit the wrong system.
+`Quizware`, `QuizApp-9AMM` and `QuickBuzz` are three different things with similar
+names — `Quizware` was renamed from `QuizApp`, and `QuizApp-9AMM` (the unrelated
+legacy system) keeps its old name. `context/PROJECT.md` §Domain glossary
+disambiguates them. Get this wrong and you will edit the wrong system.
 
 ## 4. Trust boundary
 

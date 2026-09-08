@@ -1,4 +1,4 @@
-# CURRENT CONTEXT — QuizApp
+# CURRENT CONTEXT — Quizware
 
 > **AI agents: read this file first.** It is the working state of this project as
 > of the last checkpoint, written so you can continue without any chat history.
@@ -18,7 +18,7 @@
 ## 1. What this project is
 
 `[FACT]` A rebuild of a quiz-tournament system. **QuizApp-9AMM** (ASP.NET MVC 4,
-in production) is being replaced by **QuizApp** — ASP.NET Core Web API on .NET 10
+in production) is being replaced by **Quizware** — ASP.NET Core Web API on .NET 10
 with SQL Server, an Angular 22 front end later. **QuickBuzz**, the existing buzzer
 app, becomes an optional module that the system must work without.
 
@@ -28,7 +28,7 @@ running order of question types baked into 108 views as redirect chains; one
 `TieBreaker` table/screens completely disconnected from qualification logic. The
 new design turns all of it into configuration data.
 
-**Naming trap:** `QuizApp` (new), `QuizApp-9AMM` (legacy MVC 4), and `QuickBuzz`
+**Naming trap:** `Quizware` (new), `QuizApp-9AMM` (legacy MVC 4), and `QuickBuzz`
 (legacy buzzer) are three different systems. Check `PROJECT.md` §Domain glossary
 before editing, or you will change the wrong one.
 
@@ -70,7 +70,7 @@ one. **Phases 0–5 remain DONE**, unchanged. Full phase-by-phase history:
   two-phase reindex to avoid transiently violating a unique `OrderIndex` index
   — see D-023. 22 new tests (`StagesEndpointTests.cs`, `RulesEndpointTests.cs`).
   No new EF migration needed.
-- **Postman collection** (`QuizApp/postman/`, **staged, not yet committed** —
+- **Postman collection** (`Quizware/postman/`, **staged, not yet committed** —
   see §3): 80 requests across 10 folders covering every implemented endpoint
   through Phase 7 (Phase 8+ — Matches, Live engine, Scores, Standings,
   Qualification, Buzzer, Display, Reports — deliberately excluded, still 501
@@ -113,12 +113,12 @@ not assume its text matches this file.
 | Phases 0–5 | `[FACT]` DONE, unchanged since S-2026-09-07-01. |
 | Phase 6 (all of 6a–6f) | `[FACT]` DONE, **fully committed**: 6a `717b96f`, 6b `ae94bca`, 6c `41e45bd`, 6d `1d86810`, 6e+6f `783bc1c`. |
 | Phase 7 (all of P7-01–P7-12) | `[FACT]` DONE, **committed** `3dbc6f2`. |
-| Postman collection (`QuizApp/postman/`) | `[FACT]` DONE, **staged, not committed**. |
+| Postman collection (`Quizware/postman/`) | `[FACT]` DONE, **staged, not committed**. |
 | 3 rule-handler bugfixes + regression test | `[FACT]` DONE, **staged, not committed** (same diff group as the Postman work — found while validating it). |
-| Test suite | `[UNVERIFIED]` this session — brief claims 238 passed/0 failed (95 Domain, 17 Application, 4 Architecture, 122 Api.IntegrationTests) after the Phase 7 + bugfix work; **not independently re-run this checkpoint** — a `dotnet build` attempt failed on file locks from a running `QuizApp.Api.exe` (PID 5752) and Visual Studio. See V-009. |
+| Test suite | `[UNVERIFIED]` this session — brief claims 238 passed/0 failed (95 Domain, 17 Application, 4 Architecture, 122 Api.IntegrationTests) after the Phase 7 + bugfix work; **not independently re-run this checkpoint** — a `dotnet build` attempt failed on file locks from a running `Quizware.Api.exe` (PID 5752) and Visual Studio. See V-009. |
 | Build | Same caveat as above — see V-009. |
 | Migrations | `[FACT]` Still 5 total on disk (unchanged from prior checkpoint) — Phase 7 needed no new migration, confirmed via `dotnet ef migrations has-pending-model-changes`. Whether all 5 are actually **applied** to LocalDB remains `[UNVERIFIED]` — see V-008 (unchanged). |
-| Git (outer repo) | `[FACT]` Branch `master`, HEAD `3dbc6f2`, 19 commits total. Staged-not-committed: `QuizApp/postman/**` (new) and 4 modified files (3 rule-handler fixes + `RulesEndpointTests.cs`). |
+| Git (outer repo) | `[FACT]` Branch `master`, HEAD `3dbc6f2`, 19 commits total. Staged-not-committed: `Quizware/postman/**` (new) and 4 modified files (3 rule-handler fixes + `RulesEndpointTests.cs`). |
 | Context system | `[FACT]` This is its 6th real merge. |
 
 ## 4. Next actions
@@ -131,13 +131,13 @@ not assume its text matches this file.
    natural-key collision".
 2. **Start Phase 8 — Question selection engine** (`IQuestionSelector`).
    Re-read `docs/Implementation-Plan.md`'s Phase 8 section fresh. See T-019.
-3. **T-006** (Phase 14, not urgent) — decide whether `QuizApp.BuzzerAgent`
-   references `QuizApp.Modules.Buzzer` to reuse serial frame-parsing code, or
+3. **T-006** (Phase 14, not urgent) — decide whether `Quizware.BuzzerAgent`
+   references `Quizware.Modules.Buzzer` to reuse serial frame-parsing code, or
    reimplements it standalone.
 4. **Verify when possible, not urgent:** V-006 (Docker/CI), V-007
    (Testcontainers vs SQL Server), V-008 (migrations actually applied to
    LocalDB, not just generated), V-009 (new — re-run `dotnet build`/
-   `dotnet test` once the locked `QuizApp.Api.exe` process is stopped, to
+   `dotnet test` once the locked `Quizware.Api.exe` process is stopped, to
    independently confirm the 238-passed claim).
 5. Optional, low priority: `docs/Implementation-Plan.md`'s own "Start here"
    section (line ~794) is now two phases stale (still names Phase 6/7 text
@@ -224,19 +224,19 @@ Reasoning for all decisions: `DECISIONS.md` D-001 – D-024.
 
 | Path | Note |
 |---|---|
-| `QuizApp/src/QuizApp.Application/Abstractions/IAppDbContext.cs` | New in 6a — the port MediatR handlers use for Domain-typed entities |
-| `QuizApp/src/QuizApp.Application/{Programs,Teams,Topics,Tags,Media,QuestionBank,Tournament,Rules}/**` | Command/query handlers, one folder per area — `Tournament/` and `Rules/` are new this session (Phase 7) |
-| `QuizApp/src/QuizApp.Application/Rules/Services/{IRuleService,RuleService}.cs` | New this session — specificity-based scoring-rule resolution (segment > stage > program) |
-| `QuizApp/src/QuizApp.Api/Controllers/v1/{ProgramsController,AuthController,AdminController,TeamsController,TopicsController,TagsController,QuestionsController,StagesController,RulesController}.cs` | Real handlers now, not 501 stubs — `StagesController`/`RulesController` rewritten this session |
-| `QuizApp/src/QuizApp.Infrastructure/Persistence/TournamentSeeder.cs` | New this session — 18-team demo tournament seed, wired into `Program.cs` |
-| `QuizApp/src/QuizApp.Domain/Tournament/Stage.cs`, `StageSegmentTemplate.cs`, `Domain/Scoring/ScoringRule.cs`, `Domain/Qualification/{QualificationRule,TieBreakRule,DefaultTieBreakValues}.cs`, `Domain/Tournament/QuestionSelectionRule.cs` | New mutators this session (`Rename`/`Reorder`/`Update`/`Delete`/etc.) on entities that were create-only through Phase 1–6 |
-| `QuizApp/postman/{QuizApp.postman_collection.json,README.md}` | New this session — 80 requests, 10 folders, Phase 0–7 coverage. **Staged, not committed.** |
-| `QuizApp/src/QuizApp.Application/Rules/Commands/{UpsertScoringRules,UpsertQualificationRules,UpsertTieBreakRules}.cs` | Bugfixed this session (natural-key lookup, L-010). **Staged, not committed.** |
-| `QuizApp/src/QuizApp.Infrastructure/Identity/{IJwtTokenService,JwtTokenService}.cs` | 6b: optional `programId`/`expiresIn` params for display/select-program tokens |
-| `QuizApp/src/QuizApp.Infrastructure/Imports/{TeamExcelParser,McqQuestionExcelParser}.cs` | Excel import parsers (format-only parsing; ClosedXML 0.105.1) |
-| `QuizApp/src/QuizApp.Infrastructure/Media/{LocalFileStorage,MediaStorageOptions}.cs` | 6e, committed `783bc1c` |
-| `QuizApp/src/QuizApp.Domain/QuestionBank/*.cs` | All 10 question subclasses' `Create()` factories gained optional params (6f) |
-| `QuizApp/src/QuizApp.Api/Contracts/V1/{Admin,Teams,Topics,Questions,Stages}/**` | Rewritten/extended contracts; `StageContracts.cs`'s `CreateStageRequest` gained `StageType` this session (Phase 5 stub had omitted it) |
+| `Quizware/src/Quizware.Application/Abstractions/IAppDbContext.cs` | New in 6a — the port MediatR handlers use for Domain-typed entities |
+| `Quizware/src/Quizware.Application/{Programs,Teams,Topics,Tags,Media,QuestionBank,Tournament,Rules}/**` | Command/query handlers, one folder per area — `Tournament/` and `Rules/` are new this session (Phase 7) |
+| `Quizware/src/Quizware.Application/Rules/Services/{IRuleService,RuleService}.cs` | New this session — specificity-based scoring-rule resolution (segment > stage > program) |
+| `Quizware/src/Quizware.Api/Controllers/v1/{ProgramsController,AuthController,AdminController,TeamsController,TopicsController,TagsController,QuestionsController,StagesController,RulesController}.cs` | Real handlers now, not 501 stubs — `StagesController`/`RulesController` rewritten this session |
+| `Quizware/src/Quizware.Infrastructure/Persistence/TournamentSeeder.cs` | New this session — 18-team demo tournament seed, wired into `Program.cs` |
+| `Quizware/src/Quizware.Domain/Tournament/Stage.cs`, `StageSegmentTemplate.cs`, `Domain/Scoring/ScoringRule.cs`, `Domain/Qualification/{QualificationRule,TieBreakRule,DefaultTieBreakValues}.cs`, `Domain/Tournament/QuestionSelectionRule.cs` | New mutators this session (`Rename`/`Reorder`/`Update`/`Delete`/etc.) on entities that were create-only through Phase 1–6 |
+| `Quizware/postman/{Quizware.postman_collection.json,README.md}` | New this session — 80 requests, 10 folders, Phase 0–7 coverage. **Staged, not committed.** |
+| `Quizware/src/Quizware.Application/Rules/Commands/{UpsertScoringRules,UpsertQualificationRules,UpsertTieBreakRules}.cs` | Bugfixed this session (natural-key lookup, L-010). **Staged, not committed.** |
+| `Quizware/src/Quizware.Infrastructure/Identity/{IJwtTokenService,JwtTokenService}.cs` | 6b: optional `programId`/`expiresIn` params for display/select-program tokens |
+| `Quizware/src/Quizware.Infrastructure/Imports/{TeamExcelParser,McqQuestionExcelParser}.cs` | Excel import parsers (format-only parsing; ClosedXML 0.105.1) |
+| `Quizware/src/Quizware.Infrastructure/Media/{LocalFileStorage,MediaStorageOptions}.cs` | 6e, committed `783bc1c` |
+| `Quizware/src/Quizware.Domain/QuestionBank/*.cs` | All 10 question subclasses' `Create()` factories gained optional params (6f) |
+| `Quizware/src/Quizware.Api/Contracts/V1/{Admin,Teams,Topics,Questions,Stages}/**` | Rewritten/extended contracts; `StageContracts.cs`'s `CreateStageRequest` gained `StageType` this session (Phase 5 stub had omitted it) |
 | `context/_meta/SPEC.md` | The save/resume procedure |
 
 `[FACT]` `QuizApp-9AMM/` and `QuickBuzz/` are **nested git repositories**.
@@ -292,9 +292,9 @@ Full detail: `LESSONS.md`.
 ## 9. Environment and commands
 
 `[FACT]` Windows 10 Pro 10.0.19045 · PowerShell 5.1 primary, Git Bash available ·
-context root `C:\Sharique\Projects\Personal\QuizApp` · branch `master`, 19 commits.
+context root `C:\Sharique\Projects\Personal\Quizware` · branch `master`, 19 commits.
 `[FACT]` .NET SDKs 8.0.421 and 10.0.400 installed. `[FACT]` LocalDB instance
-`(localdb)\MSSQLLocalDB`, database `QuizApp-Dev`, used for live manual
+`(localdb)\MSSQLLocalDB`, database `Quizware-Dev`, used for live manual
 verification via `dotnet run` (port 5299) and curl against the seeded admin
 (`admin@quizapp.local` / `ChangeMe!123` — credential location only, per policy).
 `[FACT]` `newman` (Postman's CLI runner) is now usable in this environment via
@@ -302,10 +302,10 @@ verification via `dotnet run` (port 5299) and curl against the seeded admin
 
 ```bash
 git status --short                          # outer repo only
-cd QuizApp && dotnet build QuizApp.slnx      # last independently verified 2026-09-08 S-2026-09-08-01; this session's build attempt failed on file locks — see V-009
-dotnet test QuizApp.slnx --no-build          # brief claims 238 passed, 0 failed — [UNVERIFIED] this session, see V-009
-dotnet ef migrations list --project src/QuizApp.Infrastructure --startup-project src/QuizApp.Api
-npx --yes newman run QuizApp/postman/QuizApp.postman_collection.json --folder "00 Health"   # etc. per folder — see QuizApp/postman/README.md for run order
+cd Quizware && dotnet build Quizware.slnx      # last independently verified 2026-09-08 S-2026-09-08-01; this session's build attempt failed on file locks — see V-009
+dotnet test Quizware.slnx --no-build          # brief claims 238 passed, 0 failed — [UNVERIFIED] this session, see V-009
+dotnet ef migrations list --project src/Quizware.Infrastructure --startup-project src/Quizware.Api
+npx --yes newman run Quizware/postman/Quizware.postman_collection.json --folder "00 Health"   # etc. per folder — see Quizware/postman/README.md for run order
 ```
 
 `[FACT]` No Docker daemon and no CI runner in this dev environment — see V-006/V-007.
