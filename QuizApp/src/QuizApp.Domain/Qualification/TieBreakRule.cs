@@ -74,4 +74,33 @@ public sealed class TieBreakRule : BaseEntity, ITenantScoped, IAuditable, ISoftD
 
     public bool IsDeleted { get; private set; }
     public DateTime? DeletedAtUtc { get; private set; }
+
+    public void Update(
+        IReadOnlyList<string> criteria, QuestionFormatCode tieBreakFormatCode, int questionCount,
+        bool suddenDeath, int maxExtraRounds, bool scoreCountsTowardStage, OnStillTiedPolicy onStillTied,
+        string updatedBy)
+    {
+        if (criteria.Count == 0)
+        {
+            throw new ArgumentException("At least one ordered criterion is required.", nameof(criteria));
+        }
+
+        Criteria = criteria;
+        TieBreakFormatCode = tieBreakFormatCode;
+        QuestionCount = questionCount;
+        SuddenDeath = suddenDeath;
+        MaxExtraRounds = maxExtraRounds;
+        ScoreCountsTowardStage = scoreCountsTowardStage;
+        OnStillTied = onStillTied;
+        UpdatedAtUtc = DateTime.UtcNow;
+        UpdatedBy = updatedBy;
+    }
+
+    public void Delete(string deletedBy)
+    {
+        IsDeleted = true;
+        DeletedAtUtc = DateTime.UtcNow;
+        UpdatedAtUtc = DateTime.UtcNow;
+        UpdatedBy = deletedBy;
+    }
 }

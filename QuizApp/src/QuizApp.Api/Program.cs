@@ -56,6 +56,10 @@ using (var scope = app.Services.CreateScope())
     {
         var userManager = scope.ServiceProvider.GetRequiredService<UserManager<AppUser>>();
         await AdminUserSeeder.SeedAsync(userManager);
+
+        // P7-12: the 18-team tournament reproduced entirely as configuration
+        // data. Dev/demo convenience only; idempotent by Program.Code.
+        await QuizApp.Infrastructure.Persistence.TournamentSeeder.SeedAsync(dbContext);
     }
 }
 

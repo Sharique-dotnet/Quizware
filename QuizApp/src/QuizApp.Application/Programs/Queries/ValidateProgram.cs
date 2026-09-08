@@ -5,12 +5,11 @@ using QuizApp.Application.Programs.Dtos;
 
 namespace QuizApp.Application.Programs.Queries;
 
-/// <summary>First pass on the readiness check: does the program have at
-/// least one stage, the one thing <c>Program.GoLive</c> itself requires.
-/// The richer per-format/segment coverage check
-/// (<c>STAGE_HAS_NO_SEGMENTS</c>) is Phase 7's <c>P7-11</c>, which needs
-/// the Tournament module's own data access — this handler is the same
-/// endpoint's first, honest implementation, not the final one.</summary>
+/// <summary>P7-11's readiness check: the program needs at least one stage,
+/// and every stage needs at least one segment (<c>STAGE_HAS_NO_SEGMENTS</c>)
+/// — checked only for formats actually in use, since no format is ever
+/// compulsory (a stage with zero Passing segments is not a blocker; a stage
+/// with zero segments of any kind is).</summary>
 public sealed record ValidateProgramQuery(Guid ProgramId) : IRequest<ProgramValidationDto>;
 
 public sealed class ValidateProgramQueryHandler : IRequestHandler<ValidateProgramQuery, ProgramValidationDto>
@@ -29,10 +28,26 @@ public sealed class ValidateProgramQueryHandler : IRequestHandler<ValidateProgra
             throw new KeyNotFoundException($"Program '{request.ProgramId}' was not found.");
         }
 
-        var stageCount = await _db.Stages.CountAsync(s => s.ProgramId == request.ProgramId, cancellationToken);
+        var stages = await _db.Stages.Where(s => s.ProgramId == request.ProgramId).ToListAsync(cancellationToken);
+        if (stages.Count < 1)
+        {
+            return new ProgramValidationDto(false, ["Program needs at least one stage before it can go live."]);
+        }
 
-        return stageCount < 1
-            ? new ProgramValidationDto(false, ["Program needs at least one stage before it can go live."])
-            : new ProgramValidationDto(true, []);
+        var stageIds = stages.Select(s => s.Id).ToList();
+        var segmentCountsByStage = await _db.StageSegmentTemplates
+            .Where(s => stageIds.Contains(s.StageId))
+            .GroupBy(s => s.StageId)
+            .Select(g => new { StageId = g.Key, Count = g.Count() })
+            .ToDictionaryAsync(x => x.StageId, x => x.Count, cancellationToken);
+
+        var blockers = stages
+            .Where(s => !segmentCountsByStage.ContainsKey(s.Id) || segmentCountsByStage[s.Id] < 1)
+            .Select(s => $"Stage '{s.Name}' has no segments (STAGE_HAS_NO_SEGMENTS).")
+            .ToList();
+
+        return blockers.Count == 0
+            ? new ProgramValidationDto(true, [])
+            : new ProgramValidationDto(false, blockers);
     }
 }

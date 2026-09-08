@@ -1,6 +1,7 @@
 using FluentValidation;
 using Microsoft.Extensions.DependencyInjection;
 using QuizApp.Application.Common.Behaviors;
+using QuizApp.Application.Rules.Services;
 
 namespace QuizApp.Application;
 
@@ -17,6 +18,8 @@ public static class DependencyInjection
         });
 
         services.AddValidatorsFromAssembly(assembly);
+
+        services.AddScoped<IRuleService, RuleService>();
 
         return services;
     }

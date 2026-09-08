@@ -52,4 +52,13 @@ public sealed class QualificationRule : BaseEntity, ITenantScoped, IAuditable, I
 
     public bool IsDeleted { get; private set; }
     public DateTime? DeletedAtUtc { get; private set; }
+
+    public void Update(int winnersPerMatch, int bestRemainingAcrossStage, int manualWildcardSlots, string updatedBy)
+    {
+        WinnersPerMatch = winnersPerMatch;
+        BestRemainingAcrossStage = bestRemainingAcrossStage;
+        ManualWildcardSlots = manualWildcardSlots;
+        UpdatedAtUtc = DateTime.UtcNow;
+        UpdatedBy = updatedBy;
+    }
 }

@@ -54,4 +54,20 @@ public sealed class ScoringRule : BaseEntity, ITenantScoped, IAuditable, ISoftDe
     /// <summary>Specificity: a segment-level rule beats a stage-level rule,
     /// which beats a program-level rule.</summary>
     public int Specificity => SegmentTemplateId is not null ? 2 : StageId is not null ? 1 : 0;
+
+    public void UpdatePoints(int points, string? description, string updatedBy)
+    {
+        Points = points;
+        Description = description;
+        UpdatedAtUtc = DateTime.UtcNow;
+        UpdatedBy = updatedBy;
+    }
+
+    public void Delete(string deletedBy)
+    {
+        IsDeleted = true;
+        DeletedAtUtc = DateTime.UtcNow;
+        UpdatedAtUtc = DateTime.UtcNow;
+        UpdatedBy = deletedBy;
+    }
 }

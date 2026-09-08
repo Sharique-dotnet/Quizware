@@ -12,7 +12,7 @@ public sealed record StageDetailResponse(
     string SegmentOrderMode,
     IReadOnlyList<StageSegmentTemplateDto> Segments);
 
-public sealed record CreateStageRequest(string Name, int OrderIndex);
+public sealed record CreateStageRequest(string Name, int OrderIndex, string StageType = "League");
 
 public sealed record UpdateStageRequest(string Name);
 

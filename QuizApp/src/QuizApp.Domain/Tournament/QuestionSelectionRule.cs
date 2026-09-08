@@ -58,4 +58,16 @@ public sealed class QuestionSelectionRule : BaseEntity, ITenantScoped, IAuditabl
 
     public bool IsDeleted { get; private set; }
     public DateTime? DeletedAtUtc { get; private set; }
+
+    public void Update(
+        string? difficultyMixJson, RepeatPolicy repeatPolicy, TopicSpreadPolicy topicSpreadPolicy,
+        FallbackPolicy fallbackPolicy, string updatedBy)
+    {
+        DifficultyMixJson = difficultyMixJson;
+        RepeatPolicy = repeatPolicy;
+        TopicSpreadPolicy = topicSpreadPolicy;
+        FallbackPolicy = fallbackPolicy;
+        UpdatedAtUtc = DateTime.UtcNow;
+        UpdatedBy = updatedBy;
+    }
 }

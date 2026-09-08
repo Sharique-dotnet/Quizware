@@ -81,6 +81,32 @@ public sealed class Stage : BaseEntity, ITenantScoped, IAuditable, ISoftDeletabl
         State = StageState.Ready;
     }
 
+    public void Rename(string name, string updatedBy)
+    {
+        if (string.IsNullOrWhiteSpace(name))
+        {
+            throw new ArgumentException("Name is required.", nameof(name));
+        }
+
+        Name = name;
+        UpdatedAtUtc = DateTime.UtcNow;
+        UpdatedBy = updatedBy;
+    }
+
+    public void Reorder(int newOrderIndex, string updatedBy)
+    {
+        OrderIndex = newOrderIndex;
+        UpdatedAtUtc = DateTime.UtcNow;
+        UpdatedBy = updatedBy;
+    }
+
+    public void SetSegmentOrderMode(SegmentOrderMode mode, string updatedBy)
+    {
+        SegmentOrderMode = mode;
+        UpdatedAtUtc = DateTime.UtcNow;
+        UpdatedBy = updatedBy;
+    }
+
     public void Start()
     {
         if (State != StageState.Ready)
@@ -101,5 +127,13 @@ public sealed class Stage : BaseEntity, ITenantScoped, IAuditable, ISoftDeletabl
 
         State = StageState.Completed;
         CompletedAtUtc = DateTime.UtcNow;
+    }
+
+    public void Delete(string deletedBy)
+    {
+        IsDeleted = true;
+        DeletedAtUtc = DateTime.UtcNow;
+        UpdatedAtUtc = DateTime.UtcNow;
+        UpdatedBy = deletedBy;
     }
 }

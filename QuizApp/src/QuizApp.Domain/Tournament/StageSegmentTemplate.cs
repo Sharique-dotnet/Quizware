@@ -71,4 +71,25 @@ public sealed class StageSegmentTemplate : BaseEntity, ITenantScoped, IAuditable
         UpdatedAtUtc = DateTime.UtcNow;
         UpdatedBy = updatedBy;
     }
+
+    public void Update(int questionCount, bool isOrderLocked, string updatedBy)
+    {
+        if (questionCount < 1)
+        {
+            throw new ArgumentException("QuestionCount must be at least 1.", nameof(questionCount));
+        }
+
+        QuestionCount = questionCount;
+        IsOrderLocked = isOrderLocked;
+        UpdatedAtUtc = DateTime.UtcNow;
+        UpdatedBy = updatedBy;
+    }
+
+    public void Delete(string deletedBy)
+    {
+        IsDeleted = true;
+        DeletedAtUtc = DateTime.UtcNow;
+        UpdatedAtUtc = DateTime.UtcNow;
+        UpdatedBy = deletedBy;
+    }
 }
