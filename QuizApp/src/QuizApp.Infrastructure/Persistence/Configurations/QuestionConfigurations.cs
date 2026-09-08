@@ -23,9 +23,15 @@ public sealed class QuestionConfiguration : IEntityTypeConfiguration<Question>
         builder.HasIndex(q => new { q.ProgramId, q.NormalizedText });
         builder.HasIndex(q => new { q.ProgramId, q.FormatCode, q.TimesUsed });
 
-        builder.ToTable(t => t.HasCheckConstraint(
-            "CK_Question_OwnerScope",
-            "(OwnerScope = 1 AND ProgramId IS NOT NULL) OR (OwnerScope = 2 AND ProgramId IS NULL)"));
+        builder.ToTable(t =>
+        {
+            t.HasCheckConstraint(
+                "CK_Question_OwnerScope",
+                "(OwnerScope = 1 AND ProgramId IS NOT NULL) OR (OwnerScope = 2 AND ProgramId IS NULL)");
+            // Documented in 04-Database-Schema.md but was missing from this
+            // config entirely.
+            t.HasCheckConstraint("CK_Question_Difficulty", "DifficultyLevel BETWEEN 1 AND 5");
+        });
     }
 }
 

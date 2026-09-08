@@ -52,21 +52,35 @@ public sealed record CreateCardQuestionRequest : CreateQuestionRequestBase
     public required List<OptionDto> Options { get; init; }
 }
 
+/// <summary>Contract fix: TopicLabel (the label shown on the Choice
+/// board — distinct from the general TopicId category) is required by the
+/// domain factory but was missing from the stub entirely.</summary>
 public sealed record CreateChoiceQuestionRequest : CreateQuestionRequestBase
 {
     public required List<OptionDto> Options { get; init; }
+    public required string TopicLabel { get; init; }
     public int? TopicChoiceLimit { get; init; }
     public bool IsExclusiveTopic { get; init; }
 }
 
+/// <summary>Contract fix: the stub declared an Options list, but
+/// RapidFireQuestion has no options table at all — it's either a stored
+/// answer or host-read off paper (IsHostRead). AnswerText is required
+/// unless IsHostRead.</summary>
 public sealed record CreateRapidFireQuestionRequest : CreateQuestionRequestBase
 {
-    public required List<OptionDto> Options { get; init; }
+    public bool IsHostRead { get; init; }
+    public string? AnswerText { get; init; }
 }
 
+/// <summary>Contract fix: the stub had no way to select which of
+/// TieBreakerQuestion's three answer modes to use. AnswerMode picks the
+/// domain factory; only the matching field(s) are required.</summary>
 public sealed record CreateTieBreakerQuestionRequest : CreateQuestionRequestBase
 {
-    public required List<OptionDto> Options { get; init; }
+    public required TieBreakAnswerMode AnswerMode { get; init; }
+    public List<OptionDto> Options { get; init; } = [];
+    public string? AnswerText { get; init; }
     public decimal? NumericAnswer { get; init; }
 }
 

@@ -18,7 +18,8 @@ public sealed class SequenceQuestion : Question
 
     public static SequenceQuestion Create(
         Guid? programId, QuestionOwnerScope ownerScope, string questionText, int sequenceLength,
-        DifficultyLevel difficultyLevel, string language, string createdBy, Guid? topicId = null)
+        DifficultyLevel difficultyLevel, string language, string createdBy, Guid? topicId = null,
+        bool partialCreditEnabled = false, int? pointsPerCorrectPosition = null, SequenceItemKind itemKind = SequenceItemKind.Text)
     {
         if (sequenceLength < 2)
         {
@@ -27,7 +28,9 @@ public sealed class SequenceQuestion : Question
 
         return new SequenceQuestion(programId, ownerScope, questionText, difficultyLevel, language, createdBy, topicId, sequenceLength)
         {
-            ItemKind = SequenceItemKind.Text,
+            ItemKind = itemKind,
+            PartialCreditEnabled = partialCreditEnabled,
+            PointsPerCorrectPosition = pointsPerCorrectPosition,
         };
     }
 

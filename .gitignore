@@ -16,3 +16,6 @@ obj/
 # Per-developer local secrets/config — appsettings.json stays generic
 **/appsettings.Development.json
 **/appsettings.*.local.json
+
+# Local media storage (P6-15 IFileStorage default) — uploaded files, never committed
+**/App_Data/

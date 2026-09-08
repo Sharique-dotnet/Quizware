@@ -4,7 +4,7 @@ Work items (`T-###`), open questions (`Q-###`), and things that need checking
 before they can be relied on. Done items stay — they are the record of what was
 already tried. Format: `_meta/SPEC.md` §6.4.
 
-**Last updated:** 2026-09-07 (S-2026-09-07-01)
+**Last updated:** 2026-09-08 (S-2026-09-08-01)
 
 ---
 
@@ -18,15 +18,38 @@ already tried. Format: `_meta/SPEC.md` §6.4.
   - Blocked by: nothing urgent — this is Phase 14 work per
     `docs/Implementation-Plan.md`. Flagged now so it isn't assumed silently later.
 
-- **T-014** `TODO` · Implement Phase 6 — Configuration modules
-  - Why: Phase 5 (API contract) is done; the plan's "Start here" section names
-    Phase 6 next. This is the first phase where `QuizApp.Application` gets real
-    MediatR command/query handlers behind the Phase 5 stub controllers.
-  - Where: Sub-phases in order (each depends on the previous): Program
-    management → Users/roles → Teams → Topics/tags → Media → Question bank. See
-    `docs/Implementation-Plan.md` Phase 6 section (~line 404).
-  - Blocked by: nothing technical. Ask the user whether to commit Phase 5's
-    staged work first (see `CURRENT.md` §4 action 2).
+- **T-015** `TODO` · Ask the user whether to commit Phase 6e (Media) and 6f
+  (Question bank)
+  - Why: `git status` confirms these are the only uncommitted sub-phases of
+    Phase 6 — 6a–6d are already committed (`717b96f`, `ae94bca`, `41e45bd`,
+    `1d86810`). 52 files, +6259/-56 lines uncommitted.
+  - Where: `Application/Media/**`, `Application/QuestionBank/**`,
+    `Infrastructure/Media/**`, `Infrastructure/Imports/McqQuestionExcelParser.cs`,
+    `Api/Controllers/v1/QuestionsController.cs`, `Api/Contracts/V1/Questions/**`,
+    migration `AddQuestionDifficultyCheckConstraint`, `.gitignore`.
+  - Blocked by: standing policy (V-005) — never commit without being asked.
+    `Contracts/V1/Questions/**` and `QuestionsController.cs` are touched by both
+    6e and 6f, so a clean two-commit split may not be possible; decide when asked.
+
+- **T-016** `TODO` · Implement Phase 7 — Tournament configuration
+  - Why: Phase 6 (all of 6a–6f) is now done. Per
+    `docs/Implementation-Plan.md`'s dependency map, Phase 7 is next: Stage CRUD,
+    segment templates, segment reordering, scoring/selection/qualification rule
+    management, tie-break rule management, program readiness validation.
+  - Where: `docs/Implementation-Plan.md` Phase 7 section — **re-read it fresh**,
+    it may be stale relative to `CURRENT.md` (this session did not update it).
+  - Blocked by: T-015 (commit decision) is not a hard blocker, but should be
+    resolved first per standing workflow.
+
+- **T-017** `TODO` · Re-sync `docs/Implementation-Plan.md`'s "Start here" section
+  (~line 794) with actual progress
+  - Why: It still names Phase 6 as next and describes Phases 3–5 as
+    "Uncommitted" — both stale as of this session (Phase 6 is done; Phases 3–5
+    have been committed since S-2026-09-07-01... `[UNVERIFIED]`, re-check before
+    editing). Same class of drift as T-008 (Phase 0 doc text) — low priority,
+    doesn't block code work, but misleads anyone reading the plan doc cold.
+  - Where: `docs/Implementation-Plan.md` lines ~794–823.
+  - Blocked by: nothing; low priority, cosmetic-but-misleading.
 
 ## Open questions
 
@@ -116,6 +139,20 @@ they stay unchecked.
     Docker is available.
   - Matters for: trusting the migration in production without surprises from
     SQL-Server-specific behavior SQLite doesn't share.
+
+- **V-008** (added S-2026-09-08-01) · `[UNVERIFIED]` The three migrations
+  generated this session (`FixMatchParticipantRemovalCheckConstraint`,
+  `AddTopicParentForeignKeyAndTagUniqueIndex`, `AddQuestionDifficultyCheckConstraint`)
+  were reportedly applied to the LocalDB (`(localdb)\MSSQLLocalDB`, database
+  `QuizApp-Dev`) and live-verified during the session that produced them — this
+  checkpoint confirmed `[FACT]` that all 5 migrations are present on disk and
+  recognized by `dotnet ef migrations list` against the configured connection,
+  but did not independently query the LocalDB to confirm they were actually
+  applied (not just generated).
+  - Check: `dotnet ef database update` (should be a no-op if already applied)
+    or query `__EFMigrationsHistory` in `QuizApp-Dev` directly.
+  - Matters for: trusting the dev DB schema matches the code before Phase 7
+    work assumes the fixed `CK_MP_Removal` constraint or the new FK/indexes.
 
 - **V-005** · Resolved as `[DECIDED]` (S-2026-09-04-03) · Commits are made only
   when the user explicitly asks; the AI proposes a plan and a commit message but

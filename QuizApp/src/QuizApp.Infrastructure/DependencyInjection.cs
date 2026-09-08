@@ -7,6 +7,7 @@ using QuizApp.Application.Abstractions;
 using QuizApp.Infrastructure.Common;
 using QuizApp.Infrastructure.Identity;
 using QuizApp.Infrastructure.Idempotency;
+using QuizApp.Infrastructure.Media;
 using QuizApp.Infrastructure.Persistence;
 using QuizApp.Infrastructure.Persistence.Interceptors;
 
@@ -49,6 +50,9 @@ public static class DependencyInjection
         services.AddSingleton<IClock, SystemClock>();
 
         services.AddScoped<IIdempotencyStore, EfIdempotencyStore>();
+
+        services.Configure<MediaStorageOptions>(configuration.GetSection(MediaStorageOptions.SectionName));
+        services.AddScoped<IFileStorage, LocalFileStorage>();
 
         return services;
     }

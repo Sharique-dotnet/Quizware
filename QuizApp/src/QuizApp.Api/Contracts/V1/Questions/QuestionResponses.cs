@@ -62,10 +62,22 @@ public sealed record ChoiceQuestionResponse : OptionBasedQuestionResponse
     public int? TopicChoiceLimit { get; init; }
 }
 
-public sealed record RapidFireQuestionResponse : OptionBasedQuestionResponse;
-
-public sealed record TieBreakerQuestionResponse : OptionBasedQuestionResponse
+/// <summary>Contract fix: RapidFireQuestion has no options table at all
+/// (it's either a stored answer or read off paper) — the stub incorrectly
+/// inherited the option-based shape.</summary>
+public sealed record RapidFireQuestionResponse : QuestionResponse
 {
+    public string? AnswerText { get; init; }
+    public bool IsHostRead { get; init; }
+}
+
+/// <summary>Contract fix: the stub had no way to represent which of the
+/// three answer modes a tie-breaker question uses.</summary>
+public sealed record TieBreakerQuestionResponse : QuestionResponse
+{
+    public required string AnswerMode { get; init; }
+    public IReadOnlyList<OptionResponse> Options { get; init; } = [];
+    public string? AnswerText { get; init; }
     public decimal? NumericAnswer { get; init; }
 }
 

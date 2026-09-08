@@ -26,7 +26,9 @@ public sealed class AudioVisualQuestion : Question
     public static AudioVisualQuestion Create(
         Guid? programId, QuestionOwnerScope ownerScope, string? questionText,
         Guid mediaAssetId, MediaKind mediaKind, string answerText,
-        DifficultyLevel difficultyLevel, string language, string createdBy, Guid? topicId = null)
+        DifficultyLevel difficultyLevel, string language, string createdBy, Guid? topicId = null,
+        string? acceptableAnswersJson = null, int? playbackStartSeconds = null, int? playbackDurationSeconds = null,
+        bool autoPlay = false, bool replayAllowed = true, Guid? revealMediaAssetId = null)
     {
         if (mediaAssetId == Guid.Empty)
         {
@@ -42,7 +44,12 @@ public sealed class AudioVisualQuestion : Question
             programId, ownerScope, questionText, difficultyLevel, language, createdBy, topicId,
             mediaAssetId, mediaKind, answerText)
         {
-            ReplayAllowed = true,
+            AcceptableAnswersJson = acceptableAnswersJson,
+            PlaybackStartSeconds = playbackStartSeconds,
+            PlaybackDurationSeconds = playbackDurationSeconds,
+            AutoPlay = autoPlay,
+            ReplayAllowed = replayAllowed,
+            RevealMediaAssetId = revealMediaAssetId,
         };
     }
 

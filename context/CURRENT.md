@@ -11,7 +11,7 @@
 > Where this file and the repository disagree, **the repository is right** and
 > this file is stale; say so.
 
-**Last updated:** 2026-09-07 · **Session:** S-2026-09-07-01 · **Saved by:** Claude Sonnet 5 (Claude Code)
+**Last updated:** 2026-09-08 · **Session:** S-2026-09-08-01 · **Saved by:** Claude Sonnet 5 (Claude Code)
 
 ---
 
@@ -34,88 +34,101 @@ before editing, or you will change the wrong one.
 
 ## 2. Current objective
 
-`[FACT]` **Phases 0–5 of `docs/Implementation-Plan.md`'s 18 phases are all now
-marked DONE on disk**, verified this session by reading the plan file directly
-(it carries its own inline "Status: all N tasks done" notes per phase) and by
-re-running the full test suite: `dotnet build` → 0 warnings/errors,
-`dotnet test` → **147 passed, 0 failed** (95 Domain, 4 Application, 4
-Architecture, 44 Api.IntegrationTests).
+`[FACT]` **Phase 6 — Configuration modules — is now fully done, all six
+sub-phases (6a–6f, tasks P6-01 through P6-21).** Verified this session by
+re-running the full suite (`dotnet build` → 0 warnings/errors; `dotnet test` →
+**224 passed, 0 failed**: 95 Domain, 17 Application, 4 Architecture, 108
+Api.IntegrationTests) and by spot-checking file paths named in the session brief
+directly against the repo (all present as described).
 
-**This corrects the previous checkpoint (S-2026-09-04-03), which only knew about
-Phase 1.** Phases 2 (ADRs), 3 (skeleton/cross-cutting), 4 (schema/migrations) all
-happened in the gap between that checkpoint and this one, without a context save
-in between — reconstructed this session from `docs/Implementation-Plan.md`'s own
-status text and `git log`, not from a conversation brief (the brief handed to
-this session only covered Phase 5). Full phase-by-phase breakdown: `TASKS.md`
-T-011 through T-013 (Closed).
+**Phases 0–5 remain DONE from the prior checkpoint** (S-2026-09-07-01) —
+unchanged this session. Full phase-by-phase history: `TASKS.md` Closed section
+(T-010 through T-013), `sessions/2026-09-07-01-*.md`.
 
-- **Phase 2 — ADRs, DONE.** 10 ADRs in `docs/adr/` (ADR-001 through ADR-010,
-  covering modular monolith, multi-tenancy, TPT questions, event-sourced scoring,
-  buzzer-port-null-default, SignalR+outbox, tie-break-as-match, local hosting,
-  authorisation model, module boundaries). **Not committed** — see §3 Git row.
-- **Phase 3 — skeleton/cross-cutting, DONE.** Identity+JWT, 7 roles/9 policies,
-  program-scope middleware, global exception handler (RFC 9457), Serilog +
-  correlation IDs, FluentValidation pipeline, idempotency filter, health checks,
-  Swagger, Docker Compose, CI workflow. **Committed** as `4452949`.
-- **Phase 4 — schema/migrations, DONE.** ~58 tables (49 new + Phase 3's 9
-  Identity/token tables) via migration `AddBusinessSchema`, global query filters
-  (tenant + soft delete), audit + audit-log interceptors, buzzer tables kept in a
-  separate assembly picked up via `IEntityConfigurationAssemblyMarker` so
-  Infrastructure never references the buzzer module. **Committed** as `c624f51`.
-- **Phase 5 — API contract (OpenAPI first), DONE this session per the brief.**
-  16 controllers under `Controllers/v1/` (all stub `501`), per-format request DTOs
-  and a `[JsonPolymorphic]`/`[JsonDerivedType]` discriminated-union
-  `QuestionResponse` hierarchy, FluentValidation validators, generated TypeScript
-  client (~19,400 lines, verified), `.http` collection. **Staged but not
-  committed** — verified `[FACT]` via `git status --short` this session (20+
-  new/modified files all show as staged `A`/`M`, no commit on top of `c624f51`).
+**Sub-phases delivered this session, in order:**
+- **6a — Program management** (`P6-01`–`P6-06`): `IAppDbContext` port
+  introduced; real `ProgramsController` handlers via MediatR (`Application/Programs/`).
+  Committed `717b96f`.
+- **6b — Users and roles** (`P6-07`–`P6-10`): `AuthController`/`AdminController`
+  extended directly (no MediatR — see D-019). Login/refresh/logout/me/
+  select-program/display-token/change-password; user invite/list/assign-roles/
+  deactivate/reset-password. Committed `ae94bca`.
+- **6c — Teams** (`P6-11`–`P6-13`): Team CRUD, status changes, Excel import
+  (validate → report → commit) via `Application/Teams/` + `TeamExcelParser`
+  (ClosedXML 0.105.1). Migration `FixMatchParticipantRemovalCheckConstraint`
+  (real pre-existing bug, see §8). Committed `41e45bd`.
+- **6d — Topics and tags** (`P6-14`): Topic (parent/child, cycle-checked) and Tag
+  CRUD, shared-vs-per-program scoping. Migration
+  `AddTopicParentForeignKeyAndTagUniqueIndex`. Committed `1d86810`.
+- **6e — Media** (`P6-15`): `IFileStorage`/`LocalFileStorage`, magic-byte +
+  extension + size validation, SHA-256 dedup. **Uncommitted** — see §3.
+- **6f — Question bank** (`P6-16`–`P6-21`): all 10 formats have Create, format-
+  agnostic Update/versioning/Approve/Retire/Delete/Coverage/Duplicates; Excel
+  import scoped to MCQ only (deliberate, D-022). Migration
+  `AddQuestionDifficultyCheckConstraint`. **Uncommitted** — see §3.
 
-`[DECIDED]` Phase 0 remains resolved as owner-confirmed (D-015) — and this time
-the doc text re-sync **did persist**: `docs/Implementation-Plan.md` line 73 now
-reads `**DONE (skipped, owner-confirmed)**`, closing the loose end T-008 flagged
-last checkpoint.
+**Important correction to the session brief (recurrence of L-004):** the brief
+that drove this save claimed *nothing from 6b–6f was committed*. `git log`
+verified `[FACT]` this is wrong for 6a–6d: four commits exist, dated 2026-09-08,
+authored directly by `Sharique` — `717b96f` (6a), `ae94bca` (6b), `41e45bd` (6c),
+`1d86810` (6d) — consistent with the standing "AI proposes, user runs `git
+commit`" workflow (V-005) having happened outside this save's visibility. Only
+**6e (Media) and 6f (Question bank) are actually uncommitted**, confirmed via
+`git status --short` (52 files, +6259/-56 lines: `Application/Media/**`,
+`Application/QuestionBank/**`, `Infrastructure/Media/**`,
+`Infrastructure/Imports/McqQuestionExcelParser.cs`, `QuestionsController.cs`,
+`Contracts/V1/Questions/**`, the `AddQuestionDifficultyCheckConstraint`
+migration, `.gitignore` `**/App_Data/` line, two new test files). See L-004
+(updated) for this pattern recurring.
 
-**What's next: Phase 6 — Configuration modules** (Program management → Users/
-roles → Teams → Topics/tags → Media → Question bank), per the plan's "Start
-here" section (line ~800). This is the first phase where the Phase 5 stub
-controllers get real MediatR command/query handlers behind them in
-`QuizApp.Application`.
+**What's next: Phase 7 — Tournament configuration** (Stage CRUD, segment
+templates, segment reordering, scoring/selection/qualification rule management,
+tie-break rule management, program readiness validation). Per
+`docs/Implementation-Plan.md` line 817 ("Start here" section) — **not yet
+re-edited to name Phase 7**, since the brief for this session said
+`Implementation-Plan.md` itself was not updated; treat its "Start here" text as
+one phase stale, `CURRENT.md` is authoritative.
 
 ## 3. State of play
 
 | Area | State |
 |---|---|
-| Design docs 01–06 + README, legacy analyses, `docs/adr/` (10 ADRs) | `[FACT]` Complete on disk. **All of `docs/` is gitignored** (`.gitignore` line `docs/`) — none of it is tracked by git, deliberately (see D-016). Do not assume "not in `git log`" means "doesn't exist." |
-| `docs/Implementation-Plan.md` | `[FACT]` 823 lines on disk (grew from 658), Phases 0–5 marked DONE inline, "Start here" section names Phase 6 next |
-| Phase 0 (owner confirmation) | `[DECIDED]` D-015, doc text now in sync (T-008 closed) |
-| Phase 1 (domain model) | `[FACT]` Complete, 95 passing tests — unchanged since S-2026-09-04-03 |
-| Phase 2 (ADRs) | `[FACT]` Complete, 10 files in `docs/adr/` — **uncommitted by construction** (`docs/` gitignored), not a pending-commit gap |
-| Phase 3 (skeleton/cross-cutting) | `[FACT]` Complete, **committed** `4452949`. Identity/JWT, 7 roles, 9 policies, exception handling, Serilog, FluentValidation pipeline, idempotency, health checks, Docker Compose, CI — `docker compose up` and the GitHub Actions run itself are `[UNVERIFIED]` in this dev environment (no Docker daemon, no CI runner here per the plan doc's own text) |
-| Phase 4 (schema/migrations) | `[FACT]` Complete, **committed** `c624f51`. Migration `AddBusinessSchema` verified against SQLite in tests, **not yet verified against real SQL Server via Testcontainers** (`[UNVERIFIED]`, no Docker here) |
-| Phase 5 (API contract) | `[FACT]` Complete per this session's brief, cross-checked: 16 controllers present, TS client 19,419 lines, full suite 147/147 passing, 0 build warnings. **Staged, not committed** |
-| Test suite | `[FACT]` 147 passed / 0 failed, re-run this session (`dotnet test QuizApp.slnx`) |
-| Context system | `[FACT]` Built S-2026-09-04-01; this is its 4th real merge, and the first one that had to reconstruct multiple un-saved phases from repo evidence rather than a brief |
-| Git (outer repo) | `[FACT]` Branch `master`, 12 commits (`bf8cb06` → `c624f51`, full list `PROJECT.md` §Environment). Phase 5's ~20 files are staged but uncommitted. **Nothing should be assumed committed without checking `git log`/`git status` yourself** — this checkpoint itself only exists because the prior one's phase count was stale (see L-004, and the new finding in §8) |
+| Phases 0–5 | `[FACT]` DONE, unchanged since S-2026-09-07-01. See that checkpoint / `TASKS.md` Closed for detail. |
+| Phase 6a (Programs) | `[FACT]` DONE, **committed** `717b96f` |
+| Phase 6b (Users/roles) | `[FACT]` DONE, **committed** `ae94bca` |
+| Phase 6c (Teams) | `[FACT]` DONE, **committed** `41e45bd` |
+| Phase 6d (Topics/tags) | `[FACT]` DONE, **committed** `1d86810` |
+| Phase 6e (Media) | `[FACT]` DONE, **uncommitted** (working tree) |
+| Phase 6f (Question bank) | `[FACT]` DONE, **uncommitted** (working tree, same diff as 6e) |
+| Test suite | `[FACT]` 224 passed / 0 failed, re-run this session: 95 Domain, 17 Application, 4 Architecture, 108 Api.IntegrationTests |
+| Build | `[FACT]` 0 warnings, 0 errors, re-run this session |
+| Migrations | `[FACT]` 5 total on disk: `InitialIdentitySchema`, `AddBusinessSchema` (both pre-existing), `FixMatchParticipantRemovalCheckConstraint` (6c), `AddTopicParentForeignKeyAndTagUniqueIndex` (6d), `AddQuestionDifficultyCheckConstraint` (6f, uncommitted). `dotnet ef migrations list` against the configured connection lists all 5, confirming the tooling sees them `[FACT]`. Whether they were actually **applied** to the LocalDB (`QuizApp-Dev`) is `[UNVERIFIED]` this session — brief claims yes, live-verified during the session's own work, but not independently re-checked here (see V-008). |
+| Git (outer repo) | `[FACT]` Branch `master`, HEAD `1d86810`, 17 commits total (`bf8cb06` → `1d86810`). 6e+6f uncommitted in the working tree — nothing staged. |
+| Context system | `[FACT]` This is its 5th real merge. |
 
 ## 4. Next actions
 
-1. **Start Phase 6 — Configuration modules.** Per the plan: Program management →
-   Users/roles → Teams → Topics/tags → Media → Question bank, each sub-phase
-   depending on the one before it. This is where `QuizApp.Application` gets real
-   MediatR handlers behind the Phase 5 stub controllers for the first time.
-2. **Ask the user whether to commit Phase 5's staged work** before starting
-   Phase 6 — nothing has been committed since `c624f51` (Phase 4). The commit
-   message on offer from this session's brief: "Add API contract:
-   request/response DTOs, question format validators, 16 controller stubs, and
-   generated TypeScript client". Per standing policy, do not commit without
-   being asked.
+1. **Ask the user whether to commit Phase 6e+6f's uncommitted work** before
+   starting Phase 7 — see T-015. Two logical commits per the session's own
+   grouping: Media (6e) and Question bank (6f) touch mostly disjoint files
+   (`Contracts/V1/Questions/**` and `QuestionsController.cs` are shared, so a
+   clean single-purpose split may not be possible — decide when asked).
+2. **Start Phase 7 — Tournament configuration** (Stage CRUD, segment templates,
+   reordering, scoring/selection/qualification/tie-break rule management,
+   program readiness validation). Re-read `docs/Implementation-Plan.md`'s Phase
+   7 section fresh — do not assume its text matches this file. This is also
+   where the richer `STAGE_HAS_NO_SEGMENTS` coverage check (deferred in 6a's
+   `ValidateProgram` and 6f's coverage query) would get built out for real.
+   See T-016.
 3. **T-006** (Phase 14, not urgent) — decide whether `QuizApp.BuzzerAgent`
    references `QuizApp.Modules.Buzzer` to reuse serial frame-parsing code, or
    reimplements it standalone.
-4. **Verify when possible, not urgent now:** `docker compose up` (Phase 3),
-   the GitHub Actions CI run (Phase 3), and the migration against real SQL
-   Server via Testcontainers (Phase 4) — all three are `[UNVERIFIED]` because
-   this dev environment has no Docker daemon and no CI runner.
+4. **Verify when possible, not urgent:** V-006 (Docker/CI), V-007 (Testcontainers
+   vs SQL Server), V-008 (new — did the 6c/6d/6f migrations actually get applied
+   to LocalDB, not just generated).
+5. Optional, low priority: `docs/Implementation-Plan.md`'s own "Start here"
+   section (line ~794) still says Phase 6 is next and describes Phases 3–5 as
+   "Uncommitted" — both now stale. See T-017.
 
 Full queue: `TASKS.md`.
 
@@ -125,72 +138,77 @@ Full queue: `TASKS.md`.
   Architecture, shared schema with `ProgramId` multi-tenancy, Table-Per-Type
   questions (D-009), configuration-driven tournament with configurable segment
   order (D-010), event-sourced scoring, tie-break as an ordinary Match through the
-  existing engine (D-011), EF Core 10 code-first, SignalR. Now also formalised as
-  10 ADRs in `docs/adr/`. Full list with rejected alternatives:
-  `docs/new-system/02-Architecture-Proposal.md` §2.16, plus D-009 – D-018 in
-  `DECISIONS.md`. Do not re-open one without reading why the alternative was
-  rejected.
-- `[DECIDED]` **Questions are Table-Per-Type** (D-009): one shared `Question`
-  table plus one child table per format. One route/endpoint per format
-  (`POST /questions/mcq`, etc.), not one generic endpoint — now implemented as
-  10 stub controller actions in `QuestionsController` plus a discriminated-union
-  `QuestionResponse` for reads (D-017).
-- `[DECIDED]` **7 roles, no Judge** (D-013), **9 authorization policies**
-  (`Policies.cs`) — now actually seeded/enforced as of Phase 3, not just
-  designed. ProgramAdmin/SuperAdmin hold sole authority over disqualification,
-  answer reversal, score adjustment, tie-break resolution.
-- `[DECIDED]` **On-premises hosting, no cloud dependency** (D-014). Buzzer device
-  count configurable, default 3.
-- `[DECIDED]` **The buzzer must be deletable.** `QuizApp.Modules.Buzzer` sits
-  behind an `IBuzzerProvider` port with a `Null` default; its EF entity
-  configurations live in a separate assembly Infrastructure never references
-  directly (Phase 4's `IEntityConfigurationAssemblyMarker`, D-009/ADR-005). Every
-  match must complete with the buzzer module removed entirely.
-- `[DECIDED]` **No fake answers, ever.** Disqualifying a team recompacts
-  `TurnOrder` and the match continues.
-- `[DECIDED]` **`docs/` is entirely gitignored** (D-016) — design docs, the
-  Implementation Plan, and the ADRs all live on disk but are **not** tracked by
-  the outer git repo. Do not read "not in `git log`" as "doesn't exist" for
-  anything under `docs/`.
-- `[DECIDED]` **Swashbuckle 10.x needs explicit help to emit polymorphic OpenAPI
-  schemas** (D-017): controller actions must return `ActionResult<TResponse>`
-  (never bare `IActionResult`) wherever a response DTO exists, and
-  `SelectSubTypesUsing` must explicitly enumerate `QuestionResponse`'s 10
-  subtypes — `[JsonPolymorphic]`/`[JsonDerivedType]` alone is not picked up.
-  Apply this pattern to any future polymorphic response type.
-- `[DECIDED]` **NSwag, not openapi-generator-cli, generates the TypeScript
-  client** (D-018) — this environment has no JVM, and NSwag is pure .NET.
-- `[FACT]` **Design docs separate confirmed findings from recommendations**;
-  preserve that distinction when editing them.
-- `[FACT]` **Context is plain Markdown in the repo, never tool-specific state**
-  (D-002).
-- `[DECIDED]` **Commit only when asked** (V-005). The assistant proposes plans in
-  phases with a commit message per phase; the user runs `git commit`. **As of
-  this session, everything from Phase 5 is staged and uncommitted** — the last
-  actual commit is `c624f51` (Phase 4).
-- `[DECIDED]` **Phase 0 is owner-confirmed, not a workshop** (D-015).
-- `[FACT]` **Domain exceptions are introduced incrementally**, when the entity
-  that needs them is built.
+  existing engine (D-011), EF Core 10 code-first, SignalR. 10 ADRs in `docs/adr/`.
+  Full list with rejected alternatives: `docs/new-system/02-Architecture-Proposal.md`
+  §2.16, plus D-009 – D-022 in `DECISIONS.md`. Do not re-open one without reading
+  why the alternative was rejected.
+- `[DECIDED]` **Questions are Table-Per-Type** (D-009), one route per format.
+  Reads now go through a parallel `QuestionDto` hierarchy in
+  `Application/QuestionBank/Dtos/` (Application cannot reference Api's
+  `QuestionResponse` types), mapped to the API contract by
+  `QuestionResponseMapper.cs`.
+- `[DECIDED]` **New this session — routing convention for what uses MediatR**
+  (D-019): if the phase's core entities are Domain types exposed on
+  `IAppDbContext` (Team, Topic, Tag, Question, Program), use MediatR/Application.
+  If they are Infrastructure-only types (Identity's `AppUser`/`AppRole`/
+  `ProgramUser`; `ImportBatch`/`ImportBatchRow`), business logic goes directly in
+  the controller injecting the concrete `AppDbContext` — Application cannot
+  reference Infrastructure types at all (enforced by `Architecture.Tests`).
+  Established/repeated three times (6b, 6c's import, 6f's import); treat as
+  binding for future phases, not a one-off.
+- `[DECIDED]` **New this session — question editing has no separate Update
+  endpoint** (D-020): `PUT {formatCode}/{id}` deserializes into the same
+  per-format Create request and calls the same Create command with an optional
+  `ReplacesQuestionId`, so create and update can never validate differently. Old
+  question is soft-deleted if unused, retired if used (FR-3.10).
+- `[DECIDED]` **New this session — Phase 6f Excel import is MCQ-only** (D-022);
+  the other 9 formats' import templates are explicitly deferred, not forgotten.
+- `[ASSUMED]` **Media validation limits are this implementation's own numbers,
+  not documented anywhere** (D-021): extension allow-list (jpg/jpeg/png/gif/
+  mp3/wav/mp4/webm), 25 MB size cap, specific magic-byte signatures. Confirm
+  with the user before treating these as fixed product requirements.
+- `[DECIDED]` **7 roles, no Judge** (D-013), **9 authorization policies**. Display
+  tokens carry only `Roles.Display` regardless of the minting admin's own roles —
+  this is what makes "cannot write anything" true (every write policy is
+  `RequireRole` over roles that never include Display), live-verified this session.
+- `[DECIDED]` **On-premises hosting, no cloud dependency** (D-014).
+- `[DECIDED]` **The buzzer must be deletable** — `IBuzzerProvider` port, `Null`
+  default (ADR-005).
+- `[DECIDED]` **No fake answers, ever.**
+- `[DECIDED]` **`docs/` is entirely gitignored** (D-016) — do not read "not in
+  `git log`" as "doesn't exist" for anything under `docs/`.
+- `[DECIDED]` **Swashbuckle 10.x needs explicit polymorphic-schema wiring**
+  (D-017); **NSwag, not openapi-generator-cli** (D-018).
+- `[DECIDED]` **Commit only when asked** (V-005). **As of this session, 6e+6f are
+  uncommitted; 6a–6d already are** (see §2's correction).
+- `[FACT]` **A DB-only uniqueness/state constraint without a handler pre-check
+  surfaces as an unhandled 500, not a clean 4xx.** Hit 3 times this session
+  (Team.Code, Topic/Tag name, `Question.Approve`'s `InvalidOperationException`)
+  — see L-007. Always add the matching pre-check, or map the exception type in
+  `GlobalExceptionHandler`, whenever adding a new unique index or check
+  constraint.
+- `[FACT]` **`Program.MaxTeams` (typed column) is the real team-cap mechanism**;
+  the `ProgramSetting("Teams","MaxTeams")` key seen in Phase 6a's own test
+  fixtures was only ever an incidental example value, not a second intended
+  mechanism — see L-009 if you find that key in old test code and wonder.
 
-Reasoning for all decisions: `DECISIONS.md` D-001 – D-018.
+Reasoning for all decisions: `DECISIONS.md` D-001 – D-022.
 
 ## 6. Files in play
 
 | Path | Note |
 |---|---|
-| `docs/Implementation-Plan.md` | 823 lines, gitignored, Phases 0–5 marked DONE, "Start here" names Phase 6 next |
-| `docs/adr/ADR-001..010-*.md` | Phase 2 deliverable, gitignored, uncommitted by construction |
-| `QuizApp/src/QuizApp.Domain/` | Phase 1, unchanged since last checkpoint |
-| `QuizApp/src/QuizApp.Infrastructure/Identity/`, `Persistence/` | Phase 3/4: Identity, JWT, `AppDbContext`, 49-table `AddBusinessSchema` migration, interceptors, global filters |
-| `QuizApp/src/QuizApp.Modules.Buzzer/Manual/` | Phase 4: buzzer entities + configs, separate assembly, picked up via `IEntityConfigurationAssemblyMarker` |
-| `QuizApp/src/QuizApp.Api/Contracts/V1/**` | Phase 5: request/response DTOs, one folder per area; `Questions/QuestionResponses.cs` has the discriminated union; `Questions/Formats/` has the 10 create-request records + validators |
-| `QuizApp/src/QuizApp.Api/Controllers/v1/*.cs` | Phase 5: 16 controllers, all actions `StatusCode(501)` typed as `ActionResult<TResponse>` |
-| `QuizApp/src/QuizApp.Api/DependencyInjection.cs` | FluentValidation registration, Swagger `UseOneOfForPolymorphism`/`SelectDiscriminatorNameUsing`/`SelectSubTypesUsing` wiring |
-| `QuizApp/clients/typescript/quizapp-api-client.ts` | Generated via NSwag, ~19,400 lines, committed to the repo (not gitignored — this is a build artifact the team wants tracked) |
-| `QuizApp/src/QuizApp.Api/QuizApp.Api.http` | Hand-written `.http` collection covering all 16 areas + a full login-to-qualification workflow |
-| `QuizApp/tests/QuizApp.Api.IntegrationTests/` | 44 tests: persistence (Phase 4), auth/health (Phase 3), validator + controller-stub-reachability (Phase 5) |
+| `QuizApp/src/QuizApp.Application/Abstractions/IAppDbContext.cs` | New in 6a — the port MediatR handlers use for Domain-typed entities |
+| `QuizApp/src/QuizApp.Application/{Programs,Teams,Topics,Tags,Media,QuestionBank}/**` | Phase 6 command/query handlers, one folder per area |
+| `QuizApp/src/QuizApp.Api/Controllers/v1/{ProgramsController,AuthController,AdminController,TeamsController,TopicsController,TagsController,QuestionsController}.cs` | Real handlers now, not 501 stubs |
+| `QuizApp/src/QuizApp.Infrastructure/Identity/{IJwtTokenService,JwtTokenService}.cs` | 6b: optional `programId`/`expiresIn` params for display/select-program tokens |
+| `QuizApp/src/QuizApp.Infrastructure/Imports/{TeamExcelParser,McqQuestionExcelParser}.cs` | Excel import parsers (format-only parsing; ClosedXML 0.105.1) |
+| `QuizApp/src/QuizApp.Infrastructure/Media/{LocalFileStorage,MediaStorageOptions}.cs` | 6e, **uncommitted** |
+| `QuizApp/src/QuizApp.Infrastructure/Persistence/Configurations/{TournamentConfigurations,QuestionConfigurations}.cs` | Bug fixes: `CK_MP_Removal` (6c), Topic parent FK + Tag unique index (6d), `CK_Question_Difficulty` (6f, uncommitted) |
+| `QuizApp/src/QuizApp.Infrastructure/Persistence/Migrations/2026090*` | 3 new migrations this session — see §3 table for names/commit status |
+| `QuizApp/src/QuizApp.Domain/QuestionBank/*.cs` | All 10 question subclasses' `Create()` factories gained optional params (6f) |
+| `QuizApp/src/QuizApp.Api/Contracts/V1/{Admin,Teams,Topics,Questions}/**` | Rewritten/extended contracts; several were unusable Phase 5 stubs (mismatched field names) fixed this session |
 | `context/_meta/SPEC.md` | The save/resume procedure |
-| `AGENTS.md`, `CLAUDE.md`, `.cursor/rules/` | Tool adapters |
 
 `[FACT]` `QuizApp-9AMM/` and `QuickBuzz/` are **nested git repositories**.
 
@@ -198,51 +216,59 @@ Reasoning for all decisions: `DECISIONS.md` D-001 – D-018.
 
 - **Q-003** `[OPEN]` — which other AI tools need adapters beyond Claude, Cursor,
   and `AGENTS.md`? `[UNVERIFIED]` whether Codex reads a root `AGENTS.md` (V-001).
-- **Q-005** `[OPEN]` — `POST /buzzer/sessions/{id}/presses` was implemented as
-  `[AllowAnonymous]` in Phase 5 because agent-to-API authentication is explicitly
-  a Phase 14 concern (per ADR-005) — flagged by the session that built it as
-  **not the final security posture**. Whoever does Phase 14 needs to replace
-  this with a real auth scheme for the buzzer agent before it ships.
+- **Q-005** `[OPEN]` — `POST /buzzer/sessions/{id}/presses` is `[AllowAnonymous]`,
+  not the final security posture; Phase 14 needs a real auth scheme for the
+  buzzer agent.
 
 Q-001, Q-002, Q-004 remain **ANSWERED** — see `TASKS.md` Closed.
 
-Verification queue in `TASKS.md`: V-001 (Codex/AGENTS.md), V-003 (SQL Server
-availability — now more concrete, see V-006), V-006 (Docker/CI unverified),
-V-007 (Testcontainers-vs-SQL-Server for Phase 4's migration).
+Verification queue in `TASKS.md`: V-001 (Codex/AGENTS.md), V-006 (Docker/CI
+unverified), V-007 (Testcontainers-vs-SQL-Server), V-008 (new — migrations
+generated this session actually applied to LocalDB, not just present on disk).
 
 ## 8. Do not retry
 
-- **L-001** through **L-004** — see `LESSONS.md` (heredoc failures, bare
-  subagent invocation, doc duplication, stale git-state claims in briefs).
-- **L-005** (new) — Swashbuckle does not read `[JsonPolymorphic]`/
-  `[JsonDerivedType]` automatically, nor infer schemas from bare `IActionResult`.
-- **L-006** (new) — `openapi-generator-cli` needs a JVM; this environment has
-  none. Use NSwag (`NSwag.ConsoleCore`, pure .NET) instead.
-- **New finding this session (not yet a numbered lesson, folded into process):**
-  a checkpoint can go stale by *multiple entire phases*, not just one commit's
-  worth of drift, if `/save-context` isn't run for several work sessions in a
-  row. `docs/Implementation-Plan.md`'s own inline "Status: done" markers per
-  phase turned out to be the fastest, most reliable way to reconstruct what
-  happened in the gap — check that file's phase headers first when a brief's
-  scope looks narrower than the repo's actual progress.
+- **L-001** through **L-006** — see `LESSONS.md` (heredoc failures, bare subagent
+  invocation, doc duplication, stale git-state claims in briefs, Swashbuckle
+  polymorphism gap, openapi-generator-cli needs a JVM).
+- **L-004** (updated this session) — a conversation brief's claim about commit
+  state recurred as stale *again*: this session's brief said all of 6b–6f was
+  uncommitted; `git log` showed 6a–6d already committed by the user out-of-band.
+  Same root cause as the original entry. Always run `git log`/`git status`
+  yourself before writing any commit-state claim, regardless of how specific or
+  confident the brief sounds.
+- **L-007** (new) — a uniqueness or state constraint enforced only at the DB
+  level (unique index, check constraint) but never pre-checked in the handler
+  surfaces as an unhandled 500 instead of a clean 4xx. Hit 3 times this session.
+  Always add the matching pre-check, or map the exception type in
+  `GlobalExceptionHandler`.
+- **L-008** (new) — `Question.Approve`/domain-thrown `InvalidOperationException`
+  isn't one of `GlobalExceptionHandler`'s mapped types; check state *before*
+  calling a domain method that throws a generic exception type, and throw a
+  mapped domain exception instead.
+- **L-009** (new) — don't mistake `ProgramSetting("Teams","MaxTeams")` (seen in
+  Phase 6a's own test fixtures) for a second real team-cap mechanism; the typed
+  `Program.MaxTeams` column, wired in Phase 6c, is the actual one.
 
 Full detail: `LESSONS.md`.
 
 ## 9. Environment and commands
 
 `[FACT]` Windows 10 Pro 10.0.19045 · PowerShell 5.1 primary, Git Bash available ·
-context root `C:\Sharique\Projects\Personal\QuizApp` · branch `master`, 12 commits.
-`[FACT]` .NET SDKs 8.0.421 and 10.0.400 installed.
+context root `C:\Sharique\Projects\Personal\QuizApp` · branch `master`, 17 commits.
+`[FACT]` .NET SDKs 8.0.421 and 10.0.400 installed. `[FACT]` LocalDB instance
+`(localdb)\MSSQLLocalDB`, database `QuizApp-Dev`, used for live manual
+verification via `dotnet run` (port 5299) and curl against the seeded admin
+(`admin@quizapp.local` / `ChangeMe!123` — credential location only, per policy).
 
 ```bash
-git status --short                 # outer repo only; nested repos report separately
+git status --short                          # outer repo only
 cd QuizApp && dotnet build QuizApp.slnx     # 0 warnings, 0 errors, verified this session
-dotnet test QuizApp.slnx --no-build         # 147 passed, 0 failed, verified this session
+dotnet test QuizApp.slnx --no-build         # 224 passed, 0 failed, verified this session
+dotnet ef migrations list --project src/QuizApp.Infrastructure --startup-project src/QuizApp.Api
 ```
 
-`[FACT]` No Docker daemon and no CI runner in this dev environment — Phase 3's
-`docker compose up`/CI workflow and Phase 4's Testcontainers-vs-SQL-Server run
-are `[UNVERIFIED]`, per the plan doc's own text (not just this session's guess).
+`[FACT]` No Docker daemon and no CI runner in this dev environment — see V-006/V-007.
 
 ## 10. Where to read more
 
@@ -253,8 +279,8 @@ are `[UNVERIFIED]`, per the plan doc's own text (not just this session's guess).
 | `LESSONS.md` | What already failed — **read before proposing an approach** |
 | `PROJECT.md` | Stack, repo map, glossary, environment, conventions |
 | `HISTORY.md` | The timeline of checkpoints |
-| `sessions/2026-09-07-01-phases-2-3-4-5-catchup.md` | Full detail of this session |
-| `sessions/2026-09-04-03-phase0-owner-confirmed-phase1-domain.md` | Phase 0/1 detail |
+| `sessions/2026-09-08-01-phase6-configuration-modules.md` | Full detail of this session (6a–6f) |
+| `sessions/2026-09-07-01-phases-2-3-4-5-catchup.md` | Phases 2–5 detail |
 | `_meta/SPEC.md` | How to save and resume context |
 | `README.md` | The workflow, for humans |
 

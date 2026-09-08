@@ -4,7 +4,7 @@ Approaches that failed, bugs, and environment traps. **Read this before proposin
 an approach** — it is the list of things that already cost someone time.
 Format: `_meta/SPEC.md` §6.5.
 
-**Last updated:** 2026-09-07 (S-2026-09-07-01)
+**Last updated:** 2026-09-08 (S-2026-09-08-01)
 
 ---
 
@@ -87,6 +87,17 @@ Format: `_meta/SPEC.md` §6.5.
   sounds confident and specific.
 - **Still true?** Yes, structurally — this is not specific to this project, it
   follows from the subagent/brief split (D-007, L-002) itself.
+- **Recurrence (2026-09-08, S-2026-09-08-01):** happened again, same shape. The
+  brief driving that session's save claimed "nothing was committed this
+  session... all of 6b through 6f is uncommitted." `git log` showed four
+  commits (`717b96f`, `ae94bca`, `41e45bd`, `1d86810`, covering sub-phases
+  6a–6d) already existed, dated the same day, authored directly by the user —
+  only 6e and 6f were actually uncommitted. The brief was an honest snapshot of
+  what the reporting agent last saw; the user had committed in between,
+  outside that visibility. Confirms this is a structural risk that will recur
+  every time, not a one-off — treat "is X committed?" as always requiring a
+  fresh `git log`/`git status` check, never a transcription, no matter how
+  specific or recent the brief's account sounds.
 
 ### L-005 · Swashbuckle does not auto-detect `[JsonPolymorphic]`/`[JsonDerivedType]`
 - **Added:** 2026-09-07 (S-2026-09-07-01)
@@ -122,3 +133,78 @@ Format: `_meta/SPEC.md` §6.5.
   global dotnet tool — produced an equivalent discriminated-union TypeScript
   client with no extra runtime dependency. See D-018.
 - **Still true?** Yes, unless a JVM is installed on this machine later.
+
+### L-007 · A DB-only uniqueness/state constraint without a handler pre-check surfaces as an unhandled 500, not a clean 4xx
+- **Added:** 2026-09-08 (S-2026-09-08-01)
+- **Tried (implicitly, before this session's fixes):** Relying on a unique index
+  or check constraint alone to enforce a business rule, with no equivalent
+  check in the MediatR handler before the `SaveChangesAsync` that could violate
+  it.
+- **Result:** Hit this pattern three separate times in one session. (1) Phase
+  6c: `CreateTeamCommandHandler` originally had no pre-check for `Team.Code`
+  uniqueness — fixed proactively this time, but only because the pattern had
+  already bitten once. (2) Phase 6d: neither `CreateTag` nor `CreateTopic`
+  pre-checked name uniqueness before this session — a duplicate name hit the
+  DB's unique-index violation raw and surfaced as an unhandled `500`, not a
+  clean `409`; found by a test, not live. (3) Phase 6f: `Question.Approve`
+  throws its own `InvalidOperationException` (by design, pinned by an existing
+  Domain test) when the question isn't `Draft` — but `InvalidOperationException`
+  isn't one of the types `GlobalExceptionHandler` maps, so approving an
+  already-approved question would 500 instead of returning a clean 409.
+- **Root cause:** `[FACT]` EF Core surfaces constraint violations as
+  `DbUpdateException`, and domain methods sometimes throw framework exception
+  types (`InvalidOperationException`) rather than a mapped domain exception —
+  neither is caught by `GlobalExceptionHandler`'s explicit type map, so both
+  bubble up as an unhandled `500`.
+- **Instead:** Whenever adding a new unique index or check constraint, add the
+  matching pre-check in the handler that could violate it (an explicit
+  pre-query, not "let the DB reject it") — or, for a domain method that throws
+  a generic exception type, check the precondition in the handler *before*
+  calling the domain method and throw a type `GlobalExceptionHandler` already
+  maps (e.g. `InvalidStateTransitionException`) instead.
+- **Still true?** Yes — this is a standing implementation checklist item for
+  every future constraint/domain-exception addition, not something specific to
+  Phase 6.
+
+### L-008 · `Question.Approve`'s `InvalidOperationException` needed a handler-level guard, not a `GlobalExceptionHandler` change
+- **Added:** 2026-09-08 (S-2026-09-08-01)
+- **Tried:** Calling `question.Approve(approvedBy)` directly from
+  `ApproveQuestionCommandHandler` and letting whatever it threw propagate.
+- **Result:** Approving an already-approved (non-Draft) question threw the
+  domain method's own `InvalidOperationException`, which
+  `GlobalExceptionHandler` does not map — would surface as a `500`, not the
+  expected `409`.
+- **Root cause:** `[FACT]` `Question.Approve` is pinned by an existing Domain
+  test to throw `InvalidOperationException` specifically — changing the
+  domain method's exception type would break that test and reach outside this
+  phase's scope.
+- **Instead:** Added the state check (`question.Status != QuestionStatus.Draft`)
+  in the handler *before* calling `Approve`, throwing
+  `InvalidStateTransitionException` (already mapped to 409) instead. Domain
+  method and its test untouched.
+- **Still true?** Yes, as a pattern: when a pinned domain method's exception
+  type can't be changed, guard its precondition one layer up in the handler
+  rather than widening `GlobalExceptionHandler`'s map to catch a generic
+  framework exception type (which would then also swallow *unexpected*
+  `InvalidOperationException`s elsewhere as if they were routine 409s).
+
+### L-009 · `ProgramSetting("Teams","MaxTeams")` is not a second team-cap mechanism
+- **Added:** 2026-09-08 (S-2026-09-08-01)
+- **Tried:** Nothing wrong was actually done here — flagging this pre-emptively
+  because the settings-bag key appears in Phase 6a's own test fixtures and
+  could easily be mistaken for a real, competing design by a future agent
+  skimming old test code.
+- **Result (if mistaken):** A future session could wire team-cap enforcement
+  against the wrong mechanism, or add a second enforcement path, causing the
+  two to disagree.
+- **Root cause:** `[FACT]` `Program.MaxTeams` is a typed column on `Program`,
+  added in Phase 4 (unused until Phase 6c wired `SetMaxTeams` and
+  `CreateTeamCommandHandler`'s enforcement). The `ProgramSetting("Teams",
+  "MaxTeams")` key was only ever an incidental example value used in Phase 6a's
+  own test fixtures — never a competing design, never read by any handler.
+- **Instead:** Treat `Program.MaxTeams` as the sole real mechanism. If a future
+  session finds the settings-bag key in old test code, that does not indicate
+  a second intended mechanism exists or should be built.
+- **Still true?** Yes, unless a future decision deliberately introduces a
+  second, settings-bag-driven override — which would need its own `D-###`
+  entry, not a silent revival of the old test-fixture value.

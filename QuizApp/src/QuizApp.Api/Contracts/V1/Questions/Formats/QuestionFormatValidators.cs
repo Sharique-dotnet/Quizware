@@ -79,6 +79,7 @@ public sealed class CreateChoiceQuestionValidator : AbstractValidator<CreateChoi
 
         RuleFor(x => x.QuestionText).NotEmpty().MaximumLength(4000);
         RuleFor(x => x.Options).MustHaveBetween2And8Options();
+        RuleFor(x => x.TopicLabel).NotEmpty().MaximumLength(150);
         RuleFor(x => x.TopicChoiceLimit).GreaterThan(0).When(x => x.TopicChoiceLimit.HasValue);
     }
 }
@@ -89,8 +90,9 @@ public sealed class CreateRapidFireQuestionValidator : AbstractValidator<CreateR
     {
         Include(new QuestionBaseValidator());
 
-        RuleFor(x => x.QuestionText).NotEmpty().MaximumLength(4000);
-        RuleFor(x => x.Options).MustHaveBetween2And8Options();
+        RuleFor(x => x.QuestionText).NotEmpty().MaximumLength(4000).Unless(x => x.IsHostRead);
+        RuleFor(x => x.AnswerText).NotEmpty().WithMessage("AnswerText is required unless the question is host-read.")
+            .Unless(x => x.IsHostRead);
     }
 }
 
@@ -101,7 +103,11 @@ public sealed class CreateTieBreakerQuestionValidator : AbstractValidator<Create
         Include(new QuestionBaseValidator());
 
         RuleFor(x => x.QuestionText).NotEmpty().MaximumLength(4000);
-        RuleFor(x => x.Options).MustHaveBetween2And8Options();
+        RuleFor(x => x.Options).MustHaveBetween2And8Options().When(x => x.AnswerMode == QuizApp.Domain.Enums.TieBreakAnswerMode.Options);
+        RuleFor(x => x.AnswerText).NotEmpty()
+            .When(x => x.AnswerMode == QuizApp.Domain.Enums.TieBreakAnswerMode.ExactText);
+        RuleFor(x => x.NumericAnswer).NotNull()
+            .When(x => x.AnswerMode == QuizApp.Domain.Enums.TieBreakAnswerMode.NumericProximity);
     }
 }
 

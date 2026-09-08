@@ -41,6 +41,7 @@ public abstract class Question : BaseEntity, IAuditable, ISoftDeletable
         OwnerScope = ownerScope;
         FormatCode = formatCode;
         QuestionText = questionText;
+        NormalizedText = Normalize(questionText);
         DifficultyLevel = difficultyLevel;
         TopicId = topicId;
         Language = language;
@@ -102,5 +103,57 @@ public abstract class Question : BaseEntity, IAuditable, ISoftDeletable
     {
         TimesUsed++;
         LastUsedAtUtc = DateTime.UtcNow;
+    }
+
+    /// <summary>P6-17: a question used in a live match is never edited in
+    /// place — a new row is created instead, linked back via this. Called
+    /// once, right after the new row's own factory Create — there is no
+    /// per-format "CreateNewVersion" overload; every format shares this one
+    /// linking step.</summary>
+    public void LinkSupersedes(Guid supersededQuestionId, int supersededVersion)
+    {
+        SupersedesQuestionId = supersededQuestionId;
+        Version = supersededVersion + 1;
+    }
+
+    /// <summary>Soft delete. Callers must first confirm the question was
+    /// never used (P6-16's delete guard) — that needs match/usage data this
+    /// aggregate doesn't have, so it lives in the caller, not here.</summary>
+    public void Delete(string deletedBy)
+    {
+        IsDeleted = true;
+        DeletedAtUtc = DateTime.UtcNow;
+        UpdatedAtUtc = DateTime.UtcNow;
+        UpdatedBy = deletedBy;
+    }
+
+    /// <summary>P6-20's near-duplicate detection key: lower-cased, with
+    /// runs of non-alphanumeric characters collapsed to a single space and
+    /// trimmed. Null in, null out — several formats (host-read RapidFire,
+    /// VisualRapidFire) have no question text at all.</summary>
+    private static string? Normalize(string? text)
+    {
+        if (string.IsNullOrWhiteSpace(text))
+        {
+            return null;
+        }
+
+        var builder = new System.Text.StringBuilder(text.Length);
+        var lastWasSpace = false;
+        foreach (var ch in text.ToLowerInvariant())
+        {
+            if (char.IsLetterOrDigit(ch))
+            {
+                builder.Append(ch);
+                lastWasSpace = false;
+            }
+            else if (!lastWasSpace)
+            {
+                builder.Append(' ');
+                lastWasSpace = true;
+            }
+        }
+
+        return builder.ToString().Trim();
     }
 }

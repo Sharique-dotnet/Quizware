@@ -19,7 +19,8 @@ public sealed class ChoiceQuestion : Question
 
     public static ChoiceQuestion Create(
         Guid? programId, QuestionOwnerScope ownerScope, string questionText, string topicLabel,
-        DifficultyLevel difficultyLevel, string language, string createdBy, Guid? topicId = null)
+        DifficultyLevel difficultyLevel, string language, string createdBy, Guid? topicId = null,
+        bool isTopicExclusive = true, int? topicDisplayOrder = null)
     {
         if (string.IsNullOrWhiteSpace(topicLabel))
         {
@@ -28,7 +29,8 @@ public sealed class ChoiceQuestion : Question
 
         return new ChoiceQuestion(programId, ownerScope, questionText, difficultyLevel, language, createdBy, topicId, topicLabel)
         {
-            IsTopicExclusive = true,
+            IsTopicExclusive = isTopicExclusive,
+            TopicDisplayOrder = topicDisplayOrder,
         };
     }
 

@@ -72,3 +72,23 @@ Newest last. Format: `_meta/SPEC.md` §6.6.
 - **Superseded:** none directly — T-005/T-008/T-009 closed with their original
   text preserved and a resolution note added, not overwritten.
 - **Detail:** `sessions/2026-09-07-01-phases-2-3-4-5-catchup.md`
+
+## S-2026-09-08-01 · phase6-configuration-modules · Claude Sonnet 5 (Claude Code)
+- **Focus:** Implemented all six sub-phases of Phase 6 — Configuration
+  modules (6a Programs, 6b Users/roles, 6c Teams, 6d Topics/tags, 6e Media,
+  6f Question bank) — per direct per-phase user instructions, plan-first
+  except 6e/6f where the user explicitly waived planning. Re-ran the full
+  suite at session end and live-verified against real LocalDB.
+- **Changed:** `CURRENT.md` (rewritten), `DECISIONS.md` (D-019–D-022
+  appended), `TASKS.md` (T-015/T-016/T-017 added, V-008 added), `LESSONS.md`
+  (L-004 updated with a recurrence, L-007/L-008/L-009 added), `HISTORY.md`
+  (this block).
+- **Added:** D-019, D-020, D-021, D-022, T-015, T-016, T-017, L-007, L-008,
+  L-009, V-008.
+- **Superseded:** none directly — L-004 updated in place per SPEC §4.4
+  rather than duplicated.
+- **Correction:** the conversation brief claimed 6b–6f were all uncommitted;
+  `git log` showed 6a–6d (`717b96f`, `ae94bca`, `41e45bd`, `1d86810`) were
+  already committed by the user out-of-band. Only 6e+6f are genuinely
+  uncommitted. Same root cause as the original L-004 entry.
+- **Detail:** `sessions/2026-09-08-01-phase6-configuration-modules.md`

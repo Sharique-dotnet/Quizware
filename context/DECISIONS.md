@@ -5,7 +5,8 @@ wrong is marked `SUPERSEDED` and keeps its reasoning, so the next agent does not
 re-propose it. Format: `_meta/SPEC.md` §6.3.
 
 **Index:** D-001 · D-002 · D-003 · D-004 · D-005 · D-006 · D-007 · D-008 · D-009 ·
-D-010 · D-011 · D-012 · D-013 · D-014 · D-015 · D-016 · D-017 · D-018
+D-010 · D-011 · D-012 · D-013 · D-014 · D-015 · D-016 · D-017 · D-018 · D-019 ·
+D-020 · D-021 · D-022
 
 ---
 
@@ -461,4 +462,117 @@ remaining Phase 0 assumptions has still not happened — see Q-001 in `TASKS.md`
   `docs/openapi.v1.json` should use the same NSwag command, not
   openapi-generator-cli, unless a JVM becomes available and there's a concrete
   reason to switch.
+- **Confidence:** [DECIDED]
+
+### D-019 · MediatR/Application only for Domain-typed entities; Infrastructure-only entities go straight from controller to `AppDbContext`
+- **Status:** ACTIVE
+- **Added:** 2026-09-08 (S-2026-09-08-01)
+- **Decision:** When a phase's core entities are Domain types exposed on
+  `IAppDbContext` (`Program`, `Team`, `Topic`, `Tag`, `Question`), business
+  logic goes through MediatR command/query handlers in `QuizApp.Application`.
+  When the entities are Infrastructure-only types — ASP.NET Core Identity's
+  `AppUser`/`AppRole`/`ProgramUser` (Phase 6b), or `ImportBatch`/
+  `ImportBatchRow` (Phase 6c/6f's Excel import) — business logic is written
+  directly in the controller action, injecting the concrete `AppDbContext`.
+- **Why:** `Architecture.Tests` enforces that `QuizApp.Application` may only
+  reference `QuizApp.Domain`, never `QuizApp.Infrastructure`. Identity types and
+  import-batch types are deliberately Infrastructure-only (not modeled in
+  Domain), so a MediatR handler for them is structurally impossible without
+  breaking that rule. This mirrors a pattern already present before this
+  session: `AuthController.Login`/`Refresh`, built in Phase 3 before MediatR
+  existed in this codebase at all.
+- **Alternatives rejected:** *Model Identity/import-batch state as Domain types
+  just so they can go through MediatR* — rejected; would blur the boundary
+  between "business domain" and "framework/infrastructure concern" that the
+  Clean Architecture split exists to keep, for entities (ASP.NET Identity
+  tables, transient import staging rows) that are not really domain concepts.
+- **Consequences:** A future phase must check which side of this split its
+  entities fall on *before* choosing an implementation shape — do not assume
+  every controller gets a MediatR handler. Team import (6c) and MCQ import (6f)
+  both still reuse the Domain-side `CreateTeamCommand`/`CreateMcqQuestionCommand`
+  via `ISender` for the actual per-row entity creation, so business rules
+  cannot drift between the single-create and bulk-import paths even though the
+  import bookkeeping itself bypasses MediatR.
+- **Confidence:** [DECIDED]
+
+### D-020 · Question editing has no separate Update handler — Create is reused with an optional `ReplacesQuestionId`
+- **Status:** ACTIVE
+- **Added:** 2026-09-08 (S-2026-09-08-01)
+- **Decision:** All 10 `CreateXxxQuestionCommand` records gained an optional
+  `Guid? ReplacesQuestionId = null`. `PUT /questions/{formatCode}/{id}`
+  deserializes its body into the same per-format Create request shape and
+  invokes the same Create command with `ReplacesQuestionId` set. There is no
+  separate "Update" command or handler for any of the 10 formats.
+  `QuestionCommon.ResolveReplacementTargetAsync` + `.ApplyVersioning` do the
+  shared work: verify the old question exists and matches format, link
+  `SupersedesQuestionId` + increment `Version`, then soft-delete the old row if
+  `TimesUsed == 0` or retire it if used.
+- **Why:** PRD FR-3.10: "a question used in a live match shall not be editable;
+  a new version shall be created instead." Routing both Create and Update
+  through one code path guarantees they validate identically — a question
+  created via `POST` and one created via `PUT` (as a new version) can never
+  diverge in what's accepted, since it is literally the same handler.
+- **Alternatives rejected:** *A separate `UpdateXxxQuestionCommand` per format*
+  — rejected as the more conventional REST shape, but it would double the
+  handler count (20 instead of 10) and create an ongoing risk of the two paths'
+  validation rules drifting apart over time — exactly the failure mode FR-3.10's
+  versioning requirement exists to prevent.
+- **Consequences:** Any future change to a format's validation rules only needs
+  to touch one handler per format. Live-verified both branches this session:
+  updating an unused question makes the old id 404 after the update; updating a
+  used question (forced via `RecordUsage()` in a test DB scope) leaves the old
+  id returning 200 with `Status = Retired`.
+- **Confidence:** [DECIDED]
+
+### D-021 · Media validation limits (extensions, size cap, magic bytes) are this implementation's own numbers, not sourced from any doc
+- **Status:** ACTIVE
+- **Added:** 2026-09-08 (S-2026-09-08-01)
+- **Decision:** `MediaValidation.cs` allows exactly these extensions —
+  jpg/jpeg/png/gif/mp3/wav/mp4/webm — mapped to `MediaKind`, checks
+  magic-byte signatures per extension (PNG `89 50 4E 47`, JPEG `FF D8 FF`, MP4
+  `ftyp` at offset 4, etc.), and caps upload size at 25 MB.
+- **Why:** P6-15's acceptance criterion ("extension allow-list, magic-byte
+  check, size cap") names the *mechanisms* but not the specific list, byte
+  signatures, or numeric cap — none of `docs/new-system/**` specifies them.
+  These values were chosen as deliberately conservative defaults to make the
+  acceptance criterion concretely testable, not transcribed from a
+  requirement.
+- **Alternatives rejected:** none weighed explicitly — this was "pick a
+  reasonable default to unblock the acceptance test," not a considered
+  trade-off between named alternatives.
+- **Consequences:** Treat the extension list, the 25 MB cap, and the magic-byte
+  table as `[ASSUMED]` product requirements until the user confirms them. If a
+  real event needs a larger media file (e.g. a longer AV clip) or a format not
+  on this list, the cap/list needs to be revisited, not treated as a fixed
+  constraint copied from a spec.
+- **Confidence:** [ASSUMED] — confirm with the user before relying on the exact
+  numbers.
+
+### D-022 · Phase 6f's Excel import is scoped to MCQ only; the other 9 formats are deferred
+- **Status:** ACTIVE
+- **Added:** 2026-09-08 (S-2026-09-08-01)
+- **Decision:** `P6-19` ("per-format Excel import with validation report") is
+  delivered only for MCQ (`McqQuestionExcelParser.cs`, column template
+  `QuestionText, DifficultyLevelId, Language, Option1..4, Option1..4Correct` —
+  also not documented anywhere, invented for this implementation). The other 9
+  formats' import parsers do not exist yet. Everything else in Phase 6f
+  (Create, versioning, approval, delete-guard, coverage, duplicates) **was**
+  delivered for all 10 formats, since those operations turned out to be
+  format-agnostic once the shared plumbing (`QuestionCommon.cs`,
+  `QuestionMapper.cs`) existed.
+- **Why:** Explicitly borrowed the project's own documented strategy from
+  Phase 9's roadmap entry — "build MCQ fully first, then add the remaining nine
+  formats one at a time" — cited directly to the user as the justification for
+  this scoping, rather than an unstated shortcut. Each additional format's
+  import parser is mechanical repetition of the same pattern (a column
+  template + a call into that format's `CreateXxxQuestionCommand`), not a design
+  problem, so it was deferred rather than built speculatively.
+- **Alternatives rejected:** *Build all 10 formats' import parsers now* —
+  rejected as unnecessary upfront work; nothing about the remaining 9 is
+  expected to be harder than MCQ's, so there's no design risk in deferring them.
+- **Consequences:** A future session adding format N's import support should
+  follow `McqQuestionExcelParser.cs`'s exact pattern (Infrastructure-only
+  parser class + `TeamsController`/`QuestionsController`'s validate/report/
+  commit controller code, reusing that format's `CreateXxxQuestionCommand` via
+  `ISender` for the commit step) rather than inventing a new import mechanism.
 - **Confidence:** [DECIDED]

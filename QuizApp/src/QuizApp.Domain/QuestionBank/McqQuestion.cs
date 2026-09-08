@@ -17,11 +17,14 @@ public sealed class McqQuestion : Question
 
     public static McqQuestion Create(
         Guid? programId, QuestionOwnerScope ownerScope, string questionText,
-        DifficultyLevel difficultyLevel, string language, string createdBy, Guid? topicId = null)
+        DifficultyLevel difficultyLevel, string language, string createdBy, Guid? topicId = null,
+        bool allowMultipleCorrect = false, bool shuffleOptions = true, bool negativeMarkingEnabled = false)
     {
         return new McqQuestion(programId, ownerScope, questionText, difficultyLevel, language, createdBy, topicId)
         {
-            ShuffleOptions = true,
+            AllowMultipleCorrect = allowMultipleCorrect,
+            ShuffleOptions = shuffleOptions,
+            NegativeMarkingEnabled = negativeMarkingEnabled,
         };
     }
 

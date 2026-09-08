@@ -20,7 +20,8 @@ public sealed class VisualRapidFireQuestion : Question
 
     public static VisualRapidFireQuestion Create(
         Guid? programId, QuestionOwnerScope ownerScope, int imageCount,
-        DifficultyLevel difficultyLevel, string language, string createdBy, Guid? topicId = null)
+        DifficultyLevel difficultyLevel, string language, string createdBy, Guid? topicId = null,
+        int? revealSecondsPerImage = null, int? gridColumns = null, bool scorePerImage = true)
     {
         if (imageCount < 1)
         {
@@ -29,7 +30,9 @@ public sealed class VisualRapidFireQuestion : Question
 
         return new VisualRapidFireQuestion(programId, ownerScope, questionText: null, difficultyLevel, language, createdBy, topicId, imageCount)
         {
-            ScorePerImage = true,
+            RevealSecondsPerImage = revealSecondsPerImage,
+            GridColumns = gridColumns,
+            ScorePerImage = scorePerImage,
         };
     }
 

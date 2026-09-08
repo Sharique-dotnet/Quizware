@@ -17,13 +17,14 @@ public sealed class PassingQuestion : Question
 
     public static PassingQuestion Create(
         Guid? programId, QuestionOwnerScope ownerScope, string questionText,
-        DifficultyLevel difficultyLevel, string language, string createdBy, Guid? topicId = null)
+        DifficultyLevel difficultyLevel, string language, string createdBy, Guid? topicId = null,
+        int maxPassCount = 2, PassDirection passDirection = PassDirection.Clockwise, bool revealAnswerIfAllPass = true)
     {
         return new PassingQuestion(programId, ownerScope, questionText, difficultyLevel, language, createdBy, topicId)
         {
-            MaxPassCount = 2,
-            PassDirection = PassDirection.Clockwise,
-            RevealAnswerIfAllPass = true,
+            MaxPassCount = maxPassCount,
+            PassDirection = passDirection,
+            RevealAnswerIfAllPass = revealAnswerIfAllPass,
         };
     }
 

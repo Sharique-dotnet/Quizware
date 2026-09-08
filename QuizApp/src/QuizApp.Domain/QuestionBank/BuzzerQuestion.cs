@@ -17,13 +17,16 @@ public sealed class BuzzerQuestion : Question
 
     public static BuzzerQuestion Create(
         Guid? programId, QuestionOwnerScope ownerScope, string questionText,
-        DifficultyLevel difficultyLevel, string language, string createdBy, Guid? topicId = null)
+        DifficultyLevel difficultyLevel, string language, string createdBy, Guid? topicId = null,
+        int buzzWindowSeconds = 30, bool lockoutOnWrongAnswer = true, bool allowStealAfterWrong = true,
+        int? stealWindowSeconds = null)
     {
         return new BuzzerQuestion(programId, ownerScope, questionText, difficultyLevel, language, createdBy, topicId)
         {
-            BuzzWindowSeconds = 30,
-            LockoutOnWrongAnswer = true,
-            AllowStealAfterWrong = true,
+            BuzzWindowSeconds = buzzWindowSeconds,
+            LockoutOnWrongAnswer = lockoutOnWrongAnswer,
+            AllowStealAfterWrong = allowStealAfterWrong,
+            StealWindowSeconds = stealWindowSeconds,
         };
     }
 
