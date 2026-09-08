@@ -8,7 +8,7 @@ on:
 
 defaults:
   run:
-    working-directory: QuizApp
+    working-directory: Quizware
 
 jobs:
   build-test:
@@ -24,20 +24,20 @@ jobs:
           dotnet-version: "10.0.x"
 
       - name: Restore
-        run: dotnet restore QuizApp.slnx
+        run: dotnet restore Quizware.slnx
 
       - name: Build (0 warnings treated as errors)
-        run: dotnet build QuizApp.slnx --no-restore --configuration Release /warnaserror
+        run: dotnet build Quizware.slnx --no-restore --configuration Release /warnaserror
 
       - name: Test
-        run: dotnet test QuizApp.slnx --no-build --configuration Release --logger "trx" --results-directory TestResults
+        run: dotnet test Quizware.slnx --no-build --configuration Release --logger "trx" --results-directory TestResults
 
       - name: Upload test results
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: test-results
-          path: QuizApp/TestResults
+          path: Quizware/TestResults
 
       - name: Install EF Core tools
         run: dotnet tool install --global dotnet-ef --version 10.*
@@ -47,5 +47,5 @@ jobs:
         # the exact P3-16 requirement.
         run: |
           dotnet ef migrations has-pending-model-changes \
-            --project src/QuizApp.Infrastructure \
-            --startup-project src/QuizApp.Api
+            --project src/Quizware.Infrastructure \
+            --startup-project src/Quizware.Api

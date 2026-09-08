@@ -9,6 +9,7 @@ using Quizware.Infrastructure;
 using Quizware.Infrastructure.Identity;
 using Quizware.Infrastructure.Persistence;
 using Quizware.Modules.Buzzer;
+using Scalar.AspNetCore;
 using Serilog;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -68,9 +69,17 @@ app.UseMiddleware<CorrelationIdMiddleware>();
 
 if (app.Environment.IsDevelopment())
 {
+    // Swashbuckle remains the source of truth for the OpenAPI document — it
+    // carries the QuestionResponse discriminator/mapping wiring from
+    // DependencyInjection.cs.AddSwagger that the built-in Microsoft.AspNetCore.OpenApi
+    // generator (registered via AddOpenApi/MapOpenApi for tooling that expects
+    // that route) doesn't support. Scalar renders that same Swashbuckle
+    // document instead of Swagger UI.
     app.MapOpenApi();
     app.UseSwagger();
-    app.UseSwaggerUI();
+    app.MapScalarApiReference(options => options
+        .WithOpenApiRoutePattern("/swagger/{documentName}/swagger.json")
+        .WithTitle("Quizware API"));
 }
 
 app.UseHttpsRedirection();
