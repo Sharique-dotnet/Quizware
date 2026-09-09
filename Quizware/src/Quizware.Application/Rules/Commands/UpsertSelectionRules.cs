@@ -55,13 +55,13 @@ public sealed class UpsertSelectionRulesCommandHandler : IRequestHandler<UpsertS
 
             if (dto.Id != Guid.Empty && existingById.TryGetValue(dto.Id, out var rule))
             {
-                rule.Update(dto.DifficultyMixJson, repeatPolicy, topicSpreadPolicy, fallbackPolicy, actor);
+                rule.Update(dto.DifficultyMixJson, repeatPolicy, topicSpreadPolicy, fallbackPolicy, actor, dto.TopicFilterJson);
                 continue;
             }
 
             var formatCode = Enum.Parse<QuestionFormatCode>(dto.FormatCode, ignoreCase: true);
             var created = QuestionSelectionRule.Create(request.ProgramId, formatCode, actor, stageId: dto.StageId);
-            created.Update(dto.DifficultyMixJson, repeatPolicy, topicSpreadPolicy, fallbackPolicy, actor);
+            created.Update(dto.DifficultyMixJson, repeatPolicy, topicSpreadPolicy, fallbackPolicy, actor, dto.TopicFilterJson);
             _db.QuestionSelectionRules.Add(created);
         }
 

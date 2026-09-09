@@ -63,7 +63,8 @@ public sealed class RulesController : ControllerBase
         Guid programId, [FromBody] SelectionPreviewRequest request, CancellationToken cancellationToken)
     {
         var result = await _sender.Send(
-            new PreviewSelectionQuery(programId, request.StageId, request.FormatCode, request.QuestionCount), cancellationToken);
+            new PreviewSelectionQuery(programId, request.StageId, request.SegmentTemplateId, request.FormatCode, request.QuestionCount),
+            cancellationToken);
         return Ok(new SelectionPreviewResponse(
             result.PoolSize, result.EligibleAfterFilters, result.EligibleAfterRepeatPolicy,
             result.DifficultyMixRequested, result.DifficultyMixAchievable, result.CanSatisfy, result.Warnings));
@@ -111,10 +112,10 @@ public sealed class RulesController : ControllerBase
     private static ScoringRuleAppDto ToAppDto(ScoringRuleDto dto) => new(dto.Id, dto.FormatCode, dto.Outcome, dto.ContextKey, dto.Points);
 
     private static SelectionRuleDto ToResponse(SelectionRuleAppDto dto) =>
-        new(dto.Id, dto.FormatCode, dto.StageId, dto.DifficultyMixJson, dto.RepeatPolicy, dto.TopicSpreadPolicy, dto.FallbackPolicy);
+        new(dto.Id, dto.FormatCode, dto.StageId, dto.DifficultyMixJson, dto.RepeatPolicy, dto.TopicSpreadPolicy, dto.FallbackPolicy, dto.TopicFilterJson);
 
     private static SelectionRuleAppDto ToAppDto(SelectionRuleDto dto) =>
-        new(dto.Id, dto.FormatCode, dto.StageId, dto.DifficultyMixJson, dto.RepeatPolicy, dto.TopicSpreadPolicy, dto.FallbackPolicy);
+        new(dto.Id, dto.FormatCode, dto.StageId, dto.DifficultyMixJson, dto.RepeatPolicy, dto.TopicSpreadPolicy, dto.FallbackPolicy, dto.TopicFilterJson);
 
     private static QualificationRuleDto ToResponse(QualificationRuleAppDto dto) =>
         new(dto.Id, dto.StageId, dto.WinnersPerMatch, dto.BestRemainingAcrossStage, dto.ManualWildcardSlots);

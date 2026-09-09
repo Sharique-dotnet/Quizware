@@ -9,7 +9,8 @@ public sealed record SelectionRuleAppDto(
     string? DifficultyMixJson,
     string RepeatPolicy,
     string TopicSpreadPolicy,
-    string FallbackPolicy);
+    string FallbackPolicy,
+    string? TopicFilterJson = null);
 
 public sealed record QualificationRuleAppDto(
     Guid Id,

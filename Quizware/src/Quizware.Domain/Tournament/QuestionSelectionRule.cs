@@ -59,11 +59,16 @@ public sealed class QuestionSelectionRule : BaseEntity, ITenantScoped, IAuditabl
     public bool IsDeleted { get; private set; }
     public DateTime? DeletedAtUtc { get; private set; }
 
+    /// <summary>Specificity: a segment-level rule beats a stage-level rule,
+    /// which beats a program-level rule.</summary>
+    public int Specificity => SegmentTemplateId is not null ? 2 : StageId is not null ? 1 : 0;
+
     public void Update(
         string? difficultyMixJson, RepeatPolicy repeatPolicy, TopicSpreadPolicy topicSpreadPolicy,
-        FallbackPolicy fallbackPolicy, string updatedBy)
+        FallbackPolicy fallbackPolicy, string updatedBy, string? topicFilterJson = null)
     {
         DifficultyMixJson = difficultyMixJson;
+        TopicFilterJson = topicFilterJson;
         RepeatPolicy = repeatPolicy;
         TopicSpreadPolicy = topicSpreadPolicy;
         FallbackPolicy = fallbackPolicy;

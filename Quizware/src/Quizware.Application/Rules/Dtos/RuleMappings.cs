@@ -11,7 +11,8 @@ internal static class RuleMappings
 
     public static SelectionRuleAppDto ToDto(this QuestionSelectionRule rule) =>
         new(rule.Id, rule.FormatCode.ToString(), rule.StageId, rule.DifficultyMixJson,
-            rule.RepeatPolicy.ToString(), rule.TopicSpreadPolicy.ToString(), rule.FallbackPolicy.ToString());
+            rule.RepeatPolicy.ToString(), rule.TopicSpreadPolicy.ToString(), rule.FallbackPolicy.ToString(),
+            rule.TopicFilterJson);
 
     public static QualificationRuleAppDto ToDto(this QualificationRule rule) =>
         new(rule.Id, rule.FromStageId, rule.WinnersPerMatch, rule.BestRemainingAcrossStage, rule.ManualWildcardSlots);

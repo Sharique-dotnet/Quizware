@@ -11,11 +11,12 @@ public sealed record SelectionRuleDto(
     string? DifficultyMixJson,
     string RepeatPolicy,
     string TopicSpreadPolicy,
-    string FallbackPolicy);
+    string FallbackPolicy,
+    string? TopicFilterJson = null);
 
 public sealed record UpsertSelectionRulesRequest(IReadOnlyList<SelectionRuleDto> Rules);
 
-public sealed record SelectionPreviewRequest(Guid StageId, string FormatCode, int QuestionCount);
+public sealed record SelectionPreviewRequest(Guid StageId, string FormatCode, int QuestionCount, Guid? SegmentTemplateId = null);
 
 public sealed record SelectionPreviewResponse(
     int PoolSize,

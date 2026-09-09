@@ -1,21 +1,20 @@
 using FluentValidation;
 using MediatR;
-using Microsoft.EntityFrameworkCore;
-using Quizware.Application.Abstractions;
 using Quizware.Application.Rules.Dtos;
+using Quizware.Application.Selection;
 using Quizware.Domain.Enums;
-using Quizware.Domain.QuestionBank;
 
 namespace Quizware.Application.Rules.Queries;
 
-/// <summary>A pool-size preview only — it reports how many Approved
-/// questions of the requested format exist (shared library included) and
-/// their difficulty spread. The actual draw algorithm (repeat policy across
-/// matches, topic spread, per-team fairness) is <c>IQuestionSelector</c>,
-/// Phase 8's own interface; this handler exists so P7 configuration screens
-/// can sanity-check a rule against the current bank size before Phase 8
-/// exists.</summary>
-public sealed record PreviewSelectionQuery(Guid ProgramId, Guid StageId, string FormatCode, int QuestionCount) : IRequest<SelectionPreviewResultDto>;
+/// <summary>Phase 8: a dry run through the real <see cref="IQuestionSelector"/>
+/// draw — pool building, repeat-policy exclusion, difficulty mix, and the
+/// fallback ladder all run exactly as they would for a real reservation, so
+/// this preview can never disagree with what a match start would actually
+/// draw. Nothing is written; <see cref="IQuestionSelector.PreviewAsync"/>
+/// never throws on exhaustion, it reports <c>CanSatisfy = false</c> instead.</summary>
+public sealed record PreviewSelectionQuery(
+    Guid ProgramId, Guid StageId, Guid? SegmentTemplateId, string FormatCode, int QuestionCount)
+    : IRequest<SelectionPreviewResultDto>;
 
 public sealed class PreviewSelectionQueryValidator : AbstractValidator<PreviewSelectionQuery>
 {
@@ -29,40 +28,23 @@ public sealed class PreviewSelectionQueryValidator : AbstractValidator<PreviewSe
 
 public sealed class PreviewSelectionQueryHandler : IRequestHandler<PreviewSelectionQuery, SelectionPreviewResultDto>
 {
-    private readonly IAppDbContext _db;
+    private readonly IQuestionSelector _selector;
 
-    public PreviewSelectionQueryHandler(IAppDbContext db)
+    public PreviewSelectionQueryHandler(IQuestionSelector selector)
     {
-        _db = db;
+        _selector = selector;
     }
 
     public async Task<SelectionPreviewResultDto> Handle(PreviewSelectionQuery request, CancellationToken cancellationToken)
     {
         var formatCode = Enum.Parse<QuestionFormatCode>(request.FormatCode, ignoreCase: true);
 
-        var pool = await _db.Questions
-            .Where(q => (q.ProgramId == request.ProgramId || q.ProgramId == null) && q.FormatCode == formatCode)
-            .ToListAsync(cancellationToken);
-        var eligible = pool.Where(q => q.Status == QuestionStatus.Approved).ToList();
-
-        var achievableMix = eligible
-            .GroupBy(q => q.DifficultyLevel)
-            .ToDictionary(g => g.Key.ToString(), g => g.Count());
-
-        var warnings = new List<string>();
-        var canSatisfy = eligible.Count >= request.QuestionCount;
-        if (!canSatisfy)
-        {
-            warnings.Add($"Only {eligible.Count} approved question(s) available for {formatCode}; {request.QuestionCount} requested.");
-        }
+        var result = await _selector.PreviewAsync(
+            new SelectionRequest(request.ProgramId, request.StageId, request.SegmentTemplateId, formatCode, request.QuestionCount, RandomSeed: 1),
+            cancellationToken);
 
         return new SelectionPreviewResultDto(
-            pool.Count,
-            eligible.Count,
-            eligible.Count,
-            new Dictionary<string, int>(),
-            achievableMix,
-            canSatisfy,
-            warnings);
+            result.PoolSize, result.EligibleAfterFilters, result.EligibleAfterRepeatPolicy,
+            result.DifficultyMixRequested, result.DifficultyMixAchieved, result.CanSatisfy, result.Warnings);
     }
 }
