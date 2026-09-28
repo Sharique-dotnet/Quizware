@@ -17,6 +17,11 @@ public sealed record ResponseEvaluation(bool? IsCorrect, bool IsObjective)
     public static readonly ResponseEvaluation NotChecked = new(null, false);
 }
 
+/// <summary>How a question may be passed on: at most <see cref="MaxPassCount"/>
+/// times, in <see cref="Direction"/>, and whether the answer is revealed when
+/// every team has passed.</summary>
+public sealed record QuestionPassRules(int MaxPassCount, PassDirection Direction, bool RevealAnswerIfAllPass);
+
 /// <summary>P9-07: everything that differs between formats on the night. The
 /// engine asks the handler for the question's format and is otherwise
 /// format-agnostic. Handlers are discovered by assembly scanning, so adding a
@@ -36,6 +41,10 @@ public interface IQuestionFormatHandler
     /// <summary>For formats any team may answer: whether a wrong answer
     /// leaves the question open for the others.</summary>
     bool WrongAnswerLeavesQuestionOpen(Question question);
+
+    /// <summary>The question's own passing rules, for formats that carry
+    /// them; null means the segment's passing settings apply.</summary>
+    QuestionPassRules? PassRules(Question question);
 
     Task<FormatContent> PresentAsync(Question question, MatchQuestion matchQuestion, CancellationToken cancellationToken);
 

@@ -30,6 +30,8 @@ public abstract class OptionFormatHandler : IQuestionFormatHandler
 
     public virtual bool WrongAnswerLeavesQuestionOpen(Question question) => false;
 
+    public virtual QuestionPassRules? PassRules(Question question) => null;
+
     /// <summary>Whether options appear in the per-match shuffled order.</summary>
     protected virtual bool ShuffleOptions(Question question) => true;
 
