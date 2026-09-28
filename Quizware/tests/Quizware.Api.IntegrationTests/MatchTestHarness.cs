@@ -120,6 +120,21 @@ public sealed class MatchTestHarness
         await db.SaveChangesAsync();
     }
 
+    /// <summary>Sets a stage's live-play settings, which no API exposes yet.</summary>
+    public async Task ConfigureStageAsync(Guid stageId, TeamCountChangePolicy policy, bool allowReorderDuringMatch = false)
+    {
+        using var scope = _factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var stage = db.Stages.Single(s => s.Id == stageId);
+        stage.ConfigureMatchPlay(policy, allowReorderDuringMatch, "test");
+        await db.SaveChangesAsync();
+    }
+
+    public async Task<HttpResponseMessage> DisqualifyAsync(StartedMatch started, Guid participantId, bool excludeFromStandings = true) =>
+        await Client.PostAsJsonAsync(
+            $"{started.Live}/participants/{participantId}/disqualify",
+            new Contracts.V1.LiveMatch.DisqualifyParticipantRequest("Rule breach", Guid.NewGuid(), excludeFromStandings));
+
     public async Task<StartedMatch> StartWithFirstSegmentOpenAsync(MatchDetailResponse match)
     {
         var live = LiveUrl(match.Id);

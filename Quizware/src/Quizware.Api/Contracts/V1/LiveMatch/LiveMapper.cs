@@ -76,4 +76,24 @@ public static class LiveMapper
                 : new NextQuestionPreviewDto(dto.NextQuestion.MatchQuestionId, dto.NextQuestion.ActiveParticipantId, dto.NextQuestion.ActiveTeamName),
             dto.SegmentComplete,
             dto.MatchComplete);
+
+    public static DisqualifyParticipantResponse ToResponse(App.DisqualifyResultDto dto) =>
+        new(
+            dto.ParticipantId,
+            dto.TeamName,
+            dto.Status,
+            dto.RemovedAtUtc,
+            dto.RemainingActiveParticipants.Select(ToResponse).ToList(),
+            dto.MatchCanContinue,
+            dto.TurnOrderRecalculated,
+            dto.CurrentSegmentAdjustment is null
+                ? null
+                : new CurrentSegmentAdjustmentDto(
+                    dto.CurrentSegmentAdjustment.Policy,
+                    dto.CurrentSegmentAdjustment.PlannedQuestionCountBefore,
+                    dto.CurrentSegmentAdjustment.PlannedQuestionCountAfter,
+                    dto.CurrentSegmentAdjustment.Message),
+            dto.NextActiveParticipantId,
+            dto.MatchCompleted,
+            dto.WinnerTeamId);
 }

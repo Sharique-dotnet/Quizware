@@ -91,3 +91,18 @@ public sealed record RecordAnswerResultDto(
     NextQuestionPreviewDto? NextQuestion,
     bool SegmentComplete,
     bool MatchComplete);
+
+public sealed record CurrentSegmentAdjustmentDto(string Policy, int PlannedQuestionCountBefore, int PlannedQuestionCountAfter, string Message);
+
+public sealed record DisqualifyResultDto(
+    Guid ParticipantId,
+    string TeamName,
+    string Status,
+    DateTime RemovedAtUtc,
+    IReadOnlyList<LiveParticipantScoreDto> RemainingActiveParticipants,
+    bool MatchCanContinue,
+    bool TurnOrderRecalculated,
+    CurrentSegmentAdjustmentDto? CurrentSegmentAdjustment,
+    Guid? NextActiveParticipantId,
+    bool MatchCompleted,
+    Guid? WinnerTeamId);

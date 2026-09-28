@@ -146,11 +146,17 @@ public sealed class LiveMatchController : ControllerBase
 
     [HttpPost("participants/{pid:guid}/disqualify")]
     [Authorize(Policy = Policies.CanDisqualify)]
-    public ActionResult<DisqualifyParticipantResponse> Disqualify(Guid matchId, Guid pid, [FromBody] DisqualifyParticipantRequest request) => StatusCode(StatusCodes.Status501NotImplemented);
+    public async Task<ActionResult<DisqualifyParticipantResponse>> Disqualify(
+        Guid matchId, Guid pid, [FromBody] DisqualifyParticipantRequest request, CancellationToken cancellationToken) =>
+        Ok(LiveMapper.ToResponse(await _sender.Send(
+            new DisqualifyParticipantCommand(matchId, pid, request.Reason, request.ApprovedByUserId, request.ExcludeFromStandings),
+            cancellationToken)));
 
     [HttpPost("participants/{pid:guid}/reinstate")]
     [Authorize(Policy = Policies.CanDisqualify)]
-    public ActionResult<LiveMatchStateResponse> Reinstate(Guid matchId, Guid pid, [FromBody] ReinstateParticipantRequest request) => StatusCode(StatusCodes.Status501NotImplemented);
+    public async Task<ActionResult<LiveMatchStateResponse>> Reinstate(
+        Guid matchId, Guid pid, [FromBody] ReinstateParticipantRequest request, CancellationToken cancellationToken) =>
+        Ok(LiveMapper.ToResponse(await _sender.Send(new ReinstateParticipantCommand(matchId, pid, request.Reason), cancellationToken)));
 
     [HttpPost("end")]
     [Authorize(Policy = Policies.CanOperateMatch)]

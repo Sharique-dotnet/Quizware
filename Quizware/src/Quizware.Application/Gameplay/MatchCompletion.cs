@@ -79,7 +79,12 @@ public sealed class MatchCompletion
     {
         var activeQuestion = await _db.MatchQuestions
             .SingleOrDefaultAsync(q => q.MatchId == match.Id && q.State == MatchQuestionState.Active, cancellationToken);
-        activeQuestion?.Skip();
+        // The query matches on the stored state; the tracked instance may
+        // already have been closed earlier in this same unit of work.
+        if (activeQuestion is { State: MatchQuestionState.Active })
+        {
+            activeQuestion.Skip();
+        }
 
         foreach (var segment in await MatchSetup.LoadSegmentsAsync(_db, match.Id, cancellationToken))
         {

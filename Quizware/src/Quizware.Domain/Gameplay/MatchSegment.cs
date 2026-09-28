@@ -78,6 +78,24 @@ public sealed class MatchSegment : BaseEntity, ITenantScoped, IAuditable, ISoftD
         ServedQuestionCount++;
     }
 
+    /// <summary>Changes how many questions the segment will play — never below
+    /// what has already been served.</summary>
+    public void AdjustPlannedQuestionCount(int plannedQuestionCount)
+    {
+        if (State is not (MatchSegmentState.Pending or MatchSegmentState.Open))
+        {
+            throw new InvalidStateTransitionException($"Segment {OrderIndex} is {State}; its question count can no longer change.");
+        }
+
+        if (plannedQuestionCount < ServedQuestionCount)
+        {
+            throw new ArgumentException(
+                $"Segment {OrderIndex} has already served {ServedQuestionCount} questions.", nameof(plannedQuestionCount));
+        }
+
+        PlannedQuestionCount = plannedQuestionCount;
+    }
+
     public void Lock()
     {
         IsOrderLocked = true;

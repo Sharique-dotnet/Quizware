@@ -1,4 +1,5 @@
 using Quizware.Domain.Common;
+using Quizware.Domain.Common.Exceptions;
 using Quizware.Domain.Enums;
 
 namespace Quizware.Domain.Tournament;
@@ -54,13 +55,18 @@ public sealed class MatchParticipant : BaseEntity, ITenantScoped, IAuditable, IS
     public bool IsDeleted { get; private set; }
     public DateTime? DeletedAtUtc { get; private set; }
 
-    /// <summary>Score is kept but excluded from standings — never zeroed —
-    /// so match history is not lost.</summary>
-    public void Disqualify(string reason, Guid removedBy, Guid? removedAtSegmentId = null)
+    /// <summary>Score is kept — never zeroed — so match history is not lost;
+    /// by default it is also excluded from standings.</summary>
+    public void Disqualify(string reason, Guid removedBy, Guid? removedAtSegmentId = null, bool excludeFromStandings = true)
     {
         if (string.IsNullOrWhiteSpace(reason))
         {
             throw new ArgumentException("A reason is required to disqualify a participant.", nameof(reason));
+        }
+
+        if (Status != ParticipantStatus.Active)
+        {
+            throw new InvalidStateTransitionException($"Only an active participant can be disqualified; this one is {Status}.");
         }
 
         Status = ParticipantStatus.Disqualified;
@@ -68,7 +74,25 @@ public sealed class MatchParticipant : BaseEntity, ITenantScoped, IAuditable, IS
         RemovedAtUtc = DateTime.UtcNow;
         RemovedBy = removedBy;
         RemovedAtSegmentId = removedAtSegmentId;
-        ExcludeFromStandings = true;
+        ExcludeFromStandings = excludeFromStandings;
+    }
+
+    /// <summary>Undoes a disqualification. The team rejoins the rotation at
+    /// <paramref name="turnOrder"/> (the caller puts it last, then recompacts).</summary>
+    public void Reinstate(int turnOrder)
+    {
+        if (Status != ParticipantStatus.Disqualified)
+        {
+            throw new InvalidStateTransitionException($"Only a disqualified participant can be reinstated; this one is {Status}.");
+        }
+
+        Status = ParticipantStatus.Active;
+        RemovalReason = null;
+        RemovedAtUtc = null;
+        RemovedBy = null;
+        RemovedAtSegmentId = null;
+        ExcludeFromStandings = false;
+        TurnOrder = turnOrder;
     }
 
     public void SetSeatAndTurn(int seatNumber, int turnOrder, string updatedBy)
