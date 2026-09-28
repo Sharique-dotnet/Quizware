@@ -118,7 +118,7 @@ public sealed class LiveMatchController : ControllerBase
     }
 
     [HttpPost("answers/{id:guid}/reverse")]
-    [Authorize(Policy = Policies.CanOperateMatch)]
+    [Authorize(Policy = Policies.CanAdjustScore)]
     public async Task<ActionResult<RecordAnswerResponse>> ReverseAnswer(
         Guid matchId, Guid id, [FromBody] ReverseAnswerRequest request, CancellationToken cancellationToken) =>
         Ok(LiveMapper.ToResponse(await _sender.Send(new ReverseAnswerCommand(matchId, id, request.Reason), cancellationToken)));

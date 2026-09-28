@@ -539,7 +539,7 @@ The heart of the system. Replaces ~5,700 lines of duplicated legacy controllers.
 | `P9-07` | `IQuestionFormatHandler` per format — 10 implementations | Adding a format touches no existing code |
 | `P9-08` | Passing mechanics: pass to next active team, `MaxPassCount`, `PassDirection` | Points differ for direct vs after-pass (`ContextKey`) |
 | `P9-09` | Choice round topic selection + `TopicChoiceLimit` | Exclusive topics removed from the board once played |
-| `P9-10` | **Undo / reverse an answer** — compensating `ScoreEvent`, never a delete | `ProgramAdmin` or `Operator` only |
+| `P9-10` | **Undo / reverse an answer** — compensating `ScoreEvent`, never a delete | `ProgramAdmin` only (D-013) |
 | `P9-11` | **Participant disqualification + turn-order recompaction** | `ProgramAdmin` only. Applies `TeamCountChangePolicy`. Ends the match if <2 remain |
 | `P9-12` | `MatchEvent` timeline, strictly increasing `SequenceNumber` | Append-only |
 | `P9-13` | **Crash recovery / resume** — rebuild state from the database, not memory | Same question order after restart, because questions were reserved at start |

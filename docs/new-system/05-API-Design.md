@@ -264,7 +264,7 @@ Neither needs a deployment.
 | POST | `/questions/{mqId}/reveal` | Operator | Reveal the answer to displays |
 | POST | `/questions/{mqId}/skip` | Operator | Skip this question |
 | POST | `/answers` | Operator, Scorer | **Record an answer (idempotent)** |
-| POST | `/answers/{id}/reverse` | Operator, ProgAdmin | Undo with a reason |
+| POST | `/answers/{id}/reverse` | ProgAdmin | Undo with a reason |
 | POST | `/pass` | Operator | Pass the question to the next active team |
 | POST | `/topics/select` | Operator | Choice round — the team picks a topic |
 | GET | `/topics/available` | Operator, Display | Remaining topics and the limit |
@@ -1397,8 +1397,8 @@ public async Task<ActionResult<RecordAnswerResponse>> RecordAnswer(
 | `DisplayOnly` | Display token — read endpoints only |
 
 Answer reversal (`POST /answers/{id}/reverse`) needs no separate policy — it is
-covered by `CanOperateMatch`, whose membership (SuperAdmin, ProgramAdmin,
-Operator) already matches that endpoint's allowed roles exactly.
+a score correction, so it is covered by `CanAdjustScore` (SuperAdmin,
+ProgramAdmin), matching D-013.
 
 There is no `Judge` role and no policy grants it anything: disqualification,
 score adjustment, tie-break resolution and answer reversal are all
