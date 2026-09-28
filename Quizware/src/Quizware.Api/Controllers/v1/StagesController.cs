@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 using Quizware.Api.Contracts.V1.Stages;
 using Quizware.Api.Contracts.V1.Standings;
 using Quizware.Application.Authorization;
+using Quizware.Application.Scoring.Queries;
 using Quizware.Application.Tournament.Commands;
 using Quizware.Application.Tournament.Dtos;
 using Quizware.Application.Tournament.Queries;
@@ -135,7 +136,8 @@ public sealed class StagesController : ControllerBase
     }
 
     [HttpGet("{id:guid}/standings")]
-    public ActionResult<StageStandingsResponse> Standings(Guid programId, Guid id) => StatusCode(StatusCodes.Status501NotImplemented);
+    public async Task<ActionResult<StageStandingsResponse>> Standings(Guid programId, Guid id, CancellationToken cancellationToken) =>
+        Ok(StandingsController.ToResponse(await _sender.Send(new GetStageStandingsQuery(programId, id), cancellationToken)));
 
     [HttpPost("{id:guid}/validate")]
     [Authorize(Policy = Policies.CanManageProgram)]

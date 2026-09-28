@@ -33,6 +33,7 @@ public static class DependencyInjection
         services.AddScoped<LiveQuestionFormats>();
         services.AddScoped<IScoringEngine, ScoringEngine>();
         services.AddScoped<ITieBreakCriteriaService, TieBreakCriteriaService>();
+        services.AddScoped<Standings>();
 
         return services;
     }
