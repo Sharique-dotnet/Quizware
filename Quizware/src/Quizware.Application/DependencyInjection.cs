@@ -1,6 +1,7 @@
 using FluentValidation;
 using Microsoft.Extensions.DependencyInjection;
 using Quizware.Application.Common.Behaviors;
+using Quizware.Application.Gameplay;
 using Quizware.Application.Rules.Services;
 using Quizware.Application.Selection;
 
@@ -22,6 +23,7 @@ public static class DependencyInjection
 
         services.AddScoped<IRuleService, RuleService>();
         services.AddScoped<IQuestionSelector, QuestionSelector>();
+        services.AddScoped<MatchEventLog>();
 
         return services;
     }

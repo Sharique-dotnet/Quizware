@@ -56,4 +56,36 @@ public class MatchSegmentTests
 
         act.Should().Throw<SegmentNotReorderableException>();
     }
+
+    [Fact]
+    public void Delete_PendingSegment_SoftDeletes()
+    {
+        var segment = Create(Guid.NewGuid(), 0);
+
+        segment.Delete("owner");
+
+        segment.IsDeleted.Should().BeTrue();
+    }
+
+    [Fact]
+    public void Delete_OpenSegment_Throws()
+    {
+        var segment = Create(Guid.NewGuid(), 0);
+        segment.Open([]);
+
+        var act = () => segment.Delete("owner");
+
+        act.Should().Throw<InvalidStateTransitionException>();
+    }
+
+    [Fact]
+    public void Renumber_MovesALockedSegment()
+    {
+        var segment = Create(Guid.NewGuid(), 3);
+        segment.Lock();
+
+        segment.Renumber(1);
+
+        segment.OrderIndex.Should().Be(1);
+    }
 }

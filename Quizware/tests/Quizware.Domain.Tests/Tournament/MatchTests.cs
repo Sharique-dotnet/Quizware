@@ -65,4 +65,52 @@ public class MatchTests
 
         act.Should().Throw<ArgumentException>();
     }
+
+    [Fact]
+    public void TouchSetup_OnReadyMatch_SendsItBackToDraft()
+    {
+        var match = Create();
+        match.MarkReady("owner");
+
+        match.TouchSetup("editor");
+
+        match.State.Should().Be(MatchState.Draft);
+        match.UpdatedBy.Should().Be("editor");
+    }
+
+    [Fact]
+    public void TouchSetup_OnceStarted_Throws()
+    {
+        var match = Create();
+        match.Start(activeParticipantCount: 2);
+
+        var act = () => match.TouchSetup("editor");
+
+        act.Should().Throw<InvalidStateTransitionException>();
+    }
+
+    [Fact]
+    public void UpdateDetails_ChangesNameAndNumber()
+    {
+        var match = Create();
+
+        match.UpdateDetails("Final", 9, "editor");
+
+        match.Name.Should().Be("Final");
+        match.MatchNumber.Should().Be(9);
+    }
+
+    [Fact]
+    public void Delete_OnceStarted_Throws_ButSucceedsBeforeStart()
+    {
+        var started = Create();
+        started.Start(activeParticipantCount: 2);
+        var unstarted = Create();
+
+        var act = () => started.Delete("owner");
+        unstarted.Delete("owner");
+
+        act.Should().Throw<InvalidStateTransitionException>();
+        unstarted.IsDeleted.Should().BeTrue();
+    }
 }

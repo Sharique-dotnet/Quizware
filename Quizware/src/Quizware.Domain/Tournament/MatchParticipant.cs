@@ -71,6 +71,24 @@ public sealed class MatchParticipant : BaseEntity, ITenantScoped, IAuditable, IS
         ExcludeFromStandings = true;
     }
 
+    public void SetSeatAndTurn(int seatNumber, int turnOrder, string updatedBy)
+    {
+        SeatNumber = seatNumber;
+        TurnOrder = turnOrder;
+        UpdatedAtUtc = DateTime.UtcNow;
+        UpdatedBy = updatedBy;
+    }
+
+    /// <summary>Setup-time removal only — a participant removed during play
+    /// is disqualified or withdrawn instead, so its history survives.</summary>
+    public void Delete(string deletedBy)
+    {
+        IsDeleted = true;
+        DeletedAtUtc = DateTime.UtcNow;
+        UpdatedAtUtc = DateTime.UtcNow;
+        UpdatedBy = deletedBy;
+    }
+
     /// <summary>Applies a TurnOrderCalculator.Recompact result to this participant.</summary>
     public void ApplyTurnOrder(int newTurnOrder)
     {

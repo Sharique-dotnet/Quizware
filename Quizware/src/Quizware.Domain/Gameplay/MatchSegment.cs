@@ -102,6 +102,27 @@ public sealed class MatchSegment : BaseEntity, ITenantScoped, IAuditable, ISoftD
         OrderIndex = newOrderIndex;
     }
 
+    /// <summary>Setup-time renumbering (add/remove/reset, two-phase reindex);
+    /// unlike <see cref="Reorder"/> it does not refuse locked segments, since
+    /// closing a gap keeps every segment's relative position.</summary>
+    public void Renumber(int newOrderIndex)
+    {
+        OrderIndex = newOrderIndex;
+    }
+
+    public void Delete(string deletedBy)
+    {
+        if (State != MatchSegmentState.Pending)
+        {
+            throw new InvalidStateTransitionException($"Segment {OrderIndex} is {State}; only a Pending segment may be removed.");
+        }
+
+        IsDeleted = true;
+        DeletedAtUtc = DateTime.UtcNow;
+        UpdatedAtUtc = DateTime.UtcNow;
+        UpdatedBy = deletedBy;
+    }
+
     public void Complete()
     {
         if (State != MatchSegmentState.Open)
