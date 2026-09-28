@@ -74,3 +74,5 @@ public sealed record LiveMatchStateDto(
     Guid? LastAnswerId);
 
 public sealed record MatchEventItemDto(long SequenceNumber, string EventType, string? Detail, DateTime OccurredAtUtc);
+
+public sealed record AvailableTopicsDto(IReadOnlyList<string> Topics, int? TopicChoiceLimit);

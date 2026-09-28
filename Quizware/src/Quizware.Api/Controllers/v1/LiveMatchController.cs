@@ -47,43 +47,58 @@ public sealed class LiveMatchController : ControllerBase
 
     [HttpPost("segments/{segId:guid}/open")]
     [Authorize(Policy = Policies.CanOperateMatch)]
-    public ActionResult<LiveMatchStateResponse> OpenSegment(Guid matchId, Guid segId) => StatusCode(StatusCodes.Status501NotImplemented);
+    public async Task<ActionResult<LiveMatchStateResponse>> OpenSegment(Guid matchId, Guid segId, CancellationToken cancellationToken) =>
+        Ok(LiveMapper.ToResponse(await _sender.Send(new OpenSegmentCommand(matchId, segId), cancellationToken)));
 
     [HttpPost("segments/{segId:guid}/close")]
     [Authorize(Policy = Policies.CanOperateMatch)]
-    public ActionResult<LiveMatchStateResponse> CloseSegment(Guid matchId, Guid segId) => StatusCode(StatusCodes.Status501NotImplemented);
+    public async Task<ActionResult<LiveMatchStateResponse>> CloseSegment(Guid matchId, Guid segId, CancellationToken cancellationToken) =>
+        Ok(LiveMapper.ToResponse(await _sender.Send(new CloseSegmentCommand(matchId, segId), cancellationToken)));
 
     [HttpPost("segments/{segId:guid}/skip")]
     [Authorize(Policy = Policies.CanOperateMatch)]
-    public ActionResult<LiveMatchStateResponse> SkipSegment(Guid matchId, Guid segId, [FromBody] SkipSegmentRequest request) => StatusCode(StatusCodes.Status501NotImplemented);
+    public async Task<ActionResult<LiveMatchStateResponse>> SkipSegment(
+        Guid matchId, Guid segId, [FromBody] SkipSegmentRequest request, CancellationToken cancellationToken) =>
+        Ok(LiveMapper.ToResponse(await _sender.Send(new SkipSegmentCommand(matchId, segId, request.Reason), cancellationToken)));
 
     [HttpPut("segments/reorder")]
     [Authorize(Policy = Policies.CanOperateMatch)]
-    public ActionResult<MatchSegmentsResponse> ReorderSegments(Guid matchId, [FromBody] ReorderMatchSegmentsRequest request) => StatusCode(StatusCodes.Status501NotImplemented);
+    public async Task<ActionResult<MatchSegmentsResponse>> ReorderSegments(
+        Guid matchId, [FromBody] ReorderMatchSegmentsRequest request, CancellationToken cancellationToken) =>
+        Ok(ToSegmentsResponse(await _sender.Send(
+            new ReorderMatchSegmentsCommand(null, matchId, request.OrderedSegmentIds, request.Reason), cancellationToken)));
 
     [HttpGet("segments/next-options")]
     [Authorize(Policy = Policies.CanOperateMatch)]
-    public ActionResult<MatchSegmentsResponse> NextSegmentOptions(Guid matchId) => StatusCode(StatusCodes.Status501NotImplemented);
+    public async Task<ActionResult<MatchSegmentsResponse>> NextSegmentOptions(Guid matchId, CancellationToken cancellationToken) =>
+        Ok(ToSegmentsResponse(await _sender.Send(new GetNextSegmentOptionsQuery(matchId), cancellationToken)));
 
     [HttpGet("next-question")]
     [Authorize(Policy = Policies.CanOperateMatch)]
-    public ActionResult<CurrentQuestionDto> NextQuestion(Guid matchId) => StatusCode(StatusCodes.Status501NotImplemented);
+    public async Task<ActionResult<CurrentQuestionDto>> NextQuestion(Guid matchId, CancellationToken cancellationToken) =>
+        Ok(LiveMapper.ToResponse(await _sender.Send(new PeekNextQuestionQuery(matchId), cancellationToken)));
 
     [HttpPost("questions/serve")]
     [Authorize(Policy = Policies.CanOperateMatch)]
-    public ActionResult<CurrentQuestionDto> ServeQuestion(Guid matchId, [FromBody] ServeQuestionRequest request) => StatusCode(StatusCodes.Status501NotImplemented);
+    public async Task<ActionResult<CurrentQuestionDto>> ServeQuestion(
+        Guid matchId, [FromBody] ServeQuestionRequest request, CancellationToken cancellationToken) =>
+        Ok(LiveMapper.ToResponse(await _sender.Send(new ServeQuestionCommand(matchId, request.SegmentId), cancellationToken)));
 
     [HttpGet("questions/{mqId:guid}")]
     [Authorize(Policy = Policies.CanOperateMatch)]
-    public ActionResult<CurrentQuestionDto> GetQuestion(Guid matchId, Guid mqId) => StatusCode(StatusCodes.Status501NotImplemented);
+    public async Task<ActionResult<CurrentQuestionDto>> GetQuestion(Guid matchId, Guid mqId, CancellationToken cancellationToken) =>
+        Ok(LiveMapper.ToResponse(await _sender.Send(new GetMatchQuestionQuery(matchId, mqId), cancellationToken)));
 
     [HttpPost("questions/{mqId:guid}/reveal")]
     [Authorize(Policy = Policies.CanOperateMatch)]
-    public ActionResult<CurrentQuestionDto> RevealQuestion(Guid matchId, Guid mqId) => StatusCode(StatusCodes.Status501NotImplemented);
+    public async Task<ActionResult<CurrentQuestionDto>> RevealQuestion(Guid matchId, Guid mqId, CancellationToken cancellationToken) =>
+        Ok(LiveMapper.ToResponse(await _sender.Send(new RevealQuestionCommand(matchId, mqId), cancellationToken)));
 
     [HttpPost("questions/{mqId:guid}/skip")]
     [Authorize(Policy = Policies.CanOperateMatch)]
-    public ActionResult<LiveMatchStateResponse> SkipQuestion(Guid matchId, Guid mqId, [FromBody] SkipQuestionRequest request) => StatusCode(StatusCodes.Status501NotImplemented);
+    public async Task<ActionResult<LiveMatchStateResponse>> SkipQuestion(
+        Guid matchId, Guid mqId, [FromBody] SkipQuestionRequest request, CancellationToken cancellationToken) =>
+        Ok(LiveMapper.ToResponse(await _sender.Send(new SkipQuestionCommand(matchId, mqId, request.Reason), cancellationToken)));
 
     [HttpPost("answers")]
     [Authorize(Policy = Policies.CanRecordAnswer)]
@@ -99,11 +114,17 @@ public sealed class LiveMatchController : ControllerBase
 
     [HttpPost("topics/select")]
     [Authorize(Policy = Policies.CanOperateMatch)]
-    public ActionResult<LiveMatchStateResponse> SelectTopic(Guid matchId, [FromBody] SelectTopicRequest request) => StatusCode(StatusCodes.Status501NotImplemented);
+    public async Task<ActionResult<LiveMatchStateResponse>> SelectTopic(
+        Guid matchId, [FromBody] SelectTopicRequest request, CancellationToken cancellationToken) =>
+        Ok(LiveMapper.ToResponse(await _sender.Send(new SelectTopicCommand(matchId, request.ParticipantId, request.TopicName), cancellationToken)));
 
     [HttpGet("topics/available")]
     [Authorize(Policy = Policies.CanViewLive)]
-    public ActionResult<AvailableTopicsResponse> AvailableTopics(Guid matchId) => StatusCode(StatusCodes.Status501NotImplemented);
+    public async Task<ActionResult<AvailableTopicsResponse>> AvailableTopics(Guid matchId, CancellationToken cancellationToken)
+    {
+        var topics = await _sender.Send(new GetAvailableTopicsQuery(matchId), cancellationToken);
+        return Ok(new AvailableTopicsResponse(topics.Topics, topics.TopicChoiceLimit));
+    }
 
     [HttpPost("participants/{pid:guid}/disqualify")]
     [Authorize(Policy = Policies.CanDisqualify)]
@@ -140,4 +161,7 @@ public sealed class LiveMatchController : ControllerBase
     [HttpPost("restore/{snapshotId:guid}")]
     [Authorize(Policy = Policies.CanDisqualify)]
     public ActionResult<LiveMatchStateResponse> Restore(Guid matchId, Guid snapshotId) => StatusCode(StatusCodes.Status501NotImplemented);
+
+    private static MatchSegmentsResponse ToSegmentsResponse(IReadOnlyList<App.MatchSegmentDto> segments) =>
+        new(segments.Select(s => new MatchSegmentSummaryDto(s.Id, s.FormatCode, s.OrderIndex, s.State, s.IsOrderLocked)).ToList());
 }

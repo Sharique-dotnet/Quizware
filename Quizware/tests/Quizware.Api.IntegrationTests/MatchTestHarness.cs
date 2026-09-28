@@ -95,9 +95,56 @@ public sealed class MatchTestHarness
         response.EnsureSuccessStatusCode();
     }
 
+    public async Task<Guid> SeedTopicAsync(string name)
+    {
+        using var scope = _factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var topic = Topic.Create(name, "test", ProgramId);
+        db.Topics.Add(topic);
+        await db.SaveChangesAsync();
+        return topic.Id;
+    }
+
+    /// <summary>Sets a stage template's play settings, which no API exposes yet.</summary>
+    public async Task ConfigureTemplatesAsync(
+        Guid stageId, int? timeLimitSeconds = null, TopicSelectionMode topicMode = TopicSelectionMode.None,
+        bool allowPassing = false, int? maxPassCount = null, int? topicChoiceLimit = null)
+    {
+        using var scope = _factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        foreach (var template in db.StageSegmentTemplates.Where(t => t.StageId == stageId))
+        {
+            template.ConfigurePlay(null, timeLimitSeconds, topicMode, topicChoiceLimit, allowPassing, maxPassCount, "test");
+        }
+
+        await db.SaveChangesAsync();
+    }
+
+    public async Task<StartedMatch> StartWithFirstSegmentOpenAsync(MatchDetailResponse match)
+    {
+        var live = LiveUrl(match.Id);
+        (await Client.PostAsync($"{live}/start", null)).EnsureSuccessStatusCode();
+        var segments = (await Client.GetFromJsonAsync<MatchSegmentsResponse>($"{MatchesUrl}/{match.Id}/segments"))!.Segments;
+        (await Client.PostAsync($"{live}/segments/{segments[0].Id}/open", null)).EnsureSuccessStatusCode();
+        return new StartedMatch(match, live, segments);
+    }
+
+    public async Task<Contracts.V1.LiveMatch.CurrentQuestionDto> ServeAsync(StartedMatch started, int segmentIndex = 0)
+    {
+        var response = await Client.PostAsJsonAsync(
+            $"{started.Live}/questions/serve", new Contracts.V1.LiveMatch.ServeQuestionRequest(started.Segments[segmentIndex].Id));
+        response.EnsureSuccessStatusCode();
+        return (await response.Content.ReadFromJsonAsync<Contracts.V1.LiveMatch.CurrentQuestionDto>())!;
+    }
+
+    public async Task<Contracts.V1.LiveMatch.LiveMatchStateResponse> StateAsync(StartedMatch started) =>
+        (await Client.GetFromJsonAsync<Contracts.V1.LiveMatch.LiveMatchStateResponse>($"{started.Live}/state"))!;
+
+    public sealed record StartedMatch(MatchDetailResponse Match, string Live, IReadOnlyList<MatchSegmentSummaryDto> Segments);
+
     /// <summary>Approved MCQ questions, each with one correct option (A) and
     /// one incorrect option (B).</summary>
-    public async Task<IReadOnlyList<Guid>> SeedMcqAsync(int count)
+    public async Task<IReadOnlyList<Guid>> SeedMcqAsync(int count, Guid? topicId = null)
     {
         using var scope = _factory.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
@@ -106,7 +153,7 @@ public sealed class MatchTestHarness
         for (var i = 0; i < count; i++)
         {
             var question = McqQuestion.Create(
-                ProgramId, QuestionOwnerScope.Program, $"MCQ {i} {Guid.NewGuid():N}", DifficultyLevel.Medium, "en", "test");
+                ProgramId, QuestionOwnerScope.Program, $"MCQ {i} {Guid.NewGuid():N}", DifficultyLevel.Medium, "en", "test", topicId);
             question.Approve(Guid.NewGuid());
             db.Questions.Add(question);
             db.QuestionOptions.Add(QuestionOption.Create(question.Id, "A", true, 0, "test"));
