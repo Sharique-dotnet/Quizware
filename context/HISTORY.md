@@ -114,3 +114,25 @@ Newest last. Format: `_meta/SPEC.md` §6.6.
   (commit decision resolved by action, Phase 7 implemented), not
   contradicted.
 - **Detail:** `sessions/2026-09-08-02-phase7-tournament-configuration.md`
+
+## S-2026-09-10-01 · phase8-question-selection-engine · Claude Sonnet 5 (Claude Code)
+- **Focus:** Merged a brief covering Phase 8 — Question selection engine
+  (`IQuestionSelector`), implemented in full (all 10 tasks) per an explicit
+  user waiver of the plan-first workflow, committed as `31d2f22`. Found at
+  session start (`git log`) that Phase 7's remaining staged work (Postman
+  collection + 3 rule-handler bugfixes, T-018) had already been committed
+  out-of-band as `d2b16cc`, alongside a project-rename chain — the fourth
+  recurrence of L-004, caught cleanly this time via both `git log` at
+  session start and the platform's own `gitStatus` reminder at save time.
+  Corrected a stale repo-root path (`...\Personal\Quizware` ->
+  `...\Personal\QuizApp`) that had been wrong in the prior checkpoint.
+- **Changed:** `CURRENT.md` (rewritten), `DECISIONS.md` (D-025–D-033
+  appended), `TASKS.md` (T-018/T-019 closed, T-020 added, Q-006 added,
+  V-008/V-009 updated/resolved), `LESSONS.md` (L-004 fourth recurrence
+  appended), `PROJECT.md` (repo map, root path, commit history, test counts
+  corrected), `HISTORY.md` (this block).
+- **Added:** D-025 – D-033, T-020, Q-006.
+- **Superseded:** none — all new information extended or closed existing
+  entries (T-018/T-019 closed on the premise they were opened under, not
+  contradicted).
+- **Detail:** `sessions/2026-09-10-01-phase8-question-selection-engine.md`

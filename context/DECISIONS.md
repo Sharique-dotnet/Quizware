@@ -6,7 +6,8 @@ re-propose it. Format: `_meta/SPEC.md` §6.3.
 
 **Index:** D-001 · D-002 · D-003 · D-004 · D-005 · D-006 · D-007 · D-008 · D-009 ·
 D-010 · D-011 · D-012 · D-013 · D-014 · D-015 · D-016 · D-017 · D-018 · D-019 ·
-D-020 · D-021 · D-022 · D-023 · D-024
+D-020 · D-021 · D-022 · D-023 · D-024 · D-025 · D-026 · D-027 · D-028 · D-029 ·
+D-030 · D-031 · D-032 · D-033
 
 ---
 
@@ -626,4 +627,214 @@ remaining Phase 0 assumptions has still not happened — see Q-001 in `TASKS.md`
   must either disable dragging locked segments, or accept that dragging one has no
   effect on the persisted order (silently ignored, not rejected) - worth a UX note
   when the Angular front end gets built.
+- **Confidence:** [DECIDED]
+
+### D-025 · `OptionOrderJson` is computed eagerly at reservation time but not persisted onto `MatchQuestion` until Phase 9's `Activate()`
+- **Status:** ACTIVE
+- **Added:** 2026-09-10 (S-2026-09-10-01)
+- **Decision:** `QuestionSelector.SelectAndReserveAsync` computes the shuffled
+  option order (seeded from the same `SelectionRequest.RandomSeed`) and returns
+  it on `SelectedQuestion.OptionOrderJson`, but does **not** write it into
+  `MatchQuestion.OptionOrderJson` at reservation time. That column is only ever
+  set by the domain method `MatchQuestion.Activate(...)`, per its own doc
+  comment, which fires when a question is actually served live — Phase 9
+  territory.
+- **Why:** Reservation (Phase 8) and serving (Phase 9) are different points in
+  the entity's lifecycle in the existing domain model. Writing the same value
+  at both points would create two sources of truth; reusing the same seed at
+  `Activate()` time reproduces the identical order without needing to persist
+  it early.
+- **Alternatives rejected:** Add a new `MatchQuestion.ReserveWithOptionOrder(...)`
+  factory that writes `OptionOrderJson` immediately at reservation — rejected as
+  unnecessary scope creep into Phase 9's own entity-lifecycle design; also risks
+  the two-sources-of-truth problem above if a later `Activate()` call recomputed
+  a different order (e.g. seed handling drifted).
+- **Consequences:** Phase 9's match-start/serve handler must reuse the exact
+  same seed (carried on `MatchQuestion`/`SelectionRequest`, needs confirming
+  when Phase 9 is scoped) to reproduce the identical shuffle P8-06 requires for
+  dispute resolution — flag this as a Phase 9 prerequisite check.
+- **Confidence:** [DECIDED]
+
+### D-026 · Tag filtering (`QuestionSelectionRule.TagFilterJson`) is left unimplemented in the Phase 8 selector
+- **Status:** ACTIVE
+- **Added:** 2026-09-10 (S-2026-09-10-01)
+- **Decision:** `QuestionSelector`'s pool-building (P8-01) implements format,
+  language, topic-filter, owner-scope, and approved-only filters, but not tag
+  filtering, even though `TagFilterJson` already exists as a column and P8-01's
+  acceptance text lists "tag filter" among the pool-building criteria.
+- **Why:** Verified by grep — there is no `QuestionTag` join entity anywhere in
+  the schema, no `Tag` reference on `Question.cs`, and `Tag.cs` has no
+  back-reference to questions. Implementing tag filtering would require a schema
+  migration (a new many-to-many join table), which is outside Phase 8's stated
+  scope. This gap traces back to Phase 1 (P1-06), whose own notes record that
+  `QuestionTag` was deliberately not modeled, left for "an EF many-to-many
+  mapping in Phase 4" — that mapping was never actually added in Phase 4 either.
+- **Alternatives rejected:** Inventing an ad-hoc `Question.TagIds` string column
+  or an on-the-fly join to unblock this one filter — rejected as scope creep
+  that still needs a migration and would create a throwaway shape likely to be
+  redone properly later.
+- **Consequences:** A future phase (or an explicit user request) needs a
+  `QuestionTag` join table plus migration before tag filtering can work. Every
+  other P8-01 filter (topic, owner-scope, approved-only, format) is implemented
+  and tested.
+- **Confidence:** [DECIDED]
+
+### D-027 · `QuestionSelectionRule.TopicFilterJson` wired up end-to-end this session
+- **Status:** ACTIVE
+- **Added:** 2026-09-10 (S-2026-09-10-01)
+- **Decision:** `TopicFilterJson` (an existing column since Phase 7 that
+  `QuestionSelectionRule.Update()` never actually set — a dead column) is now
+  an optional parameter on `Update()`, mapped through `SelectionRuleAppDto`,
+  `RuleMappings.ToDto()`, `UpsertSelectionRulesCommand`, the API's
+  `SelectionRuleDto` contract, and `RulesController`.
+- **Why:** P8-01 explicitly requires topic filtering to work in the selector;
+  without a write path, there would be nothing real for the selector to read.
+  This completes Phase 7's own contract rather than adding new scope.
+- **Alternatives rejected:** None seriously considered — this is a small,
+  necessary fix to unblock a stated Phase 8 requirement, not a design choice
+  with real alternatives.
+- **Consequences:** None beyond the mapping now being complete; no new
+  migration needed (column already existed).
+- **Confidence:** [DECIDED]
+
+### D-028 · `QuestionSelectionRule.Specificity` + `IRuleService.ResolveSelectionRuleAsync` — nullable, unlike the scoring-rule resolver
+- **Status:** ACTIVE
+- **Added:** 2026-09-10 (S-2026-09-10-01)
+- **Decision:** Added `QuestionSelectionRule.Specificity` (segment beats stage
+  beats program — same pattern as `ScoringRule.Specificity`) and
+  `IRuleService.ResolveSelectionRuleAsync(programId, formatCode, stageId,
+  segmentTemplateId, ct) -> QuestionSelectionRule?`. Unlike
+  `ResolveScoringRuleAsync` (which throws `ScoringRuleNotFoundException` when
+  nothing matches), this resolver returns `null` when no rule is configured.
+- **Why:** Reuses the exact specificity-resolution pattern Phase 7's
+  `RuleService.ResolveScoringRuleAsync` already established, rather than
+  duplicating the logic in the new selector. Made nullable (not throwing)
+  because a selection rule is genuinely optional — when absent, `QuestionSelector`
+  falls back to `QuestionSelectionRule.Create()`'s own defaults (every
+  difficulty, `NeverInProgram`, no topic spread, widen-then-fail), so a missing
+  rule is not an error condition the way a missing scoring rule is (scoring
+  cannot proceed without a rule; selection can, via defaults).
+- **Alternatives rejected:** Making it throw like `ResolveScoringRuleAsync` for
+  API symmetry — rejected because it would force every caller to catch an
+  exception just to fall back to defaults, when a nullable return expresses the
+  same thing more directly.
+- **Consequences:** Any future caller of `ResolveSelectionRuleAsync` must
+  explicitly handle the `null` case (apply defaults), unlike calls to
+  `ResolveScoringRuleAsync`.
+- **Confidence:** [DECIDED]
+
+### D-029 · Cross-match reservation locking — any non-`Released` `MatchQuestion` row excludes that question from every other match's draw
+- **Status:** ACTIVE
+- **Added:** 2026-09-10 (S-2026-09-10-01)
+- **Decision:** A question that is `Reserved`/`Active`/`Answered`/`Skipped`
+  (i.e. any `MatchQuestion.State != Released`) in **any** match's
+  `MatchQuestion` row is excluded from every other draw's pool — a separate
+  exclusion set (`lockedSet`, computed from `_db.MatchQuestions.Where(mq =>
+  mq.State != Released)`) applied **in addition to** the
+  `QuestionUsageHistory`-based repeat-policy exclusion, with an explicit
+  carve-out (`IsOwnMatchReservation`) so a match drawing for its own second
+  segment doesn't lock itself out of its own already-reserved question.
+- **Why:** P8-07's acceptance criterion "a reserved question is unavailable to
+  other matches" cannot be satisfied by `QuestionUsageHistory` alone, because
+  (per that entity's own doc comment) it is written once a question is
+  actually **used**, not merely reserved — without a separate lock, two
+  different matches could both reserve the same question before either serves
+  it.
+- **Alternatives rejected:** Writing a `QuestionUsageHistory` row at reservation
+  time instead of at actual use — rejected because it would conflate "reserved"
+  with "used" for repeat-policy purposes (e.g. `NeverInMatch` checks), which are
+  semantically different questions.
+- **Consequences:** Phase 9's abandon-match flow must call
+  `ReleaseReservationsAsync` (P8-10) to free locked questions back to the pool,
+  or they remain permanently locked out of every future draw.
+- **Confidence:** [DECIDED]
+
+### D-030 · `DifficultyMixJson` format convention — a flat percentage map, invented this session, no prior convention existed
+- **Status:** ACTIVE
+- **Added:** 2026-09-10 (S-2026-09-10-01)
+- **Decision:** `DifficultyMixJson` (a column that has existed since Phase 7
+  but was never actually written with real content anywhere) is a flat JSON
+  object mapping `DifficultyLevel` enum names to integer percentages, e.g.
+  `{"Easy":60,"Hard":40}`, summing to ~100. Parsed case-insensitively;
+  unrecognized keys or non-positive values are dropped; an absent/empty map
+  means "no mix constraint, draw purely by weight."
+- **Why:** Grepped the codebase and confirmed no existing convention — the
+  column was referenced only in migrations/snapshots/DTOs, never actually
+  serialized anywhere, so this was invented from scratch to unblock P8-03.
+  Chose percentages over raw counts so the same rule works regardless of
+  `QuestionCount` per draw.
+- **Alternatives rejected:** Raw per-difficulty counts — rejected because a
+  fixed-count map would need to change every time `QuestionCount` changes,
+  whereas a percentage map is stable across different draw sizes for the same
+  rule.
+- **Consequences:** `[ASSUMED]`, not confirmed against any design doc or with
+  the user — flag to the user before the Angular rule-configuration screens
+  are built against this shape. See Q-006.
+- **Confidence:** [ASSUMED]
+
+### D-031 · `IQuestionSelector`'s write methods never call `SaveChangesAsync` themselves — transaction boundary belongs to the caller
+- **Status:** ACTIVE
+- **Added:** 2026-09-10 (S-2026-09-10-01)
+- **Decision:** `SelectAndReserveAsync` adds `MatchQuestion` rows to the
+  tracked `IAppDbContext`, and `ReleaseReservationsAsync` mutates existing
+  ones, but neither calls `SaveChangesAsync`.
+- **Why:** Matches Phase 9's own stated acceptance criterion (P9-02: "Start is
+  one transaction; a failure reserves nothing") — Phase 9's future match-start
+  handler will call the selector once per segment, then commit everything in
+  one `SaveChangesAsync`. If the selector owned its own transaction, that
+  all-or-nothing guarantee would be impossible. Also mirrors how `RuleService`
+  (Phase 7) never calls `SaveChangesAsync` either — a read/resolve service —
+  now extended as the convention for the selector's write path too.
+- **Alternatives rejected:** Selector commits its own reservation immediately —
+  rejected because it would make a multi-segment match start partially
+  succeed on failure, violating P9-02 before Phase 9 even starts.
+- **Consequences:** Every caller of `SelectAndReserveAsync`/
+  `ReleaseReservationsAsync` (Phase 8's own tests included) must call
+  `SaveChangesAsync` itself, or nothing persists — noted explicitly so Phase 9
+  doesn't rediscover this by a failing test.
+- **Confidence:** [DECIDED]
+
+### D-032 · Seeded weighted draw uses a stable `OrderBy(q => q.Id)` sort before consulting the PRNG, to make "same seed -> identical draw" actually true
+- **Status:** ACTIVE
+- **Added:** 2026-09-10 (S-2026-09-10-01)
+- **Decision:** The seeded PRNG is constructed as `new
+  Random(unchecked((int)(seed ^ (seed >> 32))))` from `SelectionRequest`'s
+  `long RandomSeed`, and every candidate pool is deterministically sorted
+  (`OrderBy(q => q.Id)`) before being consulted by the weighted draw.
+- **Why:** P8-04's acceptance criterion is "same seed -> identical draw,
+  asserted in a test." EF Core does not guarantee query result ordering
+  without an explicit `OrderBy` — without a stable sort first, two runs with
+  the same seed could still disagree purely from nondeterministic SQL/SQLite
+  row-return order, not from the PRNG itself.
+- **Alternatives rejected:** Relying on natural DB return order — rejected as
+  fragile and provider-dependent; verified via a new test
+  (`SameSeed_ProducesIdenticalDraw`) that calls `PreviewAsync` twice with the
+  same `SelectionRequest` and asserts identical `QuestionId` sequences.
+- **Consequences:** Any future change to pool-building must preserve the
+  `OrderBy(q => q.Id)` stable sort, or determinism silently breaks without a
+  visible error.
+- **Confidence:** [DECIDED]
+
+### D-033 · `PreviewSelectionQuery` rewritten to delegate entirely into `IQuestionSelector.PreviewAsync`, superseding the Phase 7 stub
+- **Status:** ACTIVE
+- **Added:** 2026-09-10 (S-2026-09-10-01)
+- **Decision:** The Phase-7-era `PreviewSelectionQuery` handler (which only
+  reported raw pool/eligible counts by difficulty, ignoring repeat policy,
+  topic filter, and mix) is rewritten to call the real
+  `IQuestionSelector.PreviewAsync`, guaranteeing the preview endpoint can never
+  disagree with what a real draw would produce. `SegmentTemplateId` was added
+  as a new optional field on both `PreviewSelectionQuery` and the
+  `SelectionPreviewRequest` API contract (previously missing — the old stub
+  only took `StageId`, but rule resolution needs segment-level specificity
+  too, per D-028).
+- **Why:** The old stub's own doc comment said explicitly it existed only "so
+  P7 configuration screens can sanity-check a rule against the current bank
+  size before Phase 8 exists" — i.e. it was always meant to be superseded once
+  the real selector existed, not a design this session is overriding.
+- **Alternatives rejected:** Keeping the old stub alongside the new real preview
+  path under a different route — rejected as needless duplication; nothing
+  depended on the stub's specific (incomplete) output shape being preserved.
+- **Consequences:** None negative; `SelectionPreviewRequest` callers (Postman
+  collection, future Angular screens) now need to supply `SegmentTemplateId`
+  for segment-specific rule resolution to work correctly.
 - **Confidence:** [DECIDED]

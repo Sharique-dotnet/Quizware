@@ -4,7 +4,7 @@ Work items (`T-###`), open questions (`Q-###`), and things that need checking
 before they can be relied on. Done items stay — they are the record of what was
 already tried. Format: `_meta/SPEC.md` §6.4.
 
-**Last updated:** 2026-09-08 (S-2026-09-08-02)
+**Last updated:** 2026-09-10 (S-2026-09-10-01)
 
 ---
 
@@ -18,33 +18,23 @@ already tried. Format: `_meta/SPEC.md` §6.4.
   - Blocked by: nothing urgent — this is Phase 14 work per
     `docs/Implementation-Plan.md`. Flagged now so it isn't assumed silently later.
 
-- **T-018** `TODO` · Ask the user whether to commit the Postman collection and
-  the three rule-handler bugfixes
-  - Why: `git status` confirms these are the only uncommitted work as of this
-    checkpoint — Phase 6e/6f (`783bc1c`) and Phase 7 (`3dbc6f2`) are already
-    committed (see T-015/T-016, both closed, and L-004's third recurrence).
-  - Where: `Quizware/postman/Quizware.postman_collection.json`,
-    `Quizware/postman/README.md` (both new), plus modifications to
-    `Application/Rules/Commands/{UpsertScoringRules,UpsertQualificationRules,
-    UpsertTieBreakRules}.cs` and `tests/Quizware.Api.IntegrationTests/RulesEndpointTests.cs`
-    (the new regression test). All staged (`git add`'d) but not committed.
-  - Blocked by: standing policy (V-005) — never commit without being asked.
-    Offered message: "Add Postman collection covering all Phase 0-7 endpoints,
-    and fix three rule-upsert handlers that 500'd on a natural-key collision".
-    A single commit is reasonable here — the bugfixes were found *while*
-    building/validating the Postman collection, so they aren't a cleanly
-    separable unit of work the way Phase 6e vs 6f were.
-
-- **T-019** `TODO` · Implement Phase 8 — Question selection engine (`IQuestionSelector`)
-  - Why: Phase 7 (Tournament configuration) is now fully done, including
-    `IRuleService` (P7-10) which Phase 8's selector will need to resolve
-    scoring rules. Per `docs/Implementation-Plan.md`'s dependency map, Phase 8
-    depends on P6f (question bank, done) and P7 (rule management, done) — both
-    prerequisites are now satisfied.
-  - Where: `docs/Implementation-Plan.md` Phase 8 section — **re-read it fresh**,
-    do not assume its text matches `CURRENT.md`.
-  - Blocked by: T-018 (commit decision) is not a hard blocker, but should be
-    resolved first per standing workflow (same pattern as T-015→T-016).
+- **T-020** `TODO` · Implement Phase 9 — the match engine
+  - Why: Both stated prerequisites are now done — Phase 7 (rule management,
+    `3dbc6f2`) and Phase 8 (question selection engine, `IQuestionSelector`,
+    `31d2f22`). Phase 9 is the next actionable item per
+    `docs/Implementation-Plan.md`'s dependency map.
+  - Where: `docs/Implementation-Plan.md` Phase 9 section — **re-read it fresh**,
+    do not assume its text matches `CURRENT.md`. `MatchesController.cs`
+    (currently all `501 NotImplemented` stubs) is the likely API surface;
+    `MatchQuestion.Activate(...)` (see D-025) is the domain method Phase 9
+    needs for actually serving a reserved question, reusing the same
+    `RandomSeed` the Phase 8 reservation used so `OptionOrderJson` reproduces
+    identically.
+  - Blocked by: nothing hard. Note P9-02's "Start is one transaction; a
+    failure reserves nothing" criterion is already anticipated by D-031 —
+    `IQuestionSelector`'s write methods deliberately don't call
+    `SaveChangesAsync`, so Phase 9's handler must call it once after every
+    segment's selector call succeeds.
 
 - **T-017** `TODO` · Re-sync `docs/Implementation-Plan.md`'s "Start here" section
   (~line 794) with actual progress
@@ -109,6 +99,16 @@ already tried. Format: `_meta/SPEC.md` §6.4.
   auth scheme for the buzzer agent before Phase 14 ships. Blocks: Phase 14
   hardening, not current work.
 
+- **Q-006** `OPEN` (added S-2026-09-10-01) · Is the `DifficultyMixJson`
+  percentage-map convention (D-030) the right shape for the (not yet built)
+  Angular front end to produce/consume, or should it be raw per-difficulty
+  counts instead?
+  - Blocks: nothing yet — flag before Angular work reaches the
+    rule-configuration screens.
+  - `[ASSUMED]` Nothing in `docs/new-system/` specifies this format; it was
+    invented this session (D-030) to unblock P8-03, since the column existed
+    since Phase 7 but had never actually been written anywhere.
+
 ## Verification queue
 
 Things currently tagged `[ASSUMED]` or `[UNVERIFIED]` that will mislead someone if
@@ -158,23 +158,22 @@ they stay unchecked.
     or query `__EFMigrationsHistory` in `Quizware-Dev` directly.
   - Matters for: trusting the dev DB schema matches the code before Phase 7
     work assumes the fixed `CK_MP_Removal` constraint or the new FK/indexes.
+  - **Update (S-2026-09-10-01):** strong indirect evidence the migrations are
+    applied — this session ran `dotnet run` against real LocalDB
+    (`Quizware-Dev`), logged in, created and approved a real MCQ question
+    (writes through `Question`/`QuestionOption` tables, whose columns and
+    constraints came from these migrations), and got a correct selection
+    preview response back. Not a direct `__EFMigrationsHistory` query, so
+    left `[UNVERIFIED]` rather than promoted to `[FACT]` — but the check
+    above would very likely now just confirm it.
 
-- **V-009** (added S-2026-09-08-02) · `[UNVERIFIED]` This checkpoint's claim
-  that Phase 7 landed with a clean `dotnet build`/`dotnet test` (238
-  passed/0 failed) was **not independently re-verified this session** — a
-  `dotnet build` attempted during the save itself failed with `MSB3027`/
-  `MSB3021` file-lock errors (`Quizware.Api.exe` PID 5752 running, plus
-  Visual Studio holding some of the same DLLs). Killing a live dev-server
-  process to force a clean rebuild was judged out of scope for a
-  context-only checkpoint. The claim is plausible (git history shows a
-  full, cleanly-organized commit with 22 new tests, and the diff content of
-  the 3 rule-handler fixes read as complete and self-consistent) but rests
-  on the brief's account, not this session's own run.
-  - Check: stop the running `Quizware.Api.exe` (and close Visual Studio if it
-    also holds a lock), then `dotnet build Quizware.slnx` and
-    `dotnet test Quizware.slnx --no-build` from `Quizware/`.
-  - Matters for: trusting that Phase 7's 22 new tests and the 3 rule-handler
-    bugfixes actually pass before starting Phase 8 on top of them.
+- **V-009** · Resolved `[FACT]` (S-2026-09-10-01) — independently re-run this
+  session: `dotnet build Quizware.slnx` -> 0 warnings/0 errors;
+  `dotnet test Quizware.slnx --no-build` -> **245/245 passing** (17
+  Application, 95 Domain, 4 Architecture, 129 Api.IntegrationTests), up from
+  238 (7 new Phase 8 tests, none of the prior 238 broken). Confirms Phase 7's
+  22 tests and the 3 rule-handler bugfixes do pass, as this entry had
+  flagged needed checking.
 
 - **V-005** · Resolved as `[DECIDED]` (S-2026-09-04-03) · Commits are made only
   when the user explicitly asks; the AI proposes a plan and a commit message but
@@ -196,6 +195,48 @@ they stay unchecked.
     against `git log` this session. Lesson recorded as L-004.
 
 ## Closed
+
+- **T-019** `DONE` · Implement Phase 8 — Question selection engine (`IQuestionSelector`)
+  - Delivered in S-2026-09-10-01, committed as `31d2f22` ("Add question
+    selection engine: pool building, repeat-policy exclusion, seeded weighted
+    draw with difficulty mix and topic spread, MatchQuestion reservation, and
+    the widen-then-fail fallback ladder") — `[FACT]` verified via `git log`
+    at the start of this save (`31d2f22` is HEAD, one commit ahead of
+    `859813c`).
+  - All 10 tasks (P8-01–P8-10): pool building (format/language/topic-filter/
+    owner-scope/approved-only; no tag filter — see D-026), repeat-policy
+    exclusion via `QuestionUsageHistory`, difficulty-mix splitting from
+    `DifficultyMixJson` (format invented this session, D-030), seeded
+    weighted draw favoring lower `TimesUsed` (deterministic via D-032),
+    topic-spread policy, option-order shuffling (D-025), reservation into
+    `MatchQuestion` with cross-match locking (D-029), the widen-then-fail
+    fallback ladder with a typed `QuestionPoolExhaustedException`,
+    `POST /rules/selection/preview` rewritten to delegate to the real
+    selector (D-033), and release-on-abandon (`ReleaseReservationsAsync`).
+  - New: `Application/Selection/{SelectionModels,IQuestionSelector,
+    QuestionSelector}.cs`. Also wired up the previously-dead
+    `QuestionSelectionRule.TopicFilterJson` (D-027) and added
+    `IRuleService.ResolveSelectionRuleAsync` (D-028, nullable, unlike
+    `ResolveScoringRuleAsync`).
+  - No new EF migration — confirmed via
+    `dotnet ef migrations has-pending-model-changes`.
+  - Testing: 7 new tests (`SelectionEngineTests.cs`); full suite
+    245/245 passing (`[FACT]`, independently re-run this session — see
+    V-009, now resolved). Also live-verified end-to-end against real
+    LocalDB (`Quizware-Dev`): created + approved a real MCQ question, then
+    `POST /rules/selection/preview` returned
+    `{"poolSize":1,...,"canSatisfy":true,"difficultyMixAchievable":{"Medium":1}}`.
+  - `MatchesController.cs` deliberately left untouched (still 501 stubs) —
+    wiring the selector into match start/abandon is Phase 9, not Phase 8.
+  - Full detail: `sessions/2026-09-10-01-phase8-question-selection-engine.md`.
+
+- **T-018** `DONE` · Commit the Postman collection and the three rule-handler
+  bugfixes
+  - `[FACT]` Resolved by action, not witnessed directly: `git log` at the
+    start of S-2026-09-10-01 showed this landed as `d2b16cc` ("Add Postman
+    collection, README, and robust upsert handling"), committed by the user
+    out-of-band between S-2026-09-08-02 and this session — the fourth
+    recurrence of the L-004 pattern (see `LESSONS.md`).
 
 - **T-016** `DONE` · Implement Phase 7 — Tournament configuration (P7-01–P7-12)
   - Delivered in S-2026-09-08-02, committed as `3dbc6f2` ("Stage/segment CRUD

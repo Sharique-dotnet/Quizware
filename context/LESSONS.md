@@ -4,7 +4,7 @@ Approaches that failed, bugs, and environment traps. **Read this before proposin
 an approach** — it is the list of things that already cost someone time.
 Format: `_meta/SPEC.md` §6.5.
 
-**Last updated:** 2026-09-08 (S-2026-09-08-02)
+**Last updated:** 2026-09-10 (S-2026-09-10-01)
 
 ---
 
@@ -113,6 +113,22 @@ Format: `_meta/SPEC.md` §6.5.
   the message is offered. At this point treat it as a near-certainty that
   "offered but not run" claims in a brief will be stale by save time — verify
   every single one against `git log`, not just the most recent.
+- **Recurrence (2026-09-10, S-2026-09-10-01):** happened a fourth time, but
+  this time it was caught cleanly. The session's own `git log` check at the
+  *start* of the session (before any new work) already showed the Postman
+  collection + 3 rule-handler bugfixes — offered as staged-not-committed at
+  the end of S-2026-09-08-02 — had been committed by the user out-of-band as
+  `d2b16cc`, alongside a chain of rename commits (`bcf4c70`–`859813c`) that
+  the prior checkpoint had no way to know about (the repo root itself was
+  renamed `Quizware` -> `QuizApp` in that gap). Then, at *save* time, the
+  system-provided `gitStatus` reminder independently confirmed the same
+  session's own offered Phase 8 commit message had *also* already been
+  committed as `31d2f22` by the time this save ran — no independent `git log`
+  call was even needed to catch it this round, the platform surfaced it
+  automatically. The underlying behavior (user commits proposed work silently
+  between messages) is unchanged and should be assumed to recur every
+  session; the fix (always check `git log`/`git status`, or trust the
+  system-provided `gitStatus` reminder when present) continues to work.
 
 ### L-005 · Swashbuckle does not auto-detect `[JsonPolymorphic]`/`[JsonDerivedType]`
 - **Added:** 2026-09-07 (S-2026-09-07-01)
