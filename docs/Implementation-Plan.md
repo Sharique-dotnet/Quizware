@@ -7,6 +7,55 @@ a separate track that starts after Phase 5.
 
 ---
 
+## Progress at a glance
+
+*Last updated 2026-09-28. For the live working state — open questions,
+decisions, known gaps — see [`context/CURRENT.md`](../context/CURRENT.md).*
+
+| Phase | Scope | Status |
+|---|---|---|
+| 0 | Requirements confirmation | ✅ Done (owner-confirmed, no workshop) |
+| 1 | Domain model and business rules | ✅ Done |
+| 2 | Architecture decisions (10 ADRs) | ✅ Done |
+| 3 | Project skeleton and cross-cutting concerns | ✅ Done |
+| 4 | Database schema and migrations | ✅ Done |
+| 5 | API contract, OpenAPI first | ✅ Done |
+| 6 | Configuration modules (6a–6f) | ✅ Done — see its status note for the two scoped-down tasks |
+| 7 | Tournament configuration | ✅ Done |
+| 8 | Question selection engine | ✅ Done — tag filter deferred (see status note) |
+| 9 | Match engine | ✅ Done — merged to `master` (PRs #1 and #2) |
+| 10 | Scoring and standings | ✅ Done — merged to `master` (PR #2) |
+| **11** | **Qualification and tie-breaking** | ⏭️ **Next** |
+| 12 | Live push (SignalR) and display API | ⬜ Not started |
+| 13 | Reporting and exports | ⬜ Not started |
+| 14 | QuickBuzz integration module | ⬜ Not started (deliberately last) |
+| 15 | Hardening | ⬜ Not started |
+| 16 | Data migration *(optional)* | ⬜ Not started |
+| 17 | Angular 22 *(separate track)* | ⬜ Not started — the generated TypeScript client is ready for it |
+
+**Where the code stands:** the solution builds with 0 warnings; **421 tests
+pass** (17 Application, 131 Domain, 4 Architecture, 269 API integration). CI
+runs on every push and pull request to `master`. All migrations apply cleanly
+to a real SQL Server 2022, and the Postman collection plays a complete match
+end to end against it. Endpoints for later phases already exist as
+`501 Not Implemented` stubs so the contract stays fixed: qualification (P11),
+display (P12), reports (P13), buzzer (P14), admin lookups, match preflight and
+live snapshot/restore.
+
+**Carried forward from finished phases** (not blocking Phase 11):
+
+| Item | From | Status |
+|---|---|---|
+| Tag filter in the question pool — no `QuestionTag` join table exists yet | `P8-01` | Deferred; needs a schema change |
+| Excel import for formats other than MCQ | `P6-19` | Deferred; MCQ import only |
+| Confirm the shuffled option order is persisted when a question is served | `P8-06` | To verify (`context/` T-028) |
+| Target team for `OperatorChoice` passing — the pass request has no target field | `P9-08` | Needs a contract change; falls back to clockwise |
+| API endpoints for segment-template play settings and stage match-play settings (e.g. allowing live segment reordering) | `P9-08`, `P9-14` | Settable in the domain only |
+| Default *Incorrect* scoring rules for AudioVisual and Sequence | `P7-06` | Missing — the ready check blocks those segments until rules are added |
+| `<150 ms` live-state and `≤3 round trips` answer targets | `P9-16`, `P9-06` | Not yet measured — belongs with P15 load testing |
+
+---
+
 ## How this document relates to the design docs
 
 | Document | Answers |
@@ -98,9 +147,7 @@ wanting EF Core or ASP.NET here, the logic belongs in another layer. Verified:
 `Quizware.Domain.csproj` carries no `PackageReference` at all.
 
 **Status:** all 14 tasks built, 95/95 `Quizware.Domain.Tests` pass, solution
-builds with 0 warnings/errors. `P1-02` and `P1-04` are committed
-(`2b2bcfb`); `P1-01`, `P1-03`, `P1-05`–`P1-14` are complete on disk but
-**not yet committed** — do not assume the working tree matches HEAD.
+builds with 0 warnings/errors. All committed and on `master`.
 
 ### Tasks
 
@@ -154,11 +201,9 @@ already made and written down in `docs/new-system/02-Architecture-Proposal.md`
 §2.16 — this phase is paperwork that records it as an ADR, not a design
 decision that blocks coding.
 
-**Status:** all 10 ADRs written to `docs/adr/ADR-00N-*.md`. Note that
-`docs/` (including `docs/adr/`) is **gitignored** in this repo by deliberate
-choice — these files exist on disk for reference but are not tracked in git
-history. If that changes later, `docs/adr/` should be un-ignored and
-committed as its own change.
+**Status:** all 10 ADRs written to `docs/adr/ADR-00N-*.md` and tracked in
+git (`docs/` was originally gitignored; it has been tracked since the Phase 8
+checkpoint).
 
 | Task | What to build | Done when | Status |
 |---|---|---|---|
@@ -178,7 +223,7 @@ new ADR superseding the old one — do not edit a decided ADR in place.
 
 ---
 
-# Phase 3 — Project skeleton and cross-cutting concerns
+# Phase 3 — Project skeleton and cross-cutting concerns — **DONE**
 
 **Duration:** 1–2 weeks · **Depends on:** `P3-01` alone needs nothing and can
 run before Phase 1; everything else in this phase needs `P1` (e.g. `P3-08`
@@ -187,8 +232,8 @@ diagram, but does not need every ADR written first.
 
 **Status: all 17 tasks done.** Full solution builds with 0 warnings/errors;
 109 tests pass across all four test projects (95 Domain, 4 Application, 4
-Architecture, 6 Api.IntegrationTests). Not committed — this session did not
-commit anything (see `context/CURRENT.md`).
+Architecture, 6 Api.IntegrationTests). Committed and on `master`. The GitHub
+Actions CI workflow has since been verified green on real pull requests.
 
 **Goal:** one trivial endpoint working end to end, with every cross-cutting
 concern already in place. Nothing here is a feature; everything here touches
@@ -371,7 +416,7 @@ authorization tests).
    environment** — no JVM available. Used `NSwag.ConsoleCore` instead (pure
    .NET, installed as a global dotnet tool), which reads the same OpenAPI
    document and produces an equivalent discriminated-union TypeScript
-   client. `docs/openapi.v1.json` (gitignored, like the rest of `docs/`) is
+   client. `Quizware/docs/openapi.v1.json` (tracked in git) is
    the exported document if it needs regenerating with a different tool.
 5. **Per-endpoint worked JSON examples (the literal payloads in
    §5.4) are not wired into Swagger** as `schema.example` values. Swashbuckle
@@ -391,9 +436,9 @@ authorization tests).
 | `P5-02` | **Per-format question request models** (`CreateMcqQuestionRequest`, `CreateAudioVisualQuestionRequest`, …) | `POST .../questions/audio-visual` cannot accept an options array | Done — `Contracts/V1/Questions/Formats/CreateQuestionRequests.cs`, one route + one request type per format |
 | `P5-03` | FluentValidation validators per format, sharing `QuestionBaseValidator` | Sequence positions validated contiguous 1..N | Done — `Contracts/V1/Questions/Formats/QuestionFormatValidators.cs`, 9 unit tests in `QuestionFormatValidatorsTests.cs` |
 | `P5-04` | Controller stubs returning `501 Not Implemented` | Every documented route exists and is reachable | Done — verified for a representative route per controller in `ControllerStubReachabilityTests.cs`, including auth/role/program-scope negative cases (full enumeration of all ~145 routes is scope decision 1's sibling: mechanical, not attempted) |
-| `P5-05` | Polymorphic question response with `oneOf` + `formatCode` discriminator | Generated TS client produces a discriminated union | Done — see scope decision 3; verified in the generated `quizware-api-client.ts` (`McqQuestionResponse extends QuestionResponse`, etc.) |
+| `P5-05` | Polymorphic question response with `oneOf` + `formatCode` discriminator | Generated TS client produces a discriminated union | Done — see scope decision 3; verified in the generated `quizapp-api-client.ts` (`McqQuestionResponse extends QuestionResponse`, etc.) |
 | `P5-06` | Complete OpenAPI document with worked examples | Examples match those in `05-API-Design.md` §5.4 | Done except literal example payloads — see scope decision 5 |
-| `P5-07` | Generated TypeScript client, committed | Angular team can build against it | Done — `Quizware/clients/typescript/quizware-api-client.ts` (NSwag, not openapi-generator — see scope decision 4), committed (not gitignored) |
+| `P5-07` | Generated TypeScript client, committed | Angular team can build against it | Done — `Quizware/clients/typescript/quizapp-api-client.ts` (NSwag, not openapi-generator — see scope decision 4), committed (not gitignored) |
 | `P5-08` | `.http` / Postman collection | Every endpoint callable by hand | Done — `Quizware.Api/Quizware.Api.http`, one representative request per area plus the full live-match and qualification workflows |
 
 **Exit criteria:** Angular track can start. Contract changes after this point
@@ -401,9 +446,14 @@ require a version bump or a documented breaking-change note.
 
 ---
 
-# Phase 6 — Configuration modules
+# Phase 6 — Configuration modules — **DONE**
 
 **Duration:** 2–3 weeks · **Depends on:** P3, P4, P5
+
+**Status:** 6a–6f built and on `master`, exercised by the integration tests and
+the Postman collection (folders 02–07). Two deliberate scope reductions:
+`P6-19` Excel import covers **MCQ only** (other formats deferred, not dropped),
+and team/question imports need a file attached by hand when run from Postman.
 
 Build strictly in this order — each depends on the one before.
 
@@ -463,9 +513,13 @@ through the API, with no SQL run by hand.
 
 ---
 
-# Phase 7 — Tournament configuration
+# Phase 7 — Tournament configuration — **DONE**
 
 **Duration:** 1–2 weeks · **Depends on:** P6
+
+**Status:** all 12 tasks done and on `master`. `P7-12`'s seeder recreates the
+18-team tournament (3 stages, 6 + 3 + 1 matches) as configuration data in every
+non-production environment.
 
 | Task | What to build | Acceptance criteria |
 |---|---|---|
@@ -495,9 +549,16 @@ with no C# describing its shape.
 
 ---
 
-# Phase 8 — Question selection engine
+# Phase 8 — Question selection engine — **DONE**
 
 **Duration:** 1–2 weeks · **Depends on:** P6f, P7 · **Interface:** `IQuestionSelector`
+
+**Status:** all 10 tasks done and on `master`, with one exception: `P8-01`'s
+**tag filter** is not implemented because the schema has no question–tag join
+table yet. Every other pool filter works. A later fix tightened reservation
+locking: a match can no longer draw the same question twice, or re-draw a
+question it has already used. **To verify:** whether `P8-06`'s shuffled option
+order is actually persisted when a question is served (`context/` T-028).
 
 | Task | What to build | Acceptance criteria |
 |---|---|---|
@@ -517,9 +578,14 @@ suggestion*, never an unhandled exception mid-show.
 
 ---
 
-# Phase 9 — The match engine
+# Phase 9 — The match engine — **DONE**
 
 **Duration:** 3–4 weeks · **Depends on:** P7, P8 (P10 develops alongside `P9-06`)
+
+**Status:** all 16 tasks and all 6 required integration tests done, merged to
+`master` (PR #1 for the core engine, PR #2 for the gap-closing pass). Verified
+against a real SQL Server 2022 by playing a full match through the Postman
+collection. Open points are listed in the task table's Status column.
 
 The heart of the system. Replaces ~5,700 lines of duplicated legacy controllers.
 
@@ -528,51 +594,56 @@ The heart of the system. Replaces ~5,700 lines of duplicated legacy controllers.
 > at a time (`P9-07`). Do **Sequence** and **VisualRapidFire** last — they
 > exercise the child-table paths.
 
-| Task | What to build | Acceptance criteria |
-|---|---|---|
-| `P9-01` | Match setup: create, add participants, seats, turn order, auto-seed (random / by rank / snake) | Participant count validated against the stage's min/max |
-| `P9-02` | Match lifecycle: `start` (reserves all questions, stores `RandomSeed`), `pause`, `resume`, `end`, `abandon` | Start is **one transaction**; a failure reserves nothing |
-| `P9-03` | Segment lifecycle: open, close, skip-with-reason | Only one segment `Open` at a time |
-| `P9-04` | Question serving: serve, reveal, skip; **server-authoritative timer** | `TimerStartedAtUtc` set server-side; client computes remaining from server now |
-| `P9-05` | **Turn-order resolution over active participants only** (wraps `TurnOrderCalculator`) | Never returns a disqualified participant |
-| `P9-06` | **Answer recording** — transactional + idempotent | One transaction covers: `AnswerRecord` + `ScoreEvent` + `TeamMatchScore` + `TeamStageScore` + `MatchQuestion.State` + `QuestionUsageHistory` + `Question.TimesUsed` + `MatchEvent` + `OutboxMessage`. **≤3 round trips** |
-| `P9-07` | `IQuestionFormatHandler` per format — 10 implementations | Adding a format touches no existing code |
-| `P9-08` | Passing mechanics: pass to next active team, `MaxPassCount`, `PassDirection` | Points differ for direct vs after-pass (`ContextKey`) |
-| `P9-09` | Choice round topic selection + `TopicChoiceLimit` | Exclusive topics removed from the board once played |
-| `P9-10` | **Undo / reverse an answer** — compensating `ScoreEvent`, never a delete | `ProgramAdmin` only (D-013) |
-| `P9-11` | **Participant disqualification + turn-order recompaction** | `ProgramAdmin` only. Applies `TeamCountChangePolicy`. Ends the match if <2 remain |
-| `P9-12` | `MatchEvent` timeline, strictly increasing `SequenceNumber` | Append-only |
-| `P9-13` | **Crash recovery / resume** — rebuild state from the database, not memory | Same question order after restart, because questions were reserved at start |
-| `P9-14` | Effective segment order: template → per-match override → live reorder of pending segments; `RandomPerMatch` from seed; locked segments | Open/completed segments never move (`SEGMENT_NOT_REORDERABLE`) |
-| `P9-15` | Sudden-death segment closing | Closes as soon as one team leads, once all tied teams have faced equal questions |
-| `P9-16` | **`GET /matches/{id}/live/state`** — everything the console needs in one call | <150 ms; replaces the legacy `OnXxxLoad` methods |
+| Task | What to build | Acceptance criteria | Status |
+|---|---|---|---|
+| `P9-01` | Match setup: create, add participants, seats, turn order, auto-seed (random / by rank / snake) | Participant count validated against the stage's min/max | Done — auto-seed via `POST /matches/auto-seed` |
+| `P9-02` | Match lifecycle: `start` (reserves all questions, stores `RandomSeed`), `pause`, `resume`, `end`, `abandon` | Start is **one transaction**; a failure reserves nothing | Done |
+| `P9-03` | Segment lifecycle: open, close, skip-with-reason | Only one segment `Open` at a time | Done |
+| `P9-04` | Question serving: serve, reveal, skip; **server-authoritative timer** | `TimerStartedAtUtc` set server-side; client computes remaining from server now | Done |
+| `P9-05` | **Turn-order resolution over active participants only** (wraps `TurnOrderCalculator`) | Never returns a disqualified participant | Done — rotates per segment; Buzzer and Rapid Fire have no turn holder (any team may answer) |
+| `P9-06` | **Answer recording** — transactional + idempotent | One transaction covers: `AnswerRecord` + `ScoreEvent` + `TeamMatchScore` + `TeamStageScore` + `MatchQuestion.State` + `QuestionUsageHistory` + `Question.TimesUsed` + `MatchEvent` + `OutboxMessage`. **≤3 round trips** | Done, including the outbox message. The `≤3 round trips` target is not yet measured |
+| `P9-07` | `IQuestionFormatHandler` per format — 10 implementations | Adding a format touches no existing code | Done — 10 handlers, discovered by assembly scan |
+| `P9-08` | Passing mechanics: pass to next active team, `MaxPassCount`, `PassDirection` | Points differ for direct vs after-pass (`ContextKey`) | Done. `OperatorChoice` falls back to clockwise until the pass request gets a target-team field |
+| `P9-09` | Choice round topic selection + `TopicChoiceLimit` | Exclusive topics removed from the board once played | Done |
+| `P9-10` | **Undo / reverse an answer** — compensating `ScoreEvent`, never a delete | `ProgramAdmin` only (D-013) | Done — `ProgramAdmin`/`SuperAdmin` only |
+| `P9-11` | **Participant disqualification + turn-order recompaction** | `ProgramAdmin` only. Applies `TeamCountChangePolicy`. Ends the match if <2 remain | Done |
+| `P9-12` | `MatchEvent` timeline, strictly increasing `SequenceNumber` | Append-only | Done |
+| `P9-13` | **Crash recovery / resume** — rebuild state from the database, not memory | Same question order after restart, because questions were reserved at start | Done |
+| `P9-14` | Effective segment order: template → per-match override → live reorder of pending segments; `RandomPerMatch` from seed; locked segments | Open/completed segments never move (`SEGMENT_NOT_REORDERABLE`) | Done. Live reordering needs the stage's `AllowSegmentReorderDuringMatch` flag, which no endpoint can set yet |
+| `P9-15` | Sudden-death segment closing | Closes as soon as one team leads, once all tied teams have faced equal questions | Done. A segment can only be marked sudden death in the domain until P11 creates tie-break matches |
+| `P9-16` | **`GET /matches/{id}/live/state`** — everything the console needs in one call | <150 ms; replaces the legacy `OnXxxLoad` methods | Done. The `<150 ms` target is not yet measured |
 
 ### Required integration tests
 
-| Test | Must prove |
-|---|---|
-| Full match | A complete 3-team match start → finish, correct final standings |
-| **Disqualification mid-segment** | Match finishes with 2 teams, **no fake answers**, turn order recompacted |
-| Restart mid-question | Resumes at the exact same question with the same upcoming order |
-| Double submission | Same `Idempotency-Key` twice → scored **once** |
-| Authorisation | `Operator` and `Scorer` get **403** on disqualify and on answer reversal — both are `ProgramAdmin`-only |
-| No-format-configured | A stage without Passing runs a complete match |
+| Test | Must prove | Status |
+|---|---|---|
+| Full match | A complete 3-team match start → finish, correct final standings | Done |
+| **Disqualification mid-segment** | Match finishes with 2 teams, **no fake answers**, turn order recompacted | Done |
+| Restart mid-question | Resumes at the exact same question with the same upcoming order | Done |
+| Double submission | Same `Idempotency-Key` twice → scored **once** | Done |
+| Authorisation | `Operator` and `Scorer` get **403** on disqualify and on answer reversal — both are `ProgramAdmin`-only | Done |
+| No-format-configured | A stage without Passing runs a complete match | Done |
 
 ---
 
-# Phase 10 — Scoring and standings
+# Phase 10 — Scoring and standings — **DONE**
 
 **Duration:** 1–2 weeks, overlaps Phase 9 · **Depends on:** P7, `P9-06`
 
-| Task | What to build | Acceptance criteria |
-|---|---|---|
-| `P10-01` | `IScoringEngine`: resolve rule → create `ScoreEvent` → update read models incrementally | Never recomputes from raw answers on a request |
-| `P10-02` | `TeamMatchScore` / `TeamStageScore` maintenance in the same transaction as the score event | Always consistent |
-| `P10-03` | Manual adjustment with mandatory reason | **`ProgramAdmin` only** |
-| `P10-04` | Reversal / undo via compensating events | Score returns to the exact prior value |
-| `P10-05` | Standings endpoints (match / stage / program) | Reads pre-aggregated data |
-| `P10-06` | `POST /scores/recalculate` — rebuild read models from the event ledger | The safety net; result must equal the incremental value |
-| `P10-07` | Tie-break criteria service (wraps `TieBreakCriteriaEvaluator`) | Records which criterion decided |
+**Status:** all 7 tasks and all 4 tests below done, merged to `master` (PR #2).
+Score totals are maintained incrementally from the `ScoreEvent` ledger, and
+`POST /scores/recalculate` rebuilds them to the same values. This was checked in
+the tests and in the Postman run.
+
+| Task | What to build | Acceptance criteria | Status |
+|---|---|---|---|
+| `P10-01` | `IScoringEngine`: resolve rule → create `ScoreEvent` → update read models incrementally | Never recomputes from raw answers on a request | Done |
+| `P10-02` | `TeamMatchScore` / `TeamStageScore` maintenance in the same transaction as the score event | Always consistent | Done |
+| `P10-03` | Manual adjustment with mandatory reason | **`ProgramAdmin` only** | Done |
+| `P10-04` | Reversal / undo via compensating events | Score returns to the exact prior value | Done |
+| `P10-05` | Standings endpoints (match / stage / program) | Reads pre-aggregated data | Done — match scores, stage, overall and per-team standings |
+| `P10-06` | `POST /scores/recalculate` — rebuild read models from the event ledger | The safety net; result must equal the incremental value | Done |
+| `P10-07` | Tie-break criteria service (wraps `TieBreakCriteriaEvaluator`) | Records which criterion decided | Done — criteria: total score, fewer incorrect, more correct at high difficulty, faster average buzz time, head-to-head |
 
 ### Tests
 
@@ -583,9 +654,15 @@ The heart of the system. Replaces ~5,700 lines of duplicated legacy controllers.
 
 ---
 
-# Phase 11 — Qualification and tie-breaking
+# Phase 11 — Qualification and tie-breaking — **NEXT**
 
 **Duration:** 2 weeks · **Depends on:** P9, P10
+
+**Status:** not started. `QualificationController` exists as `501` stubs with
+the contract fixed. Already in place to build on: `ITieBreakCriteriaService`
+(`P10-07`) for `P11-03`, the match engine's `MatchKind`, sudden death
+(`P9-15`) and auto-seeding modes (`P9-01`) for `P11-04`/`P11-07`, and the
+`ScoreCountsTowardStage` rule honoured by the scoring engine.
 
 | Task | What to build | Acceptance criteria |
 |---|---|---|
@@ -612,9 +689,13 @@ The heart of the system. Replaces ~5,700 lines of duplicated legacy controllers.
 
 ---
 
-# Phase 12 — Live push and display API
+# Phase 12 — Live push and display API — *not started*
 
 **Duration:** 1–2 weeks · **Depends on:** P9, P10
+
+**Status:** not started. Groundwork done in P9: match events are already written
+to the transactional outbox (`MatchStateChanged`, `AnswerRecorded`,
+`ParticipantRemoved`, `MatchCompleted`); nothing delivers them yet.
 
 | Task | What to build | Acceptance criteria |
 |---|---|---|
@@ -630,7 +711,7 @@ The heart of the system. Replaces ~5,700 lines of duplicated legacy controllers.
 
 ---
 
-# Phase 13 — Reporting and exports
+# Phase 13 — Reporting and exports — *not started*
 
 **Duration:** 1 week · **Depends on:** P10, P11
 
@@ -645,7 +726,7 @@ The heart of the system. Replaces ~5,700 lines of duplicated legacy controllers.
 
 ---
 
-# Phase 14 — QuickBuzz integration module
+# Phase 14 — QuickBuzz integration module — *not started*
 
 **Duration:** 2 weeks · **Depends on:** P9 · **Deliberately last**
 
@@ -672,7 +753,7 @@ The heart of the system. Replaces ~5,700 lines of duplicated legacy controllers.
 
 ---
 
-# Phase 15 — Hardening
+# Phase 15 — Hardening — *not started*
 
 **Duration:** 2 weeks · **Depends on:** everything
 
@@ -691,7 +772,7 @@ The heart of the system. Replaces ~5,700 lines of duplicated legacy controllers.
 
 ---
 
-# Phase 16 — Data migration *(optional)*
+# Phase 16 — Data migration *(optional)* — *not started*
 
 **Duration:** 1 week · **Depends on:** P15
 
@@ -711,7 +792,7 @@ data** — do not try to make old matches replayable.
 
 ---
 
-# Phase 17 — Angular 22 *(separate track)*
+# Phase 17 — Angular 22 *(separate track)* — *not started*
 
 **Starts:** after Phase 5 (against the generated client + mock server)
 
@@ -725,17 +806,17 @@ data** — do not try to make old matches replayable.
 
 # Milestones
 
-| # | Milestone | After | Demonstrates |
-|---|---|---|---|
-| M1 | **Walking skeleton** | P3 | Login works; logging, errors, auth in place |
-| M2 | **Schema complete** | P4 | 51 tables, tenant isolation proven |
-| M3 | **Contract frozen** | P5 | Angular unblocked |
-| M4 | **Config-driven tournament** | P7 | The 18-team tournament exists as data only |
-| M5 | **First live match** | P9 | A complete match, including a mid-match disqualification |
-| M6 | **Full tournament** | P11 | 18 → 9 → 3 → 1, including a real tie-break |
-| M7 | **Show-ready** | P12 | Live screens, server timers |
-| M8 | **Buzzer integrated** | P14 | Works with hardware, and works without it |
-| M9 | **Production ready** | P15 | Dress rehearsal passed |
+| # | Milestone | After | Demonstrates | Status |
+|---|---|---|---|---|
+| M1 | **Walking skeleton** | P3 | Login works; logging, errors, auth in place | ✅ Reached |
+| M2 | **Schema complete** | P4 | 51 tables, tenant isolation proven | ✅ Reached |
+| M3 | **Contract frozen** | P5 | Angular unblocked | ✅ Reached |
+| M4 | **Config-driven tournament** | P7 | The 18-team tournament exists as data only | ✅ Reached |
+| M5 | **First live match** | P9 | A complete match, including a mid-match disqualification | ✅ Reached |
+| M6 | **Full tournament** | P11 | 18 → 9 → 3 → 1, including a real tie-break | Next (P11) |
+| M7 | **Show-ready** | P12 | Live screens, server timers | Pending |
+| M8 | **Buzzer integrated** | P14 | Works with hardware, and works without it | Pending |
+| M9 | **Production ready** | P15 | Dress rehearsal passed | Pending |
 
 ---
 
@@ -793,31 +874,23 @@ Phases 11, 12, 13 and 14 parallelise once P9 is stable.
 
 # Start here
 
-*(Updated to reflect actual progress — see `context/CURRENT.md` for the
-authoritative live status.)*
+*(Updated 2026-09-28 — see `context/CURRENT.md` for the authoritative live
+status.)*
 
-1. ~~**P0** — settle the open questions.~~ **Done** — owner-confirmed.
-2. ~~**P1** — domain model (`P1-01`–`P1-14`).~~ **Done**, committed
-   (`2b2bcfb`, `d6171cd`, `4697df7`, `6e6a13e`).
-3. ~~**P2** — architecture decisions (`P2-01`–`P2-10`).~~ **Done** — 10 ADRs
-   in `docs/adr/` (uncommitted; `docs/` is deliberately gitignored).
-4. ~~**Phase 3** — skeleton and cross-cutting concerns (`P3-01`–`P3-17`).~~
-   **Done** — 109 tests passing solution-wide. Uncommitted. `docker compose up`
-   and the GitHub Actions run itself are unverified in this environment
-   (no Docker daemon, no CI runner here) — verify both locally before trusting
-   them blindly.
-5. ~~**Phase 4** — database schema and migrations (`P4-01`–`P4-20`).~~ **Done**
-   — 115 tests passing solution-wide, migration `AddBusinessSchema` applied
-   cleanly against SQLite in tests. Uncommitted. **Not verified against real
-   SQL Server via Testcontainers** (no Docker here) — do that before trusting
-   the migration blindly in production.
-6. ~~**Phase 5** — API contract, OpenAPI first (`P5-01`–`P5-08`).~~ **Done**
-   — 147 tests passing solution-wide, OpenAPI document + generated
-   TypeScript client + `.http` collection all produced. Uncommitted.
-7. **Phase 6** — Configuration modules (Program management → Users/roles →
-   Teams → Topics/tags → Media → Question bank). First phase where
-   `IProgramService` and friends actually do something behind the Phase 5
-   stubs, in the order 6a → 6f listed above — each sub-phase depends on the
-   one before it.
+1. ~~**P0–P5** — requirements, domain, ADRs, skeleton, schema, API contract.~~
+   **Done**, all on `master`. Migrations verified against a real SQL Server
+   2022; CI verified green on pull requests.
+2. ~~**P6–P8** — configuration modules, tournament configuration, question
+   selection.~~ **Done** — see each phase's status note for the deferred items
+   (non-MCQ Excel import, tag filter).
+3. ~~**P9–P10** — match engine, scoring and standings.~~ **Done**, merged via
+   PRs #1 and #2. 421 tests pass; the Postman collection plays a complete match.
+4. **Phase 11 — Qualification and tie-breaking** (`P11-01`–`P11-08`). **Next.**
+   Replace the `QualificationController` stubs. Tie-break matches must go
+   through the existing match engine (ADR-007): no new gameplay code.
+5. Before or alongside Phase 11, clear the small carried-forward items in
+   [Progress at a glance](#progress-at-a-glance). The owner needs to decide on
+   the pass target field, the settings endpoints and the default scoring rules.
 
-Everything after that follows the dependency map.
+Everything after that follows the dependency map: P12 and P13 can run in
+parallel once P11 is stable, P14 is deliberately last before P15.
