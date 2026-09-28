@@ -56,7 +56,7 @@ public sealed class ServeQuestionCommandHandler : IRequestHandler<ServeQuestionC
         var question = await _db.Questions.IgnoreQueryFilters().SingleAsync(q => q.Id == next.QuestionId, cancellationToken);
         var template = await _db.StageSegmentTemplates.IgnoreQueryFilters()
             .SingleOrDefaultAsync(t => t.Id == segment.SegmentTemplateId, cancellationToken);
-        var timeLimit = question.TimeLimitSeconds ?? template?.TimeLimitSeconds;
+        var timeLimit = question.TimeLimitSeconds ?? template?.TimeLimitSeconds ?? LiveQuestionFormats.DefaultTimeLimitSeconds(question);
         var segmentQuestions = await _db.MatchQuestions.Where(q => q.MatchSegmentId == segment.Id).ToListAsync(cancellationToken);
 
         next.AssignTarget(target.TeamId, target.Id);

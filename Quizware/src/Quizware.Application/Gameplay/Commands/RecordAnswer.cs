@@ -66,15 +66,18 @@ public sealed class RecordAnswerCommandHandler : IRequestHandler<RecordAnswerCom
     private readonly ScoringResolver _scoring;
     private readonly MatchEventLog _eventLog;
     private readonly AnswerResultBuilder _results;
+    private readonly LiveQuestionFormats _formats;
 
     public RecordAnswerCommandHandler(
-        IAppDbContext db, ICurrentUser currentUser, ScoringResolver scoring, MatchEventLog eventLog, AnswerResultBuilder results)
+        IAppDbContext db, ICurrentUser currentUser, ScoringResolver scoring, MatchEventLog eventLog, AnswerResultBuilder results,
+        LiveQuestionFormats formats)
     {
         _db = db;
         _currentUser = currentUser;
         _scoring = scoring;
         _eventLog = eventLog;
         _results = results;
+        _formats = formats;
     }
 
     public async Task<RecordAnswerResultDto> Handle(RecordAnswerCommand request, CancellationToken cancellationToken)
@@ -129,7 +132,7 @@ public sealed class RecordAnswerCommandHandler : IRequestHandler<RecordAnswerCom
         }
 
         var outcome = NormalizeOutcome(Enum.Parse<AnswerOutcome>(request.Outcome, ignoreCase: true), passNumber);
-        var isCorrect = await CheckSelectionAsync(question, outcome, request, cancellationToken);
+        var isCorrect = await CheckResponseAsync(question, outcome, request, cancellationToken);
 
         var rule = await _scoring.ResolveAsync(match, segment, outcome, passNumber, cancellationToken);
         var actor = _currentUser.Email ?? "unknown";
@@ -203,40 +206,31 @@ public sealed class RecordAnswerCommandHandler : IRequestHandler<RecordAnswerCom
         return answersOnQuestion >= participants.Count(p => p.Status == ParticipantStatus.Active);
     }
 
-    /// <summary>When the operator records which option was chosen, the stated
-    /// outcome must agree with it — a mis-click is refused, not scored.</summary>
-    private async Task<bool?> CheckSelectionAsync(
-        MatchQuestion question, AnswerOutcome outcome, RecordAnswerCommand request, CancellationToken cancellationToken)
+    /// <summary>When the response can be checked objectively (options, a
+    /// sequence order), the stated outcome must agree with it — a mis-click is
+    /// refused, not scored.</summary>
+    private async Task<bool?> CheckResponseAsync(
+        MatchQuestion matchQuestion, AnswerOutcome outcome, RecordAnswerCommand request, CancellationToken cancellationToken)
     {
         var selected = request.SelectedOptionIds is { Count: > 0 } many
             ? many.ToList()
             : request.SelectedOptionId is { } one ? [one] : null;
-        if (selected is null)
-        {
-            return null;
-        }
+        var question = await _db.Questions.IgnoreQueryFilters().SingleAsync(q => q.Id == matchQuestion.QuestionId, cancellationToken);
+        var evaluation = await _formats.EvaluateAsync(question, selected, request.FreeTextAnswer, cancellationToken);
 
-        var options = await _db.QuestionOptions.Where(o => o.QuestionId == question.QuestionId).ToListAsync(cancellationToken);
-        if (selected.Any(id => options.All(o => o.Id != id)))
+        if (evaluation.IsObjective && evaluation.IsCorrect is { } isCorrect)
         {
-            throw new ValidationException(new Dictionary<string, string[]>
+            var claimsCorrect = outcome is AnswerOutcome.Correct or AnswerOutcome.PassedCorrect;
+            var claimsIncorrect = outcome is AnswerOutcome.Incorrect or AnswerOutcome.PassedIncorrect;
+            if ((claimsCorrect && !isCorrect) || (claimsIncorrect && isCorrect))
             {
-                ["selectedOptionId"] = ["A selected option does not belong to this question."],
-            });
+                throw new ValidationException(new Dictionary<string, string[]>
+                {
+                    ["outcome"] = [$"Outcome {outcome} contradicts the team's response, which is {(isCorrect ? "correct" : "incorrect")}."],
+                });
+            }
         }
 
-        var correct = options.Where(o => o.IsCorrect).Select(o => o.Id).ToHashSet();
-        var isCorrect = correct.SetEquals(selected);
-        var claimsCorrect = outcome is AnswerOutcome.Correct or AnswerOutcome.PassedCorrect;
-        var claimsIncorrect = outcome is AnswerOutcome.Incorrect or AnswerOutcome.PassedIncorrect;
-        if ((claimsCorrect && !isCorrect) || (claimsIncorrect && isCorrect))
-        {
-            throw new ValidationException(new Dictionary<string, string[]>
-            {
-                ["outcome"] = [$"Outcome {outcome} contradicts the selected option, which is {(isCorrect ? "correct" : "incorrect")}."],
-            });
-        }
-
-        return isCorrect;
+        return evaluation.IsCorrect;
     }
 }

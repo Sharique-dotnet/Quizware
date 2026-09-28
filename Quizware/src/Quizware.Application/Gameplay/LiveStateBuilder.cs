@@ -1,4 +1,3 @@
-using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Quizware.Application.Abstractions;
 using Quizware.Application.Authorization;
@@ -16,12 +15,14 @@ public sealed class LiveStateBuilder
     private readonly IAppDbContext _db;
     private readonly ICurrentUser _currentUser;
     private readonly IClock _clock;
+    private readonly LiveQuestionFormats _formats;
 
-    public LiveStateBuilder(IAppDbContext db, ICurrentUser currentUser, IClock clock)
+    public LiveStateBuilder(IAppDbContext db, ICurrentUser currentUser, IClock clock, LiveQuestionFormats formats)
     {
         _db = db;
         _currentUser = currentUser;
         _clock = clock;
+        _formats = formats;
     }
 
     /// <summary>Operators may see the answer before it is revealed; a display
@@ -112,9 +113,7 @@ public sealed class LiveStateBuilder
     {
         var question = await _db.Questions.IgnoreQueryFilters()
             .SingleAsync(q => q.Id == matchQuestion.QuestionId, cancellationToken);
-        var options = await _db.QuestionOptions
-            .Where(o => o.QuestionId == question.Id)
-            .ToListAsync(cancellationToken);
+        var content = await _formats.PresentAsync(question, matchQuestion, cancellationToken);
 
         string? topicName = null;
         var topicId = matchQuestion.SelectedTopicId ?? question.TopicId;
@@ -126,12 +125,7 @@ public sealed class LiveStateBuilder
                 .SingleOrDefaultAsync(cancellationToken);
         }
 
-        var orderedOptions = OrderOptions(options, matchQuestion.OptionOrderJson)
-            .Select((o, i) => new CurrentQuestionOptionDto(o.Id, o.OptionText, i))
-            .ToList();
-
         var mayRevealAnswer = CallerMaySeeAnswers || matchQuestion.RevealedAtUtc is not null;
-        var correctOptionId = mayRevealAnswer ? options.FirstOrDefault(o => o.IsCorrect)?.Id : null;
 
         var now = _clock.UtcNow;
         double? remaining = null;
@@ -148,32 +142,12 @@ public sealed class LiveStateBuilder
             question.QuestionText,
             (byte)question.DifficultyLevel,
             topicName,
-            null,
-            orderedOptions.Count == 0 ? null : orderedOptions,
-            correctOptionId,
+            content.MediaUrl,
+            content.Options.Count == 0 ? null : content.Options,
+            mayRevealAnswer ? content.CorrectOptionId : null,
             matchQuestion.TimeLimitSeconds,
             matchQuestion.TimerStartedAtUtc,
             now,
             remaining);
-    }
-
-    /// <summary>OptionOrderJson is the per-match shuffle fixed at reservation
-    /// time; without one, options appear in their authored order.</summary>
-    private static IEnumerable<Domain.QuestionBank.QuestionOption> OrderOptions(
-        IReadOnlyList<Domain.QuestionBank.QuestionOption> options, string? optionOrderJson)
-    {
-        var order = string.IsNullOrWhiteSpace(optionOrderJson)
-            ? null
-            : JsonSerializer.Deserialize<List<Guid>>(optionOrderJson);
-        if (order is null || order.Count == 0)
-        {
-            return options.OrderBy(o => o.DisplayOrder);
-        }
-
-        return options.OrderBy(o =>
-        {
-            var index = order.IndexOf(o.Id);
-            return index < 0 ? int.MaxValue : index;
-        });
     }
 }

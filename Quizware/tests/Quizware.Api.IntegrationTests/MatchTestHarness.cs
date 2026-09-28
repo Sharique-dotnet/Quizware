@@ -261,6 +261,16 @@ public sealed class MatchTestHarness
         return body.TryGetProperty("errorCode", out var code) ? code.GetString() : null;
     }
 
+    /// <summary>Adds whatever <paramref name="seed"/> builds (approved
+    /// questions of any format, their items, …) in one save.</summary>
+    public async Task SeedAsync(Action<AppDbContext, Guid> seed)
+    {
+        using var scope = _factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        seed(db, ProgramId);
+        await db.SaveChangesAsync();
+    }
+
     public async Task<T> ReadDbAsync<T>(Func<AppDbContext, Task<T>> query)
     {
         using var scope = _factory.Services.CreateScope();

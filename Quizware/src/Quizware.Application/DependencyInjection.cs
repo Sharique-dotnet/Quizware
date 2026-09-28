@@ -28,6 +28,7 @@ public static class DependencyInjection
         services.AddScoped<MatchCompletion>();
         services.AddScoped<ScoringResolver>();
         services.AddScoped<AnswerResultBuilder>();
+        services.AddScoped<LiveQuestionFormats>();
 
         return services;
     }
