@@ -271,6 +271,14 @@ public sealed class MatchTestHarness
         await db.SaveChangesAsync();
     }
 
+    /// <summary>Calls an Application service directly, in its own scope.</summary>
+    public async Task<TResult> UseServiceAsync<TService, TResult>(Func<TService, Task<TResult>> use)
+        where TService : notnull
+    {
+        using var scope = _factory.Services.CreateScope();
+        return await use(scope.ServiceProvider.GetRequiredService<TService>());
+    }
+
     public async Task<T> ReadDbAsync<T>(Func<AppDbContext, Task<T>> query)
     {
         using var scope = _factory.Services.CreateScope();

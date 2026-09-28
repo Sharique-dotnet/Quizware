@@ -2,6 +2,7 @@ using FluentValidation;
 using Microsoft.Extensions.DependencyInjection;
 using Quizware.Application.Common.Behaviors;
 using Quizware.Application.Gameplay;
+using Quizware.Application.Qualification;
 using Quizware.Application.Rules.Services;
 using Quizware.Application.Scoring;
 using Quizware.Application.Selection;
@@ -31,6 +32,7 @@ public static class DependencyInjection
         services.AddScoped<AnswerResultBuilder>();
         services.AddScoped<LiveQuestionFormats>();
         services.AddScoped<IScoringEngine, ScoringEngine>();
+        services.AddScoped<ITieBreakCriteriaService, TieBreakCriteriaService>();
 
         return services;
     }
