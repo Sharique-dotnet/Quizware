@@ -19,13 +19,16 @@ public sealed class MatchCompletion
     private readonly IQuestionSelector _selector;
     private readonly MatchEventLog _eventLog;
     private readonly IScoringEngine _scoring;
+    private readonly IMatchNotifications _notifications;
 
-    public MatchCompletion(IAppDbContext db, IQuestionSelector selector, MatchEventLog eventLog, IScoringEngine scoring)
+    public MatchCompletion(
+        IAppDbContext db, IQuestionSelector selector, MatchEventLog eventLog, IScoringEngine scoring, IMatchNotifications notifications)
     {
         _db = db;
         _selector = selector;
         _eventLog = eventLog;
         _scoring = scoring;
+        _notifications = notifications;
     }
 
     /// <summary>Does not call SaveChangesAsync — the caller owns the unit of work.</summary>
@@ -50,6 +53,12 @@ public sealed class MatchCompletion
             isTied = result.IsTied,
             results = result.Ranked.Select(p => new { participantId = p.Id, points = p.FinalScore, rank = p.FinalRank }),
         }, cancellationToken);
+        _notifications.Publish(MatchEventTypes.MatchCompleted, match.ProgramId, match.Id, new
+        {
+            winnerTeamId = result.WinnerTeamId,
+            isTied = result.IsTied,
+            results = result.Ranked.Select(p => new { participantId = p.Id, teamId = p.TeamId, points = p.FinalScore, rank = p.FinalRank }),
+        });
     }
 
     /// <summary>Re-ranks an already completed match after its scores changed

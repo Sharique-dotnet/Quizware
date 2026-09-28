@@ -70,10 +70,11 @@ public sealed class RecordAnswerCommandHandler : IRequestHandler<RecordAnswerCom
     private readonly AnswerResultBuilder _results;
     private readonly QuestionFormatHandlers _formats;
     private readonly SuddenDeath _suddenDeath;
+    private readonly IMatchNotifications _notifications;
 
     public RecordAnswerCommandHandler(
         IAppDbContext db, ICurrentUser currentUser, IScoringEngine scoring, MatchEventLog eventLog, AnswerResultBuilder results,
-        QuestionFormatHandlers formats, SuddenDeath suddenDeath)
+        QuestionFormatHandlers formats, SuddenDeath suddenDeath, IMatchNotifications notifications)
     {
         _db = db;
         _currentUser = currentUser;
@@ -82,6 +83,7 @@ public sealed class RecordAnswerCommandHandler : IRequestHandler<RecordAnswerCom
         _results = results;
         _formats = formats;
         _suddenDeath = suddenDeath;
+        _notifications = notifications;
     }
 
     public async Task<RecordAnswerResultDto> Handle(RecordAnswerCommand request, CancellationToken cancellationToken)
@@ -172,6 +174,14 @@ public sealed class RecordAnswerCommandHandler : IRequestHandler<RecordAnswerCom
             scoringRuleId = rule.Id,
         }, cancellationToken);
         await _suddenDeath.TryCloseAsync(match, segment, cancellationToken);
+        _notifications.Publish(MatchEventTypes.AnswerRecorded, match.ProgramId, match.Id, new
+        {
+            answerRecordId = answer.Id,
+            matchQuestionId = question.Id,
+            participantId = participant.Id,
+            outcome = outcome.ToString(),
+            points,
+        });
         await _db.SaveChangesAsync(cancellationToken);
 
         return await _results.BuildAsync(match, segment, answer, points, rule.Id, cancellationToken);

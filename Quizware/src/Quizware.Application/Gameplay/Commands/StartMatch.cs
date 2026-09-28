@@ -22,15 +22,18 @@ public sealed class StartMatchCommandHandler : IRequestHandler<StartMatchCommand
     private readonly IQuestionSelector _selector;
     private readonly MatchEventLog _eventLog;
     private readonly IScoringEngine _scoring;
+    private readonly IMatchNotifications _notifications;
 
     public StartMatchCommandHandler(
-        IAppDbContext db, ICurrentUser currentUser, IQuestionSelector selector, MatchEventLog eventLog, IScoringEngine scoring)
+        IAppDbContext db, ICurrentUser currentUser, IQuestionSelector selector, MatchEventLog eventLog, IScoringEngine scoring,
+        IMatchNotifications notifications)
     {
         _db = db;
         _currentUser = currentUser;
         _selector = selector;
         _eventLog = eventLog;
         _scoring = scoring;
+        _notifications = notifications;
     }
 
     public async Task<StartMatchResultDto> Handle(StartMatchCommand request, CancellationToken cancellationToken)
@@ -68,6 +71,7 @@ public sealed class StartMatchCommandHandler : IRequestHandler<StartMatchCommand
             segmentIds = segments.Select(s => s.Id),
             questionsReserved = reserved,
         }, cancellationToken);
+        _notifications.Publish("MatchStateChanged", match.ProgramId, match.Id, new { state = match.State.ToString(), questionsReserved = reserved });
 
         await _db.SaveChangesAsync(cancellationToken);
 

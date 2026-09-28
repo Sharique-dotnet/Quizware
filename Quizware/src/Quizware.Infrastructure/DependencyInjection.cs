@@ -8,6 +8,7 @@ using Quizware.Infrastructure.Common;
 using Quizware.Infrastructure.Identity;
 using Quizware.Infrastructure.Idempotency;
 using Quizware.Infrastructure.Media;
+using Quizware.Infrastructure.Outbox;
 using Quizware.Infrastructure.Persistence;
 using Quizware.Infrastructure.Persistence.Interceptors;
 
@@ -30,6 +31,7 @@ public static class DependencyInjection
                 sp.GetRequiredService<AuditLogSaveChangesInterceptor>()));
 
         services.AddScoped<IAppDbContext>(sp => sp.GetRequiredService<AppDbContext>());
+        services.AddScoped<IMatchNotifications, OutboxMatchNotifications>();
 
         services
             .AddIdentityCore<AppUser>(options =>

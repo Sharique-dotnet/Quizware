@@ -34,14 +34,17 @@ public sealed class DisqualifyParticipantCommandHandler : IRequestHandler<Disqua
     private readonly MatchEventLog _eventLog;
     private readonly MatchCompletion _completion;
     private readonly QuestionFormatHandlers _formats;
+    private readonly IMatchNotifications _notifications;
 
     public DisqualifyParticipantCommandHandler(
-        IAppDbContext db, MatchEventLog eventLog, MatchCompletion completion, QuestionFormatHandlers formats)
+        IAppDbContext db, MatchEventLog eventLog, MatchCompletion completion, QuestionFormatHandlers formats,
+        IMatchNotifications notifications)
     {
         _db = db;
         _eventLog = eventLog;
         _completion = completion;
         _formats = formats;
+        _notifications = notifications;
     }
 
     public async Task<DisqualifyResultDto> Handle(DisqualifyParticipantCommand request, CancellationToken cancellationToken)
@@ -91,6 +94,12 @@ public sealed class DisqualifyParticipantCommandHandler : IRequestHandler<Disqua
             skippedMatchQuestionId = skippedQuestionId,
             segmentAdjustment = adjustment,
         }, cancellationToken);
+
+        _notifications.Publish("ParticipantRemoved", match.ProgramId, match.Id, new
+        {
+            participantId = participant.Id,
+            turnOrder = remaining.OrderBy(p => p.TurnOrder).Select(p => new { participantId = p.Id, p.TurnOrder }),
+        });
 
         var matchCanContinue = remaining.Count >= 2;
         if (!matchCanContinue)
