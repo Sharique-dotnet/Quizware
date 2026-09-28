@@ -245,6 +245,52 @@ public class SelectionEngineTests : IClassFixture<CustomWebApplicationFactory>
     }
 
     [Fact]
+    public async Task SelectAndReserve_TwoSegmentsOfOneMatchBeforeSaving_NeverDrawTheSameQuestion()
+    {
+        using var scope = _factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var selector = scope.ServiceProvider.GetRequiredService<IQuestionSelector>();
+        var programId = Guid.NewGuid();
+        var stageId = Guid.NewGuid();
+        for (var i = 0; i < 4; i++)
+        {
+            await SeedApprovedMcqAsync(db, programId);
+        }
+
+        var matchId = Guid.NewGuid();
+        var request = new SelectionRequest(programId, stageId, null, QuestionFormatCode.Mcq, 2, RandomSeed: 5, MatchId: matchId);
+
+        var first = await selector.SelectAndReserveAsync(request, Guid.NewGuid(), "test", CancellationToken.None);
+        var second = await selector.SelectAndReserveAsync(request, Guid.NewGuid(), "test", CancellationToken.None);
+        await db.SaveChangesAsync();
+
+        first.Questions.Select(q => q.QuestionId)
+            .Should().NotIntersectWith(second.Questions.Select(q => q.QuestionId));
+    }
+
+    [Fact]
+    public async Task SelectAndReserve_QuestionAnsweredInAnotherMatch_IsNotLockedByIt()
+    {
+        using var scope = _factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var selector = scope.ServiceProvider.GetRequiredService<IQuestionSelector>();
+        var programId = Guid.NewGuid();
+        var question = await SeedApprovedMcqAsync(db, programId);
+
+        var finished = MatchQuestion.Reserve(programId, Guid.NewGuid(), Guid.NewGuid(), question.Id, 0, "test");
+        finished.Activate([], "[]", null);
+        finished.MarkAnswered();
+        db.MatchQuestions.Add(finished);
+        await db.SaveChangesAsync();
+
+        var result = await selector.SelectAndReserveAsync(
+            new SelectionRequest(programId, Guid.NewGuid(), null, QuestionFormatCode.Mcq, 1, RandomSeed: 2, MatchId: Guid.NewGuid()),
+            Guid.NewGuid(), "test", CancellationToken.None);
+
+        result.Questions.Should().ContainSingle().Which.QuestionId.Should().Be(question.Id);
+    }
+
+    [Fact]
     public async Task SelectAndReserve_PoolTooSmall_ThrowsQuestionPoolExhausted()
     {
         using var scope = _factory.Services.CreateScope();

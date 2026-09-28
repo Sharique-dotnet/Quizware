@@ -16,7 +16,7 @@ public sealed class Match : BaseEntity, ITenantScoped, IAuditable, ISoftDeletabl
 
     public static Match Create(
         Guid programId, Guid stageId, int matchNumber, long randomSeed, string createdBy,
-        MatchKind matchKind = MatchKind.Regular, Guid? tieBreakEventId = null)
+        MatchKind matchKind = MatchKind.Regular, Guid? tieBreakEventId = null, string? name = null)
     {
         if (matchKind == MatchKind.TieBreak && tieBreakEventId is null)
         {
@@ -35,6 +35,7 @@ public sealed class Match : BaseEntity, ITenantScoped, IAuditable, ISoftDeletabl
             MatchNumber = matchNumber,
             MatchKind = matchKind,
             TieBreakEventId = tieBreakEventId,
+            Name = name,
             State = MatchState.Draft,
             RandomSeed = randomSeed,
             CreatedAtUtc = DateTime.UtcNow,
@@ -67,6 +68,56 @@ public sealed class Match : BaseEntity, ITenantScoped, IAuditable, ISoftDeletabl
 
     public bool IsDeleted { get; private set; }
     public DateTime? DeletedAtUtc { get; private set; }
+
+    public bool IsInSetup => State is MatchState.Draft or MatchState.Ready;
+
+    /// <summary>Any setup edit (participants, segments, details) sends a Ready
+    /// match back to Draft, so a match is only ever Ready for the setup it was
+    /// last checked against.</summary>
+    public void TouchSetup(string updatedBy)
+    {
+        if (!IsInSetup)
+        {
+            throw new InvalidStateTransitionException(
+                $"Match {MatchNumber} can only be changed before it starts; it is {State}.");
+        }
+
+        State = MatchState.Draft;
+        UpdatedAtUtc = DateTime.UtcNow;
+        UpdatedBy = updatedBy;
+    }
+
+    public void UpdateDetails(string? name, int matchNumber, string updatedBy)
+    {
+        TouchSetup(updatedBy);
+        Name = name;
+        MatchNumber = matchNumber;
+    }
+
+    public void MarkReady(string updatedBy)
+    {
+        if (!IsInSetup)
+        {
+            throw new InvalidStateTransitionException($"Match {MatchNumber} must be Draft or Ready to be marked Ready; it is {State}.");
+        }
+
+        State = MatchState.Ready;
+        UpdatedAtUtc = DateTime.UtcNow;
+        UpdatedBy = updatedBy;
+    }
+
+    public void Delete(string deletedBy)
+    {
+        if (!IsInSetup)
+        {
+            throw new InvalidStateTransitionException($"Match {MatchNumber} has started and cannot be deleted; abandon it instead.");
+        }
+
+        IsDeleted = true;
+        DeletedAtUtc = DateTime.UtcNow;
+        UpdatedAtUtc = DateTime.UtcNow;
+        UpdatedBy = deletedBy;
+    }
 
     /// <summary>A match needs at least 2 active participants to start.
     /// <paramref name="activeParticipantCount"/> is supplied by the caller.</summary>
@@ -115,6 +166,11 @@ public sealed class Match : BaseEntity, ITenantScoped, IAuditable, ISoftDeletabl
         if (string.IsNullOrWhiteSpace(reason))
         {
             throw new ArgumentException("A reason is required to abandon a match.", nameof(reason));
+        }
+
+        if (State is MatchState.Completed or MatchState.Abandoned)
+        {
+            throw new InvalidStateTransitionException($"Match {MatchNumber} is already {State}.");
         }
 
         State = MatchState.Abandoned;

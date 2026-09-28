@@ -57,4 +57,61 @@ public class MatchQuestionTests
         question.State.Should().Be(MatchQuestionState.Answered);
         question.ClosedAtUtc.Should().NotBeNull();
     }
+
+    [Fact]
+    public void Reveal_BeforeServing_Throws()
+    {
+        var question = Reserve(Guid.NewGuid(), 0);
+
+        var act = () => question.Reveal();
+
+        act.Should().Throw<InvalidStateTransitionException>();
+    }
+
+    [Fact]
+    public void Reveal_Twice_KeepsTheFirstRevealTime()
+    {
+        var question = Reserve(Guid.NewGuid(), 0);
+        question.Activate([], "[]", null);
+        question.Reveal();
+        var first = question.RevealedAtUtc;
+
+        question.Reveal();
+
+        question.RevealedAtUtc.Should().Be(first);
+    }
+
+    [Fact]
+    public void SelectTopicAndRenumber_OnlyWhileReserved()
+    {
+        var question = Reserve(Guid.NewGuid(), 3);
+        var topicId = Guid.NewGuid();
+
+        question.SelectTopic(topicId);
+        question.Renumber(0);
+        question.Activate([], "[]", null);
+        var selectAfterServe = () => question.SelectTopic(Guid.NewGuid());
+        var moveAfterServe = () => question.Renumber(5);
+
+        question.SelectedTopicId.Should().Be(topicId);
+        question.OrderIndex.Should().Be(0);
+        selectAfterServe.Should().Throw<InvalidStateTransitionException>();
+        moveAfterServe.Should().Throw<InvalidStateTransitionException>();
+    }
+
+    [Fact]
+    public void Reopen_PutsAnAnsweredQuestionBackOnScreen_ButNothingElse()
+    {
+        var answered = Reserve(Guid.NewGuid(), 0);
+        answered.Activate([], "[]", null);
+        answered.MarkAnswered();
+        var reserved = Reserve(Guid.NewGuid(), 1);
+
+        answered.Reopen();
+        var act = () => reserved.Reopen();
+
+        answered.State.Should().Be(MatchQuestionState.Active);
+        answered.ClosedAtUtc.Should().BeNull();
+        act.Should().Throw<InvalidStateTransitionException>();
+    }
 }

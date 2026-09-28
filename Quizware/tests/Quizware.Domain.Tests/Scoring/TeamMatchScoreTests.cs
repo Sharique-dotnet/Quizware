@@ -30,4 +30,18 @@ public class TeamMatchScoreTests
         score.TotalPoints.Should().Be(7);
         score.CorrectCount.Should().Be(1);
     }
+
+    [Fact]
+    public void RevertAnswer_UndoesApplyAnswerExactly()
+    {
+        var score = TeamMatchScore.CreateForParticipant(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid());
+        score.ApplyAnswer(AnswerOutcome.Correct, 10);
+        score.ApplyAnswer(AnswerOutcome.Incorrect, -5);
+
+        score.RevertAnswer(AnswerOutcome.Incorrect, -5);
+
+        score.TotalPoints.Should().Be(10);
+        score.CorrectCount.Should().Be(1);
+        score.IncorrectCount.Should().Be(0);
+    }
 }

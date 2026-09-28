@@ -82,9 +82,39 @@ public sealed class MatchQuestion : BaseEntity, ITenantScoped, IAuditable, ISoft
         TimerStartedAtUtc = DateTime.UtcNow;
     }
 
+    /// <summary>Reveals the answer to everyone watching. A question that has
+    /// not been served yet (or was released unplayed) has nothing to reveal.</summary>
     public void Reveal()
     {
-        RevealedAtUtc = DateTime.UtcNow;
+        if (State is MatchQuestionState.Reserved or MatchQuestionState.Released)
+        {
+            throw new InvalidStateTransitionException($"Question at position {OrderIndex} has not been served; it is {State}.");
+        }
+
+        RevealedAtUtc ??= DateTime.UtcNow;
+    }
+
+    /// <summary>Records the topic a team picked for this (still reserved) question.</summary>
+    public void SelectTopic(Guid topicId)
+    {
+        if (State != MatchQuestionState.Reserved)
+        {
+            throw new InvalidStateTransitionException($"Question at position {OrderIndex} must be Reserved to take a topic; it is {State}.");
+        }
+
+        SelectedTopicId = topicId;
+    }
+
+    /// <summary>Re-sequences a reserved question within its segment — used
+    /// when a team's topic pick brings a later question forward.</summary>
+    public void Renumber(int newOrderIndex)
+    {
+        if (State != MatchQuestionState.Reserved)
+        {
+            throw new InvalidStateTransitionException($"Question at position {OrderIndex} must be Reserved to move; it is {State}.");
+        }
+
+        OrderIndex = newOrderIndex;
     }
 
     public void MarkAnswered()
@@ -99,6 +129,19 @@ public sealed class MatchQuestion : BaseEntity, ITenantScoped, IAuditable, ISoft
         RequireActive();
         State = MatchQuestionState.Skipped;
         ClosedAtUtc = DateTime.UtcNow;
+    }
+
+    /// <summary>Puts an answered question back on screen after its answer was
+    /// reversed, so the correct outcome can be recorded.</summary>
+    public void Reopen()
+    {
+        if (State != MatchQuestionState.Answered)
+        {
+            throw new InvalidStateTransitionException($"Question at position {OrderIndex} must be Answered to reopen; it is {State}.");
+        }
+
+        State = MatchQuestionState.Active;
+        ClosedAtUtc = null;
     }
 
     public void Release()

@@ -1,4 +1,5 @@
 using FluentAssertions;
+using Quizware.Domain.Common.Exceptions;
 using Quizware.Domain.Enums;
 using Quizware.Domain.Tournament;
 
@@ -48,5 +49,68 @@ public class MatchParticipantTests
 
         mp.TurnOrder.Should().Be(2);
         mp.SeatNumber.Should().Be(3);
+    }
+
+    [Fact]
+    public void RecordResult_StoresScoreAndRank_AndAllowsNoRank()
+    {
+        var ranked = MatchParticipant.Create(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), seatNumber: 1, turnOrder: 1, createdBy: "owner");
+        var unranked = MatchParticipant.Create(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), seatNumber: 2, turnOrder: 2, createdBy: "owner");
+
+        ranked.RecordResult(40, 1);
+        unranked.RecordResult(25, null);
+
+        ranked.FinalScore.Should().Be(40);
+        ranked.FinalRank.Should().Be(1);
+        unranked.FinalScore.Should().Be(25);
+        unranked.FinalRank.Should().BeNull();
+    }
+
+    [Fact]
+    public void Disqualify_CanKeepTheTeamInStandings()
+    {
+        var mp = MatchParticipant.Create(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), seatNumber: 1, turnOrder: 1, createdBy: "owner");
+
+        mp.Disqualify("Late arrival", Guid.NewGuid(), excludeFromStandings: false);
+
+        mp.Status.Should().Be(ParticipantStatus.Disqualified);
+        mp.ExcludeFromStandings.Should().BeFalse();
+    }
+
+    [Fact]
+    public void Disqualify_Twice_Throws()
+    {
+        var mp = MatchParticipant.Create(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), seatNumber: 1, turnOrder: 1, createdBy: "owner");
+        mp.Disqualify("First", Guid.NewGuid());
+
+        var act = () => mp.Disqualify("Second", Guid.NewGuid());
+
+        act.Should().Throw<InvalidStateTransitionException>();
+    }
+
+    [Fact]
+    public void Reinstate_ClearsTheRemoval_AndSetsTheNewTurn()
+    {
+        var mp = MatchParticipant.Create(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), seatNumber: 1, turnOrder: 1, createdBy: "owner");
+        mp.Disqualify("Appealed", Guid.NewGuid());
+
+        mp.Reinstate(turnOrder: 3);
+
+        mp.Status.Should().Be(ParticipantStatus.Active);
+        mp.RemovalReason.Should().BeNull();
+        mp.RemovedAtUtc.Should().BeNull();
+        mp.ExcludeFromStandings.Should().BeFalse();
+        mp.TurnOrder.Should().Be(3);
+        mp.SeatNumber.Should().Be(1);
+    }
+
+    [Fact]
+    public void Reinstate_AnActiveTeam_Throws()
+    {
+        var mp = MatchParticipant.Create(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), seatNumber: 1, turnOrder: 1, createdBy: "owner");
+
+        var act = () => mp.Reinstate(2);
+
+        act.Should().Throw<InvalidStateTransitionException>();
     }
 }
