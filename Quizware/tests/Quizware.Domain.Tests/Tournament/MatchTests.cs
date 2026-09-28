@@ -115,6 +115,24 @@ public class MatchTests
     }
 
     [Fact]
+    public void ReviseResult_OnlyOnACompletedMatch()
+    {
+        var completed = Create();
+        completed.Start(activeParticipantCount: 2);
+        completed.Complete(winnerTeamId: null, isTied: true);
+        var running = Create();
+        running.Start(activeParticipantCount: 2);
+        var winner = Guid.NewGuid();
+
+        completed.ReviseResult(winner, isTied: false);
+        var act = () => running.ReviseResult(winner, isTied: false);
+
+        completed.WinnerTeamId.Should().Be(winner);
+        completed.IsTied.Should().BeFalse();
+        act.Should().Throw<InvalidStateTransitionException>();
+    }
+
+    [Fact]
     public void Abandon_AfterCompletion_Throws()
     {
         var match = Create();

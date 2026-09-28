@@ -3,6 +3,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Quizware.Application.Common.Behaviors;
 using Quizware.Application.Gameplay;
 using Quizware.Application.Rules.Services;
+using Quizware.Application.Scoring;
 using Quizware.Application.Selection;
 
 namespace Quizware.Application;
@@ -29,6 +30,7 @@ public static class DependencyInjection
         services.AddScoped<ScoringResolver>();
         services.AddScoped<AnswerResultBuilder>();
         services.AddScoped<LiveQuestionFormats>();
+        services.AddScoped<IScoringEngine, ScoringEngine>();
 
         return services;
     }

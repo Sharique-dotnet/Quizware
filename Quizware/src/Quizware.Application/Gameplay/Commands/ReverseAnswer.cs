@@ -6,7 +6,7 @@ using Quizware.Application.Gameplay.Dtos;
 using Quizware.Domain.Common.Exceptions;
 using Quizware.Domain.Enums;
 using Quizware.Domain.Gameplay;
-using Quizware.Domain.Scoring;
+using Quizware.Application.Scoring;
 
 namespace Quizware.Application.Gameplay.Commands;
 
@@ -31,14 +31,16 @@ public sealed class ReverseAnswerCommandHandler : IRequestHandler<ReverseAnswerC
     private readonly ICurrentUser _currentUser;
     private readonly MatchEventLog _eventLog;
     private readonly AnswerResultBuilder _results;
+    private readonly IScoringEngine _scoring;
 
     public ReverseAnswerCommandHandler(
-        IAppDbContext db, ICurrentUser currentUser, MatchEventLog eventLog, AnswerResultBuilder results)
+        IAppDbContext db, ICurrentUser currentUser, MatchEventLog eventLog, AnswerResultBuilder results, IScoringEngine scoring)
     {
         _db = db;
         _currentUser = currentUser;
         _eventLog = eventLog;
         _results = results;
+        _scoring = scoring;
     }
 
     public async Task<RecordAnswerResultDto> Handle(ReverseAnswerCommand request, CancellationToken cancellationToken)
@@ -64,19 +66,12 @@ public sealed class ReverseAnswerCommandHandler : IRequestHandler<ReverseAnswerC
             throw new InvalidStateTransitionException("A pass cannot be reversed; the question has already moved to another team.");
         }
 
-        var scoreEvent = await _db.ScoreEvents
-            .SingleOrDefaultAsync(e => e.AnswerRecordId == original.Id && e.EventType == ScoreEventType.Answer, cancellationToken)
-            ?? throw new InvalidStateTransitionException("This answer has no score event to reverse.");
-
         var compensating = AnswerRecord.Create(
             original.ProgramId, match.Id, original.MatchSegmentId, original.MatchQuestionId, original.TeamId,
             original.MatchParticipantId, AnswerOutcome.Voided, userId, _currentUser.Email ?? "unknown", original.PassNumber);
         _db.AnswerRecords.Add(compensating);
+        var reversed = await _scoring.ReverseAnswerAsync(match, original, userId, request.Reason, cancellationToken);
         original.MarkReversed(compensating.Id, request.Reason);
-        _db.ScoreEvents.Add(scoreEvent.Reverse(userId, request.Reason));
-
-        var score = await _db.TeamMatchScores.SingleAsync(s => s.MatchParticipantId == original.MatchParticipantId, cancellationToken);
-        score.RevertAnswer(original.Outcome, scoreEvent.Points);
 
         var question = await _db.MatchQuestions.SingleAsync(q => q.Id == original.MatchQuestionId, cancellationToken);
         var reopened = await ReopenIfNothingHappenedSinceAsync(match.Id, question, cancellationToken);
@@ -85,14 +80,14 @@ public sealed class ReverseAnswerCommandHandler : IRequestHandler<ReverseAnswerC
         {
             answerRecordId = original.Id,
             compensatingAnswerRecordId = compensating.Id,
-            points = -scoreEvent.Points,
+            points = -reversed.PointsReversed,
             reason = request.Reason,
             questionReopened = reopened,
         }, cancellationToken);
         await _db.SaveChangesAsync(cancellationToken);
 
         var segment = await _db.MatchSegments.SingleAsync(s => s.Id == original.MatchSegmentId, cancellationToken);
-        return await _results.BuildAsync(match, segment, compensating, -scoreEvent.Points, scoreEvent.ScoringRuleId!.Value, cancellationToken);
+        return await _results.BuildAsync(match, segment, compensating, -reversed.PointsReversed, reversed.ScoringRuleId, cancellationToken);
     }
 
     private async Task<bool> ReopenIfNothingHappenedSinceAsync(Guid matchId, MatchQuestion question, CancellationToken cancellationToken)

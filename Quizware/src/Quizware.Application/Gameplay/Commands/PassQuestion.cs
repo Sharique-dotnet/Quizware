@@ -6,7 +6,7 @@ using Quizware.Application.Gameplay.Dtos;
 using Quizware.Domain.Common.Exceptions;
 using Quizware.Domain.Enums;
 using Quizware.Domain.Gameplay;
-using Quizware.Domain.Scoring;
+using Quizware.Application.Scoring;
 
 namespace Quizware.Application.Gameplay.Commands;
 
@@ -29,12 +29,12 @@ public sealed class PassQuestionCommandHandler : IRequestHandler<PassQuestionCom
 {
     private readonly IAppDbContext _db;
     private readonly ICurrentUser _currentUser;
-    private readonly ScoringResolver _scoring;
+    private readonly IScoringEngine _scoring;
     private readonly MatchEventLog _eventLog;
     private readonly LiveStateBuilder _state;
 
     public PassQuestionCommandHandler(
-        IAppDbContext db, ICurrentUser currentUser, ScoringResolver scoring, MatchEventLog eventLog, LiveStateBuilder state)
+        IAppDbContext db, ICurrentUser currentUser, IScoringEngine scoring, MatchEventLog eventLog, LiveStateBuilder state)
     {
         _db = db;
         _currentUser = currentUser;
@@ -84,20 +84,11 @@ public sealed class PassQuestionCommandHandler : IRequestHandler<PassQuestionCom
             .FirstOrDefault(p => !alreadyHeld.Contains(p.Id))
             ?? throw new InvalidStateTransitionException("Every other team has already held this question; it cannot be passed again.");
 
-        var rule = await _scoring.TryResolveAsync(match, segment, AnswerOutcome.Passed, passes.Count, cancellationToken);
-        var points = rule?.Points ?? 0;
         var pass = AnswerRecord.Create(
             match.ProgramId, match.Id, segment.Id, question.Id, from.TeamId, from.Id, AnswerOutcome.Passed, userId,
             _currentUser.Email ?? "unknown", passes.Count);
         _db.AnswerRecords.Add(pass);
-        if (rule is not null)
-        {
-            _db.ScoreEvents.Add(ScoreEvent.ForAnswer(
-                match.ProgramId, match.Id, from.TeamId, from.Id, pass.Id, rule.Id, points, userId, segment.Id));
-        }
-
-        var score = await _db.TeamMatchScores.SingleAsync(s => s.MatchParticipantId == from.Id, cancellationToken);
-        score.ApplyAnswer(AnswerOutcome.Passed, points);
+        var points = await _scoring.ScorePassAsync(match, segment, from, pass, userId, cancellationToken);
         question.AssignTarget(to.TeamId, to.Id);
 
         await _eventLog.AppendAsync(match, MatchEventTypes.QuestionPassed, new

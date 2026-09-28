@@ -4,7 +4,7 @@ using Quizware.Application.Abstractions;
 using Quizware.Application.Gameplay.Dtos;
 using Quizware.Application.Selection;
 using Quizware.Domain.Enums;
-using Quizware.Domain.Scoring;
+using Quizware.Application.Scoring;
 
 namespace Quizware.Application.Gameplay.Commands;
 
@@ -21,14 +21,16 @@ public sealed class StartMatchCommandHandler : IRequestHandler<StartMatchCommand
     private readonly ICurrentUser _currentUser;
     private readonly IQuestionSelector _selector;
     private readonly MatchEventLog _eventLog;
+    private readonly IScoringEngine _scoring;
 
     public StartMatchCommandHandler(
-        IAppDbContext db, ICurrentUser currentUser, IQuestionSelector selector, MatchEventLog eventLog)
+        IAppDbContext db, ICurrentUser currentUser, IQuestionSelector selector, MatchEventLog eventLog, IScoringEngine scoring)
     {
         _db = db;
         _currentUser = currentUser;
         _selector = selector;
         _eventLog = eventLog;
+        _scoring = scoring;
     }
 
     public async Task<StartMatchResultDto> Handle(StartMatchCommand request, CancellationToken cancellationToken)
@@ -57,10 +59,7 @@ public sealed class StartMatchCommandHandler : IRequestHandler<StartMatchCommand
             reserved += result.Questions.Count;
         }
 
-        foreach (var participant in participants)
-        {
-            _db.TeamMatchScores.Add(TeamMatchScore.CreateForParticipant(match.ProgramId, match.Id, participant.TeamId, participant.Id));
-        }
+        await _scoring.OpenScoresAsync(match, participants, cancellationToken);
 
         await _eventLog.AppendAsync(match, MatchEventTypes.MatchStarted, new
         {

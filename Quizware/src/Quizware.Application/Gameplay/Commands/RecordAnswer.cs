@@ -8,7 +8,7 @@ using Quizware.Domain.Common.Exceptions;
 using Quizware.Domain.Enums;
 using Quizware.Domain.Gameplay;
 using Quizware.Domain.QuestionBank;
-using Quizware.Domain.Scoring;
+using Quizware.Application.Scoring;
 using ValidationException = Quizware.Application.Common.Exceptions.ValidationException;
 
 namespace Quizware.Application.Gameplay.Commands;
@@ -55,7 +55,7 @@ public sealed class RecordAnswerCommandValidator : AbstractValidator<RecordAnswe
 }
 
 /// <summary>One unit of work: the answer record, its score event (the
-/// immutable ledger) and the running TeamMatchScore total. Outside a buzzer
+/// immutable ledger) and the running match and stage totals (IScoringEngine). Outside a buzzer
 /// segment only the team holding the question may answer; in a buzzer segment
 /// any active team may, and — when the question allows a steal — a wrong
 /// answer leaves it open to the rest until someone gets it or everyone has tried.</summary>
@@ -63,13 +63,13 @@ public sealed class RecordAnswerCommandHandler : IRequestHandler<RecordAnswerCom
 {
     private readonly IAppDbContext _db;
     private readonly ICurrentUser _currentUser;
-    private readonly ScoringResolver _scoring;
+    private readonly IScoringEngine _scoring;
     private readonly MatchEventLog _eventLog;
     private readonly AnswerResultBuilder _results;
     private readonly LiveQuestionFormats _formats;
 
     public RecordAnswerCommandHandler(
-        IAppDbContext db, ICurrentUser currentUser, ScoringResolver scoring, MatchEventLog eventLog, AnswerResultBuilder results,
+        IAppDbContext db, ICurrentUser currentUser, IScoringEngine scoring, MatchEventLog eventLog, AnswerResultBuilder results,
         LiveQuestionFormats formats)
     {
         _db = db;
@@ -134,7 +134,6 @@ public sealed class RecordAnswerCommandHandler : IRequestHandler<RecordAnswerCom
         var outcome = NormalizeOutcome(Enum.Parse<AnswerOutcome>(request.Outcome, ignoreCase: true), passNumber);
         var isCorrect = await CheckResponseAsync(question, outcome, request, cancellationToken);
 
-        var rule = await _scoring.ResolveAsync(match, segment, outcome, passNumber, cancellationToken);
         var actor = _currentUser.Email ?? "unknown";
         var source = request.AnswerSource is null ? AnswerSource.Operator : Enum.Parse<AnswerSource>(request.AnswerSource, ignoreCase: true);
 
@@ -149,11 +148,7 @@ public sealed class RecordAnswerCommandHandler : IRequestHandler<RecordAnswerCom
             request.BuzzPressId,
             request.ResponseTimeMs);
         _db.AnswerRecords.Add(answer);
-        _db.ScoreEvents.Add(ScoreEvent.ForAnswer(
-            match.ProgramId, match.Id, participant.TeamId, participant.Id, answer.Id, rule.Id, rule.Points, userId, segment.Id));
-
-        var score = await _db.TeamMatchScores.SingleAsync(s => s.MatchParticipantId == participant.Id, cancellationToken);
-        score.ApplyAnswer(outcome, rule.Points);
+        var (rule, points) = await _scoring.ScoreAnswerAsync(match, segment, participant, answer, userId, cancellationToken);
 
         var stealAllowed = isBuzzer && await _db.Questions.IgnoreQueryFilters()
             .OfType<BuzzerQuestion>()
@@ -171,12 +166,12 @@ public sealed class RecordAnswerCommandHandler : IRequestHandler<RecordAnswerCom
             matchQuestionId = question.Id,
             participantId = participant.Id,
             outcome = outcome.ToString(),
-            points = rule.Points,
+            points,
             scoringRuleId = rule.Id,
         }, cancellationToken);
         await _db.SaveChangesAsync(cancellationToken);
 
-        return await _results.BuildAsync(match, segment, answer, rule.Points, rule.Id, cancellationToken);
+        return await _results.BuildAsync(match, segment, answer, points, rule.Id, cancellationToken);
     }
 
     /// <summary>After a pass, a right/wrong answer is the "after pass" kind,
