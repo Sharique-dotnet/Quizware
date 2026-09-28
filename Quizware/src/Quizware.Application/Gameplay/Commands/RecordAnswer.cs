@@ -4,6 +4,7 @@ using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Quizware.Application.Abstractions;
 using Quizware.Application.Gameplay.Dtos;
+using Quizware.Application.Gameplay.Formats;
 using Quizware.Domain.Common.Exceptions;
 using Quizware.Domain.Enums;
 using Quizware.Domain.Gameplay;
@@ -67,11 +68,11 @@ public sealed class RecordAnswerCommandHandler : IRequestHandler<RecordAnswerCom
     private readonly IScoringEngine _scoring;
     private readonly MatchEventLog _eventLog;
     private readonly AnswerResultBuilder _results;
-    private readonly LiveQuestionFormats _formats;
+    private readonly QuestionFormatHandlers _formats;
 
     public RecordAnswerCommandHandler(
         IAppDbContext db, ICurrentUser currentUser, IScoringEngine scoring, MatchEventLog eventLog, AnswerResultBuilder results,
-        LiveQuestionFormats formats)
+        QuestionFormatHandlers formats)
     {
         _db = db;
         _currentUser = currentUser;
@@ -111,7 +112,9 @@ public sealed class RecordAnswerCommandHandler : IRequestHandler<RecordAnswerCom
         var priorOnQuestion = await _db.AnswerRecords
             .Where(a => a.MatchQuestionId == question.Id && !a.IsReversed && a.Outcome != AnswerOutcome.Voided)
             .ToListAsync(cancellationToken);
-        var anyTeam = TurnRotation.AnyTeamMayAnswer(segment.FormatCode);
+        var handler = _formats.For(segment.FormatCode);
+        var bankQuestion = await _db.Questions.IgnoreQueryFilters().SingleAsync(q => q.Id == question.QuestionId, cancellationToken);
+        var anyTeam = handler.AnyTeamMayAnswer;
 
         if (!anyTeam && question.TargetParticipantId != participant.Id)
         {
@@ -133,7 +136,7 @@ public sealed class RecordAnswerCommandHandler : IRequestHandler<RecordAnswerCom
         }
 
         var outcome = NormalizeOutcome(Enum.Parse<AnswerOutcome>(request.Outcome, ignoreCase: true), passNumber);
-        var isCorrect = await CheckResponseAsync(question, outcome, request, cancellationToken);
+        var isCorrect = await CheckResponseAsync(handler, bankQuestion, outcome, request, cancellationToken);
 
         var actor = _currentUser.Email ?? "unknown";
         var source = request.AnswerSource is null ? AnswerSource.Operator : Enum.Parse<AnswerSource>(request.AnswerSource, ignoreCase: true);
@@ -151,11 +154,7 @@ public sealed class RecordAnswerCommandHandler : IRequestHandler<RecordAnswerCom
         _db.AnswerRecords.Add(answer);
         var (rule, points) = await _scoring.ScoreAnswerAsync(match, segment, participant, answer, userId, cancellationToken);
 
-        var stealAllowed = anyTeam && (segment.FormatCode != QuestionFormatCode.Buzzer || await _db.Questions.IgnoreQueryFilters()
-            .OfType<BuzzerQuestion>()
-            .Where(q => q.Id == question.QuestionId)
-            .Select(q => q.AllowStealAfterWrong)
-            .SingleOrDefaultAsync(cancellationToken));
+        var stealAllowed = anyTeam && handler.WrongAnswerLeavesQuestionOpen(bankQuestion);
         if (ClosesQuestion(stealAllowed, outcome, priorOnQuestion.Count(a => a.Outcome != AnswerOutcome.Passed) + 1, participants))
         {
             question.MarkAnswered();
@@ -205,14 +204,14 @@ public sealed class RecordAnswerCommandHandler : IRequestHandler<RecordAnswerCom
     /// <summary>When the response can be checked objectively (options, a
     /// sequence order), the stated outcome must agree with it — a mis-click is
     /// refused, not scored.</summary>
-    private async Task<bool?> CheckResponseAsync(
-        MatchQuestion matchQuestion, AnswerOutcome outcome, RecordAnswerCommand request, CancellationToken cancellationToken)
+    private static async Task<bool?> CheckResponseAsync(
+        IQuestionFormatHandler handler, Question question, AnswerOutcome outcome, RecordAnswerCommand request,
+        CancellationToken cancellationToken)
     {
         var selected = request.SelectedOptionIds is { Count: > 0 } many
             ? many.ToList()
             : request.SelectedOptionId is { } one ? [one] : null;
-        var question = await _db.Questions.IgnoreQueryFilters().SingleAsync(q => q.Id == matchQuestion.QuestionId, cancellationToken);
-        var evaluation = await _formats.EvaluateAsync(question, selected, request.FreeTextAnswer, cancellationToken);
+        var evaluation = await handler.EvaluateAsync(question, selected, request.FreeTextAnswer, cancellationToken);
 
         if (evaluation.IsObjective && evaluation.IsCorrect is { } isCorrect)
         {

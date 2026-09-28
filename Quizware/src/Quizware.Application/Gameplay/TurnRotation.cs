@@ -1,3 +1,4 @@
+using Quizware.Application.Gameplay.Formats;
 using Quizware.Domain.Enums;
 using Quizware.Domain.Gameplay;
 using Quizware.Domain.Tournament;
@@ -10,12 +11,10 @@ namespace Quizware.Application.Gameplay;
 /// question.</summary>
 internal static class TurnRotation
 {
-    public static bool AnyTeamMayAnswer(QuestionFormatCode format) =>
-        format is QuestionFormatCode.Buzzer or QuestionFormatCode.RapidFire;
-
-    public static Guid? NextParticipantOrNull(IReadOnlyList<MatchParticipant> participants, MatchSegment segment)
+    public static Guid? NextParticipantOrNull(
+        IReadOnlyList<MatchParticipant> participants, MatchSegment segment, QuestionFormatHandlers formats)
     {
-        if (AnyTeamMayAnswer(segment.FormatCode) || participants.All(p => p.Status != ParticipantStatus.Active))
+        if (formats.For(segment.FormatCode).AnyTeamMayAnswer || participants.All(p => p.Status != ParticipantStatus.Active))
         {
             return null;
         }

@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Quizware.Application.Abstractions;
 using Quizware.Application.Gameplay.Dtos;
+using Quizware.Application.Gameplay.Formats;
 using Quizware.Domain.Enums;
 using Quizware.Domain.Gameplay;
 using Quizware.Domain.Tournament;
@@ -12,10 +13,12 @@ namespace Quizware.Application.Gameplay;
 public sealed class AnswerResultBuilder
 {
     private readonly IAppDbContext _db;
+    private readonly QuestionFormatHandlers _formats;
 
-    public AnswerResultBuilder(IAppDbContext db)
+    public AnswerResultBuilder(IAppDbContext db, QuestionFormatHandlers formats)
     {
         _db = db;
+        _formats = formats;
     }
 
     /// <summary>Call after SaveChangesAsync, so every total reflects this answer.</summary>
@@ -72,7 +75,7 @@ public sealed class AnswerResultBuilder
             return null;
         }
 
-        var nextParticipant = TurnRotation.NextParticipantOrNull(participants, segment);
+        var nextParticipant = TurnRotation.NextParticipantOrNull(participants, segment, _formats);
         return new NextQuestionPreviewDto(reserved.Id, nextParticipant, NameOf(nextParticipant));
     }
 }

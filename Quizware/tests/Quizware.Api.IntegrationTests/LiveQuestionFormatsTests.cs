@@ -265,4 +265,15 @@ public class LiveQuestionFormatsTests : IClassFixture<CustomWebApplicationFactor
         IReadOnlyList<Guid>? selectedIds, string? freeText = null) =>
         h.Client.PostAsJsonAsync($"{started.Live}/answers", new RecordAnswerRequest(
             matchQuestionId, participantId, outcome, null, selectedIds, freeText, 0, "Operator", null, null));
+
+    [Fact]
+    public async Task EveryFormat_HasExactlyOneLiveHandler()
+    {
+        var h = await MatchTestHarness.CreateAsync(_factory);
+
+        var handled = await h.UseServiceAsync<IEnumerable<Application.Gameplay.Formats.IQuestionFormatHandler>, List<QuestionFormatCode>>(
+            handlers => Task.FromResult(handlers.Select(x => x.Format).ToList()));
+
+        handled.Should().BeEquivalentTo(Enum.GetValues<QuestionFormatCode>());
+    }
 }

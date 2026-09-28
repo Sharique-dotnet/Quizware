@@ -3,6 +3,7 @@ using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Quizware.Application.Abstractions;
 using Quizware.Application.Gameplay.Dtos;
+using Quizware.Application.Gameplay.Formats;
 using Quizware.Domain.Common.Exceptions;
 using Quizware.Domain.Enums;
 using Quizware.Domain.Gameplay;
@@ -32,12 +33,15 @@ public sealed class DisqualifyParticipantCommandHandler : IRequestHandler<Disqua
     private readonly IAppDbContext _db;
     private readonly MatchEventLog _eventLog;
     private readonly MatchCompletion _completion;
+    private readonly QuestionFormatHandlers _formats;
 
-    public DisqualifyParticipantCommandHandler(IAppDbContext db, MatchEventLog eventLog, MatchCompletion completion)
+    public DisqualifyParticipantCommandHandler(
+        IAppDbContext db, MatchEventLog eventLog, MatchCompletion completion, QuestionFormatHandlers formats)
     {
         _db = db;
         _eventLog = eventLog;
         _completion = completion;
+        _formats = formats;
     }
 
     public async Task<DisqualifyResultDto> Handle(DisqualifyParticipantCommand request, CancellationToken cancellationToken)
@@ -120,7 +124,7 @@ public sealed class DisqualifyParticipantCommandHandler : IRequestHandler<Disqua
             matchCanContinue,
             TurnOrderRecalculated: true,
             adjustment,
-            matchCanContinue && openSegment is not null ? TurnRotation.NextParticipantOrNull(participants, openSegment) : null,
+            matchCanContinue && openSegment is not null ? TurnRotation.NextParticipantOrNull(participants, openSegment, _formats) : null,
             match.State == MatchState.Completed,
             match.WinnerTeamId);
     }

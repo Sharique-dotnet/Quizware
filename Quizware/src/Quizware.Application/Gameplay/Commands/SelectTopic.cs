@@ -2,6 +2,7 @@ using FluentValidation;
 using MediatR;
 using Quizware.Application.Abstractions;
 using Quizware.Application.Gameplay.Dtos;
+using Quizware.Application.Gameplay.Formats;
 using Quizware.Domain.Common.Exceptions;
 using ValidationException = Quizware.Application.Common.Exceptions.ValidationException;
 
@@ -25,12 +26,14 @@ public sealed class SelectTopicCommandHandler : IRequestHandler<SelectTopicComma
     private readonly IAppDbContext _db;
     private readonly MatchEventLog _eventLog;
     private readonly LiveStateBuilder _state;
+    private readonly QuestionFormatHandlers _formats;
 
-    public SelectTopicCommandHandler(IAppDbContext db, MatchEventLog eventLog, LiveStateBuilder state)
+    public SelectTopicCommandHandler(IAppDbContext db, MatchEventLog eventLog, LiveStateBuilder state, QuestionFormatHandlers formats)
     {
         _db = db;
         _eventLog = eventLog;
         _state = state;
+        _formats = formats;
     }
 
     public async Task<LiveMatchStateDto> Handle(SelectTopicCommand request, CancellationToken cancellationToken)
@@ -48,7 +51,7 @@ public sealed class SelectTopicCommandHandler : IRequestHandler<SelectTopicComma
         }
 
         var participants = await MatchSetup.LoadParticipantsAsync(_db, match.Id, cancellationToken);
-        if (TurnRotation.NextParticipantOrNull(participants, open.Segment) != request.ParticipantId)
+        if (TurnRotation.NextParticipantOrNull(participants, open.Segment, _formats) != request.ParticipantId)
         {
             throw new InvalidStateTransitionException("Only the team whose turn it is may pick the topic.");
         }
