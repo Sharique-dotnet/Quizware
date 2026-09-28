@@ -1,13 +1,13 @@
 {
   "info": {
     "name": "Quizware API",
-    "description": "Covers every implemented endpoint through Phase 7 (Tournament configuration). Run top-to-bottom, folder by folder — each request saves the ids/tokens the next one needs into collection variables. See postman/README.md for the full run order and prerequisites.",
+    "description": "Covers every implemented endpoint through Phase 10 (match engine, scoring and standings). Run top-to-bottom, folder by folder — each request saves the ids/tokens the next one needs into collection variables. See postman/README.md for the full run order and prerequisites.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
     { "key": "baseUrl", "value": "http://localhost:5299" },
     { "key": "adminEmail", "value": "admin@quizapp.local" },
-    { "key": "adminPassword", "value": "ChangeMe!123" },
+    { "key": "adminPassword", "value": "KeepMeUpdated@123" },
     { "key": "accessToken", "value": "" },
     { "key": "refreshToken", "value": "" },
     { "key": "scopedAccessToken", "value": "" },
@@ -25,7 +25,31 @@
     { "key": "stageId", "value": "" },
     { "key": "secondStageId", "value": "" },
     { "key": "segmentId", "value": "" },
-    { "key": "secondSegmentId", "value": "" }
+    { "key": "secondSegmentId", "value": "" },
+    { "key": "adminUserId", "value": "" },
+    { "key": "teamBId", "value": "" },
+    { "key": "teamCId", "value": "" },
+    { "key": "teamDId", "value": "" },
+    { "key": "teamEId", "value": "" },
+    { "key": "matchMcqQuestionId1", "value": "" },
+    { "key": "matchMcqQuestionId2", "value": "" },
+    { "key": "matchMcqQuestionId3", "value": "" },
+    { "key": "passingQuestionId", "value": "" },
+    { "key": "matchId", "value": "" },
+    { "key": "scratchMatchId", "value": "" },
+    { "key": "seededMatchId", "value": "" },
+    { "key": "participantAId", "value": "" },
+    { "key": "participantBId", "value": "" },
+    { "key": "participantCId", "value": "" },
+    { "key": "matchSegmentId", "value": "" },
+    { "key": "extraMatchSegmentId", "value": "" },
+    { "key": "passingSegmentId", "value": "" },
+    { "key": "passingTemplateId", "value": "" },
+    { "key": "skippedSegmentId", "value": "" },
+    { "key": "matchQuestionId", "value": "" },
+    { "key": "correctOptionId", "value": "" },
+    { "key": "activeParticipantId", "value": "" },
+    { "key": "answerRecordId", "value": "" }
   ],
   "item": [
     {
@@ -1053,6 +1077,1024 @@
           },
           "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
             "pm.test('200 OK', () => pm.response.to.have.status(200));"
+          ] } }]
+        }
+      ]
+    },
+    {
+      "name": "10 Matches",
+      "item": [
+        {
+          "name": "Setup — Me (capture approver user id)",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/v1/auth/me",
+            "header": [{ "key": "Authorization", "value": "Bearer {{scopedAccessToken}}" }]
+          },
+          "description": "The disqualify request in 11 Live Match needs the approving admin's user id.",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('200 OK', () => pm.response.to.have.status(200));",
+            "const body = pm.response.json();",
+            "pm.collectionVariables.set('adminUserId', body.userId);"
+          ] } }]
+        },
+        {
+          "name": "Setup — Create Team B",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/v1/programs/{{programId}}/teams",
+            "header": [{ "key": "Authorization", "value": "Bearer {{scopedAccessToken}}" }, { "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"code\": \"B-{{$randomInt}}\",\n  \"schoolName\": \"School B\",\n  \"displayName\": \"Team B\",\n  \"memberNames\": [\n    \"Member 1\",\n    \"Member 2\"\n  ]\n}" }
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('201 Created', () => pm.response.to.have.status(201));",
+            "const body = pm.response.json();",
+            "pm.collectionVariables.set('teamBId', body.id);"
+          ] } }]
+        },
+        {
+          "name": "Setup — Create Team C",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/v1/programs/{{programId}}/teams",
+            "header": [{ "key": "Authorization", "value": "Bearer {{scopedAccessToken}}" }, { "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"code\": \"C-{{$randomInt}}\",\n  \"schoolName\": \"School C\",\n  \"displayName\": \"Team C\",\n  \"memberNames\": [\n    \"Member 1\",\n    \"Member 2\"\n  ]\n}" }
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('201 Created', () => pm.response.to.have.status(201));",
+            "const body = pm.response.json();",
+            "pm.collectionVariables.set('teamCId', body.id);"
+          ] } }]
+        },
+        {
+          "name": "Setup — Create Team D",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/v1/programs/{{programId}}/teams",
+            "header": [{ "key": "Authorization", "value": "Bearer {{scopedAccessToken}}" }, { "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"code\": \"D-{{$randomInt}}\",\n  \"schoolName\": \"School D\",\n  \"displayName\": \"Team D\",\n  \"memberNames\": [\n    \"Member 1\",\n    \"Member 2\"\n  ]\n}" }
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('201 Created', () => pm.response.to.have.status(201));",
+            "const body = pm.response.json();",
+            "pm.collectionVariables.set('teamDId', body.id);"
+          ] } }]
+        },
+        {
+          "name": "Setup — Create Team E",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/v1/programs/{{programId}}/teams",
+            "header": [{ "key": "Authorization", "value": "Bearer {{scopedAccessToken}}" }, { "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"code\": \"E-{{$randomInt}}\",\n  \"schoolName\": \"School E\",\n  \"displayName\": \"Team E\",\n  \"memberNames\": [\n    \"Member 1\",\n    \"Member 2\"\n  ]\n}" }
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('201 Created', () => pm.response.to.have.status(201));",
+            "const body = pm.response.json();",
+            "pm.collectionVariables.set('teamEId', body.id);"
+          ] } }]
+        },
+        {
+          "name": "Setup — Update Segment (MCQ → 2 questions)",
+          "request": {
+            "method": "PUT",
+            "url": "{{baseUrl}}/api/v1/programs/{{programId}}/stages/{{stageId}}/segments/{{segmentId}}",
+            "header": [{ "key": "Authorization", "value": "Bearer {{scopedAccessToken}}" }, { "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"questionCount\": 2,\n  \"isOrderLocked\": true\n}" }
+          },
+          "description": "Shrinks the stage's MCQ template so the match needs only a few approved questions.",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('200 OK', () => pm.response.to.have.status(200));"
+          ] } }]
+        },
+        {
+          "name": "Setup — Add Stage Segment (Passing)",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/v1/programs/{{programId}}/stages/{{stageId}}/segments",
+            "header": [{ "key": "Authorization", "value": "Bearer {{scopedAccessToken}}" }, { "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"formatCode\": \"Passing\",\n  \"questionCount\": 1,\n  \"isOrderLocked\": false\n}" }
+          },
+          "description": "A match segment can only be added for a format its stage has a template for.",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('200 OK', () => pm.response.to.have.status(200));",
+            "const body = pm.response.json();",
+            "pm.collectionVariables.set('passingTemplateId', body.id);"
+          ] } }]
+        },
+        {
+          "name": "Setup — Create MCQ Question 1",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/v1/programs/{{programId}}/questions/mcq",
+            "header": [{ "key": "Authorization", "value": "Bearer {{scopedAccessToken}}" }, { "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"formatCode\": \"Mcq\",\n  \"questionText\": \"Which planet is known as the Red Planet?\",\n  \"difficultyLevelId\": 2,\n  \"topicId\": \"{{topicId}}\",\n  \"language\": \"en\",\n  \"options\": [\n    {\n      \"text\": \"Mars\",\n      \"isCorrect\": true,\n      \"displayOrder\": 1,\n      \"mediaAssetId\": null\n    },\n    {\n      \"text\": \"Venus\",\n      \"isCorrect\": false,\n      \"displayOrder\": 2,\n      \"mediaAssetId\": null\n    }\n  ],\n  \"allowMultipleCorrect\": false,\n  \"shuffleOptions\": true,\n  \"negativeMarkingEnabled\": false\n}" }
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('201 Created', () => pm.response.to.have.status(201));",
+            "const body = pm.response.json();",
+            "pm.collectionVariables.set('matchMcqQuestionId1', body.id);"
+          ] } }]
+        },
+        {
+          "name": "Setup — Approve MCQ Question 1",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/v1/programs/{{programId}}/questions/{{matchMcqQuestionId1}}/approve",
+            "header": [{ "key": "Authorization", "value": "Bearer {{scopedAccessToken}}" }, { "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"notes\": \"Approved for the Postman match\"\n}" }
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('200 OK', () => pm.response.to.have.status(200));"
+          ] } }]
+        },
+        {
+          "name": "Setup — Create MCQ Question 2",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/v1/programs/{{programId}}/questions/mcq",
+            "header": [{ "key": "Authorization", "value": "Bearer {{scopedAccessToken}}" }, { "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"formatCode\": \"Mcq\",\n  \"questionText\": \"How many continents are there?\",\n  \"difficultyLevelId\": 2,\n  \"topicId\": \"{{topicId}}\",\n  \"language\": \"en\",\n  \"options\": [\n    {\n      \"text\": \"Seven\",\n      \"isCorrect\": true,\n      \"displayOrder\": 1,\n      \"mediaAssetId\": null\n    },\n    {\n      \"text\": \"Five\",\n      \"isCorrect\": false,\n      \"displayOrder\": 2,\n      \"mediaAssetId\": null\n    }\n  ],\n  \"allowMultipleCorrect\": false,\n  \"shuffleOptions\": true,\n  \"negativeMarkingEnabled\": false\n}" }
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('201 Created', () => pm.response.to.have.status(201));",
+            "const body = pm.response.json();",
+            "pm.collectionVariables.set('matchMcqQuestionId2', body.id);"
+          ] } }]
+        },
+        {
+          "name": "Setup — Approve MCQ Question 2",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/v1/programs/{{programId}}/questions/{{matchMcqQuestionId2}}/approve",
+            "header": [{ "key": "Authorization", "value": "Bearer {{scopedAccessToken}}" }, { "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"notes\": \"Approved for the Postman match\"\n}" }
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('200 OK', () => pm.response.to.have.status(200));"
+          ] } }]
+        },
+        {
+          "name": "Setup — Create MCQ Question 3",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/v1/programs/{{programId}}/questions/mcq",
+            "header": [{ "key": "Authorization", "value": "Bearer {{scopedAccessToken}}" }, { "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"formatCode\": \"Mcq\",\n  \"questionText\": \"What is the boiling point of water at sea level in °C?\",\n  \"difficultyLevelId\": 2,\n  \"topicId\": \"{{topicId}}\",\n  \"language\": \"en\",\n  \"options\": [\n    {\n      \"text\": \"100\",\n      \"isCorrect\": true,\n      \"displayOrder\": 1,\n      \"mediaAssetId\": null\n    },\n    {\n      \"text\": \"90\",\n      \"isCorrect\": false,\n      \"displayOrder\": 2,\n      \"mediaAssetId\": null\n    }\n  ],\n  \"allowMultipleCorrect\": false,\n  \"shuffleOptions\": true,\n  \"negativeMarkingEnabled\": false\n}" }
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('201 Created', () => pm.response.to.have.status(201));",
+            "const body = pm.response.json();",
+            "pm.collectionVariables.set('matchMcqQuestionId3', body.id);"
+          ] } }]
+        },
+        {
+          "name": "Setup — Approve MCQ Question 3",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/v1/programs/{{programId}}/questions/{{matchMcqQuestionId3}}/approve",
+            "header": [{ "key": "Authorization", "value": "Bearer {{scopedAccessToken}}" }, { "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"notes\": \"Approved for the Postman match\"\n}" }
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('200 OK', () => pm.response.to.have.status(200));"
+          ] } }]
+        },
+        {
+          "name": "Setup — Create Passing Question",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/v1/programs/{{programId}}/questions/passing",
+            "header": [{ "key": "Authorization", "value": "Bearer {{scopedAccessToken}}" }, { "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"formatCode\": \"Passing\",\n  \"questionText\": \"Which ocean is the largest?\",\n  \"difficultyLevelId\": 2,\n  \"topicId\": \"{{topicId}}\",\n  \"language\": \"en\",\n  \"options\": [\n    {\n      \"text\": \"Pacific\",\n      \"isCorrect\": true,\n      \"displayOrder\": 1,\n      \"mediaAssetId\": null\n    },\n    {\n      \"text\": \"Atlantic\",\n      \"isCorrect\": false,\n      \"displayOrder\": 2,\n      \"mediaAssetId\": null\n    }\n  ],\n  \"maxPassCount\": 2,\n  \"passDirection\": 1,\n  \"revealAnswerIfAllPass\": true\n}" }
+          },
+          "description": "passDirection is the numeric PassDirection enum (1 = Clockwise); the API registers no string enum converter.",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('201 Created', () => pm.response.to.have.status(201));",
+            "const body = pm.response.json();",
+            "pm.collectionVariables.set('passingQuestionId', body.id);"
+          ] } }]
+        },
+        {
+          "name": "Setup — Approve Passing Question",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/v1/programs/{{programId}}/questions/{{passingQuestionId}}/approve",
+            "header": [{ "key": "Authorization", "value": "Bearer {{scopedAccessToken}}" }, { "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"notes\": \"Approved for the Postman match\"\n}" }
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('200 OK', () => pm.response.to.have.status(200));"
+          ] } }]
+        },
+        {
+          "name": "Create Match",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/v1/programs/{{programId}}/matches",
+            "header": [{ "key": "Authorization", "value": "Bearer {{scopedAccessToken}}" }, { "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"stageId\": \"{{stageId}}\",\n  \"name\": \"League Match 1\",\n  \"matchNumber\": 1\n}" }
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('201 Created', () => pm.response.to.have.status(201));",
+            "const body = pm.response.json();",
+            "pm.collectionVariables.set('matchId', body.id);",
+            "pm.test('Draft', () => pm.expect(body.state).to.eql('Draft'));"
+          ] } }]
+        },
+        {
+          "name": "List Matches (by stage)",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/v1/programs/{{programId}}/matches?stageId={{stageId}}",
+            "header": [{ "key": "Authorization", "value": "Bearer {{scopedAccessToken}}" }]
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('200 OK', () => pm.response.to.have.status(200));",
+            "pm.test('includes the new match', () => pm.expect(pm.response.json().map(m => m.id)).to.include(pm.collectionVariables.get('matchId')));"
+          ] } }]
+        },
+        {
+          "name": "Get Match By Id",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/v1/programs/{{programId}}/matches/{{matchId}}",
+            "header": [{ "key": "Authorization", "value": "Bearer {{scopedAccessToken}}" }]
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('200 OK', () => pm.response.to.have.status(200));"
+          ] } }]
+        },
+        {
+          "name": "Update Match",
+          "request": {
+            "method": "PUT",
+            "url": "{{baseUrl}}/api/v1/programs/{{programId}}/matches/{{matchId}}",
+            "header": [{ "key": "Authorization", "value": "Bearer {{scopedAccessToken}}" }, { "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"name\": \"League Match 1 (renamed)\",\n  \"matchNumber\": 1\n}" }
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('200 OK', () => pm.response.to.have.status(200));",
+            "pm.test('renamed', () => pm.expect(pm.response.json().name).to.eql('League Match 1 (renamed)'));"
+          ] } }]
+        },
+        {
+          "name": "Add Participant (seat 1)",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/v1/programs/{{programId}}/matches/{{matchId}}/participants",
+            "header": [{ "key": "Authorization", "value": "Bearer {{scopedAccessToken}}" }, { "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"teamId\": \"{{teamId}}\",\n  \"seatNumber\": 1\n}" }
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('200 OK', () => pm.response.to.have.status(200));",
+            "const body = pm.response.json();",
+            "pm.collectionVariables.set('participantAId', body.id);",
+            "pm.test('seat 1', () => pm.expect(body.seatNumber).to.eql(1));"
+          ] } }]
+        },
+        {
+          "name": "Add Participant (seat 2)",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/v1/programs/{{programId}}/matches/{{matchId}}/participants",
+            "header": [{ "key": "Authorization", "value": "Bearer {{scopedAccessToken}}" }, { "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"teamId\": \"{{teamBId}}\",\n  \"seatNumber\": 2\n}" }
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('200 OK', () => pm.response.to.have.status(200));",
+            "const body = pm.response.json();",
+            "pm.collectionVariables.set('participantBId', body.id);",
+            "pm.test('seat 2', () => pm.expect(body.seatNumber).to.eql(2));"
+          ] } }]
+        },
+        {
+          "name": "Add Participant (seat 3)",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/v1/programs/{{programId}}/matches/{{matchId}}/participants",
+            "header": [{ "key": "Authorization", "value": "Bearer {{scopedAccessToken}}" }, { "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"teamId\": \"{{teamCId}}\",\n  \"seatNumber\": 3\n}" }
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('200 OK', () => pm.response.to.have.status(200));",
+            "const body = pm.response.json();",
+            "pm.collectionVariables.set('participantCId', body.id);",
+            "pm.test('seat 3', () => pm.expect(body.seatNumber).to.eql(3));"
+          ] } }]
+        },
+        {
+          "name": "Order Participants (seats and turn order)",
+          "request": {
+            "method": "PUT",
+            "url": "{{baseUrl}}/api/v1/programs/{{programId}}/matches/{{matchId}}/participants/order",
+            "header": [{ "key": "Authorization", "value": "Bearer {{scopedAccessToken}}" }, { "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"participants\": [\n    {\n      \"participantId\": \"{{participantAId}}\",\n      \"seatNumber\": 1,\n      \"turnOrder\": 1\n    },\n    {\n      \"participantId\": \"{{participantBId}}\",\n      \"seatNumber\": 2,\n      \"turnOrder\": 2\n    },\n    {\n      \"participantId\": \"{{participantCId}}\",\n      \"seatNumber\": 3,\n      \"turnOrder\": 3\n    }\n  ]\n}" }
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('200 OK', () => pm.response.to.have.status(200));",
+            "pm.test('three participants', () => pm.expect(pm.response.json().length).to.eql(3));"
+          ] } }]
+        },
+        {
+          "name": "Get Segments",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/v1/programs/{{programId}}/matches/{{matchId}}/segments",
+            "header": [{ "key": "Authorization", "value": "Bearer {{scopedAccessToken}}" }]
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('200 OK', () => pm.response.to.have.status(200));",
+            "const body = pm.response.json();",
+            "pm.test('MCQ and Passing from the stage templates', () => pm.expect(body.segments.map(s => s.formatCode)).to.eql(['Mcq', 'Passing']));"
+          ] } }]
+        },
+        {
+          "name": "Add Segment (MCQ — removed next)",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/v1/programs/{{programId}}/matches/{{matchId}}/segments",
+            "header": [{ "key": "Authorization", "value": "Bearer {{scopedAccessToken}}" }, { "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"formatCode\": \"Mcq\",\n  \"questionCount\": 1\n}" }
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('200 OK', () => pm.response.to.have.status(200));",
+            "const body = pm.response.json();",
+            "pm.collectionVariables.set('extraMatchSegmentId', body.id);"
+          ] } }]
+        },
+        {
+          "name": "Remove Segment",
+          "request": {
+            "method": "DELETE",
+            "url": "{{baseUrl}}/api/v1/programs/{{programId}}/matches/{{matchId}}/segments/{{extraMatchSegmentId}}",
+            "header": [{ "key": "Authorization", "value": "Bearer {{scopedAccessToken}}" }]
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('204 No Content', () => pm.response.to.have.status(204));"
+          ] } }]
+        },
+        {
+          "name": "Reset Segments To Template",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/v1/programs/{{programId}}/matches/{{matchId}}/segments/reset-to-template",
+            "header": [{ "key": "Authorization", "value": "Bearer {{scopedAccessToken}}" }]
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('200 OK', () => pm.response.to.have.status(200));",
+            "const body = pm.response.json();",
+            "pm.test('back to the template segments', () => pm.expect(body.segments.map(s => s.formatCode)).to.eql(['Mcq', 'Passing']));",
+            "pm.collectionVariables.set('matchSegmentId', body.segments.find(s => s.formatCode === 'Mcq').id);",
+            "pm.collectionVariables.set('passingSegmentId', body.segments.find(s => s.formatCode === 'Passing').id);"
+          ] } }]
+        },
+        {
+          "name": "Add Segment (MCQ — skipped during play)",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/v1/programs/{{programId}}/matches/{{matchId}}/segments",
+            "header": [{ "key": "Authorization", "value": "Bearer {{scopedAccessToken}}" }, { "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"formatCode\": \"Mcq\",\n  \"questionCount\": 1\n}" }
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('200 OK', () => pm.response.to.have.status(200));",
+            "const body = pm.response.json();",
+            "pm.collectionVariables.set('skippedSegmentId', body.id);"
+          ] } }]
+        },
+        {
+          "name": "Reorder Segments",
+          "request": {
+            "method": "PUT",
+            "url": "{{baseUrl}}/api/v1/programs/{{programId}}/matches/{{matchId}}/segments/reorder",
+            "header": [{ "key": "Authorization", "value": "Bearer {{scopedAccessToken}}" }, { "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"orderedSegmentIds\": [\n    \"{{matchSegmentId}}\",\n    \"{{skippedSegmentId}}\",\n    \"{{passingSegmentId}}\"\n  ],\n  \"reason\": \"Passing round last\"\n}" }
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('200 OK', () => pm.response.to.have.status(200));",
+            "pm.test('locked MCQ template segment stays first', () => pm.expect(pm.response.json().segments[0].id).to.eql(pm.collectionVariables.get('matchSegmentId')));"
+          ] } }]
+        },
+        {
+          "name": "Mark Match Ready",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/v1/programs/{{programId}}/matches/{{matchId}}/ready",
+            "header": [{ "key": "Authorization", "value": "Bearer {{scopedAccessToken}}" }]
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('200 OK', () => pm.response.to.have.status(200));",
+            "const body = pm.response.json();",
+            "pm.test('ready, no blockers', () => pm.expect(body.isReady, body.blockers.join('; ')).to.eql(true));"
+          ] } }]
+        },
+        {
+          "name": "Create Match (to delete)",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/v1/programs/{{programId}}/matches",
+            "header": [{ "key": "Authorization", "value": "Bearer {{scopedAccessToken}}" }, { "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"stageId\": \"{{stageId}}\",\n  \"name\": \"Scratch match\",\n  \"matchNumber\": 99\n}" }
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('201 Created', () => pm.response.to.have.status(201));",
+            "const body = pm.response.json();",
+            "pm.collectionVariables.set('scratchMatchId', body.id);"
+          ] } }]
+        },
+        {
+          "name": "Delete Match",
+          "request": {
+            "method": "DELETE",
+            "url": "{{baseUrl}}/api/v1/programs/{{programId}}/matches/{{scratchMatchId}}",
+            "header": [{ "key": "Authorization", "value": "Bearer {{scopedAccessToken}}" }]
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('204 No Content', () => pm.response.to.have.status(204));"
+          ] } }]
+        },
+        {
+          "name": "Auto-Seed Matches",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/v1/programs/{{programId}}/matches/auto-seed",
+            "header": [{ "key": "Authorization", "value": "Bearer {{scopedAccessToken}}" }, { "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"stageId\": \"{{stageId}}\",\n  \"seedingMode\": \"Snake\"\n}" }
+          },
+          "description": "Groups the stage's unplaced Registered/Active teams (D and E here) into new Draft matches.",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('200 OK', () => pm.response.to.have.status(200));",
+            "pm.test('one match for the two unplaced teams', () => pm.expect(pm.response.json().matchesCreated).to.eql(1));"
+          ] } }]
+        },
+        {
+          "name": "List Matches (Draft — capture the auto-seeded one)",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/v1/programs/{{programId}}/matches?stageId={{stageId}}&state=Draft",
+            "header": [{ "key": "Authorization", "value": "Bearer {{scopedAccessToken}}" }]
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('200 OK', () => pm.response.to.have.status(200));",
+            "const body = pm.response.json();",
+            "const seeded = body.find(m => m.id !== pm.collectionVariables.get('matchId'));",
+            "pm.test('auto-seeded match listed', () => pm.expect(seeded).to.not.eql(undefined));",
+            "pm.collectionVariables.set('seededMatchId', seeded.id);"
+          ] } }]
+        }
+      ]
+    },
+    {
+      "name": "11 Live Match",
+      "item": [
+        {
+          "name": "Start Match",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/v1/matches/{{matchId}}/live/start",
+            "header": [{ "key": "Authorization", "value": "Bearer {{scopedAccessToken}}" }]
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('200 OK', () => pm.response.to.have.status(200));",
+            "const body = pm.response.json();",
+            "pm.test('InProgress', () => pm.expect(body.state).to.eql('InProgress'));",
+            "pm.test('questions reserved', () => pm.expect(body.questionsReserved).to.be.above(0));"
+          ] } }]
+        },
+        {
+          "name": "Get State",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/v1/matches/{{matchId}}/live/state",
+            "header": [{ "key": "Authorization", "value": "Bearer {{scopedAccessToken}}" }]
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('200 OK', () => pm.response.to.have.status(200));"
+          ] } }]
+        },
+        {
+          "name": "Next Segment Options",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/v1/matches/{{matchId}}/live/segments/next-options",
+            "header": [{ "key": "Authorization", "value": "Bearer {{scopedAccessToken}}" }]
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('200 OK', () => pm.response.to.have.status(200));"
+          ] } }]
+        },
+        {
+          "name": "Reorder Segments (live — stage disallows, expect 409)",
+          "request": {
+            "method": "PUT",
+            "url": "{{baseUrl}}/api/v1/matches/{{matchId}}/live/segments/reorder",
+            "header": [{ "key": "Authorization", "value": "Bearer {{scopedAccessToken}}" }, { "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"orderedSegmentIds\": [\n    \"{{matchSegmentId}}\",\n    \"{{skippedSegmentId}}\",\n    \"{{passingSegmentId}}\"\n  ],\n  \"reason\": \"Confirmed on the day\"\n}" }
+          },
+          "description": "Live reordering needs the stage's AllowSegmentReorderDuringMatch flag, which no endpoint can set yet — so this is refused. Reordering during setup (10 Matches > Reorder Segments) always works.",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('409 Conflict', () => pm.response.to.have.status(409));",
+            "pm.test('SEGMENT_NOT_REORDERABLE', () => pm.expect(pm.response.json().errorCode).to.eql('SEGMENT_NOT_REORDERABLE'));"
+          ] } }]
+        },
+        {
+          "name": "Open Segment (MCQ)",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/v1/matches/{{matchId}}/live/segments/{{matchSegmentId}}/open",
+            "header": [{ "key": "Authorization", "value": "Bearer {{scopedAccessToken}}" }]
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('200 OK', () => pm.response.to.have.status(200));"
+          ] } }]
+        },
+        {
+          "name": "Next Question (preview)",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/v1/matches/{{matchId}}/live/next-question",
+            "header": [{ "key": "Authorization", "value": "Bearer {{scopedAccessToken}}" }]
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('200 OK', () => pm.response.to.have.status(200));"
+          ] } }]
+        },
+        {
+          "name": "Serve Question (MCQ 1)",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/v1/matches/{{matchId}}/live/questions/serve",
+            "header": [{ "key": "Authorization", "value": "Bearer {{scopedAccessToken}}" }, { "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"segmentId\": \"{{matchSegmentId}}\"\n}" }
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('200 OK', () => pm.response.to.have.status(200));",
+            "const body = pm.response.json();",
+            "pm.test('question is live', () => pm.expect(body.state).to.eql('Active'));",
+            "pm.collectionVariables.set('matchQuestionId', body.matchQuestionId);",
+            "pm.collectionVariables.set('correctOptionId', body.correctOptionId);"
+          ] } }]
+        },
+        {
+          "name": "Get Question",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/v1/matches/{{matchId}}/live/questions/{{matchQuestionId}}",
+            "header": [{ "key": "Authorization", "value": "Bearer {{scopedAccessToken}}" }]
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('200 OK', () => pm.response.to.have.status(200));"
+          ] } }]
+        },
+        {
+          "name": "Pause",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/v1/matches/{{matchId}}/live/pause",
+            "header": [{ "key": "Authorization", "value": "Bearer {{scopedAccessToken}}" }]
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('200 OK', () => pm.response.to.have.status(200));",
+            "pm.test('paused', () => pm.expect(pm.response.json().isPaused).to.eql(true));"
+          ] } }]
+        },
+        {
+          "name": "Resume",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/v1/matches/{{matchId}}/live/resume",
+            "header": [{ "key": "Authorization", "value": "Bearer {{scopedAccessToken}}" }]
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('200 OK', () => pm.response.to.have.status(200));",
+            "pm.test('resumed', () => pm.expect(pm.response.json().isPaused).to.eql(false));"
+          ] } }]
+        },
+        {
+          "name": "Get State (capture holder)",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/v1/matches/{{matchId}}/live/state",
+            "header": [{ "key": "Authorization", "value": "Bearer {{scopedAccessToken}}" }]
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('200 OK', () => pm.response.to.have.status(200));",
+            "const body = pm.response.json();",
+            "pm.test('someone holds the question', () => pm.expect(body.activeParticipant).to.not.eql(null));",
+            "pm.collectionVariables.set('activeParticipantId', body.activeParticipant.participantId);"
+          ] } }]
+        },
+        {
+          "name": "Pass Question (MCQ does not pass — expect 409)",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/v1/matches/{{matchId}}/live/pass",
+            "header": [{ "key": "Authorization", "value": "Bearer {{scopedAccessToken}}" }, { "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"matchQuestionId\": \"{{matchQuestionId}}\",\n  \"fromParticipantId\": \"{{activeParticipantId}}\"\n}" }
+          },
+          "description": "Only formats with pass rules (Passing) can be passed; the Passing segment below shows the successful path.",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('409 Conflict', () => pm.response.to.have.status(409));",
+            "pm.test('problem details', () => pm.expect(pm.response.json().title).to.be.a('string'));"
+          ] } }]
+        },
+        {
+          "name": "Record Answer (Correct)",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/v1/matches/{{matchId}}/live/answers",
+            "header": [{ "key": "Authorization", "value": "Bearer {{scopedAccessToken}}" }, { "key": "Content-Type", "value": "application/json" }, { "key": "Idempotency-Key", "value": "{{$guid}}" }],
+            "body": { "mode": "raw", "raw": "{\n  \"matchQuestionId\": \"{{matchQuestionId}}\",\n  \"matchParticipantId\": \"{{activeParticipantId}}\",\n  \"outcome\": \"Correct\",\n  \"selectedOptionId\": \"{{correctOptionId}}\",\n  \"selectedOptionIds\": null,\n  \"freeTextAnswer\": null,\n  \"passNumber\": 0,\n  \"answerSource\": \"Operator\",\n  \"buzzPressId\": null,\n  \"responseTimeMs\": 4200\n}" }
+          },
+          "description": "Idempotency-Key makes a retried submission return the same result instead of scoring twice.",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('200 OK', () => pm.response.to.have.status(200));",
+            "const body = pm.response.json();",
+            "pm.test('Correct, points awarded', () => { pm.expect(body.outcome).to.eql('Correct'); pm.expect(body.pointsAwarded).to.be.above(0); });",
+            "pm.collectionVariables.set('answerRecordId', body.answerRecordId);"
+          ] } }]
+        },
+        {
+          "name": "Reverse Answer",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/v1/matches/{{matchId}}/live/answers/{{answerRecordId}}/reverse",
+            "header": [{ "key": "Authorization", "value": "Bearer {{scopedAccessToken}}" }, { "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"reason\": \"Operator pressed the wrong team\"\n}" }
+          },
+          "description": "ProgramAdmin/SuperAdmin only (D-013). Nothing has happened since, so the question reopens.",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('200 OK', () => pm.response.to.have.status(200));"
+          ] } }]
+        },
+        {
+          "name": "Get State (after reversal)",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/v1/matches/{{matchId}}/live/state",
+            "header": [{ "key": "Authorization", "value": "Bearer {{scopedAccessToken}}" }]
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('200 OK', () => pm.response.to.have.status(200));",
+            "const body = pm.response.json();",
+            "pm.test('someone holds the question', () => pm.expect(body.activeParticipant).to.not.eql(null));",
+            "pm.collectionVariables.set('activeParticipantId', body.activeParticipant.participantId);"
+          ] } }]
+        },
+        {
+          "name": "Record Answer (Correct, re-recorded)",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/v1/matches/{{matchId}}/live/answers",
+            "header": [{ "key": "Authorization", "value": "Bearer {{scopedAccessToken}}" }, { "key": "Content-Type", "value": "application/json" }, { "key": "Idempotency-Key", "value": "{{$guid}}" }],
+            "body": { "mode": "raw", "raw": "{\n  \"matchQuestionId\": \"{{matchQuestionId}}\",\n  \"matchParticipantId\": \"{{activeParticipantId}}\",\n  \"outcome\": \"Correct\",\n  \"selectedOptionId\": \"{{correctOptionId}}\",\n  \"selectedOptionIds\": null,\n  \"freeTextAnswer\": null,\n  \"passNumber\": 0,\n  \"answerSource\": \"Operator\",\n  \"buzzPressId\": null,\n  \"responseTimeMs\": 4200\n}" }
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('200 OK', () => pm.response.to.have.status(200));",
+            "const body = pm.response.json();",
+            "pm.test('Correct, points awarded', () => { pm.expect(body.outcome).to.eql('Correct'); pm.expect(body.pointsAwarded).to.be.above(0); });",
+            "pm.collectionVariables.set('answerRecordId', body.answerRecordId);"
+          ] } }]
+        },
+        {
+          "name": "Serve Question (MCQ 2)",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/v1/matches/{{matchId}}/live/questions/serve",
+            "header": [{ "key": "Authorization", "value": "Bearer {{scopedAccessToken}}" }, { "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"segmentId\": \"{{matchSegmentId}}\"\n}" }
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('200 OK', () => pm.response.to.have.status(200));",
+            "const body = pm.response.json();",
+            "pm.test('question is live', () => pm.expect(body.state).to.eql('Active'));",
+            "pm.collectionVariables.set('matchQuestionId', body.matchQuestionId);",
+            "pm.collectionVariables.set('correctOptionId', body.correctOptionId);"
+          ] } }]
+        },
+        {
+          "name": "Reveal Question",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/v1/matches/{{matchId}}/live/questions/{{matchQuestionId}}/reveal",
+            "header": [{ "key": "Authorization", "value": "Bearer {{scopedAccessToken}}" }]
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('200 OK', () => pm.response.to.have.status(200));"
+          ] } }]
+        },
+        {
+          "name": "Skip Question",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/v1/matches/{{matchId}}/live/questions/{{matchQuestionId}}/skip",
+            "header": [{ "key": "Authorization", "value": "Bearer {{scopedAccessToken}}" }, { "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"reason\": \"Disputed wording\"\n}" }
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('200 OK', () => pm.response.to.have.status(200));"
+          ] } }]
+        },
+        {
+          "name": "Close Segment (MCQ)",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/v1/matches/{{matchId}}/live/segments/{{matchSegmentId}}/close",
+            "header": [{ "key": "Authorization", "value": "Bearer {{scopedAccessToken}}" }]
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('200 OK', () => pm.response.to.have.status(200));"
+          ] } }]
+        },
+        {
+          "name": "Skip Segment",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/v1/matches/{{matchId}}/live/segments/{{skippedSegmentId}}/skip",
+            "header": [{ "key": "Authorization", "value": "Bearer {{scopedAccessToken}}" }, { "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"reason\": \"Running late\"\n}" }
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('200 OK', () => pm.response.to.have.status(200));"
+          ] } }]
+        },
+        {
+          "name": "Open Segment (Passing)",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/v1/matches/{{matchId}}/live/segments/{{passingSegmentId}}/open",
+            "header": [{ "key": "Authorization", "value": "Bearer {{scopedAccessToken}}" }]
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('200 OK', () => pm.response.to.have.status(200));"
+          ] } }]
+        },
+        {
+          "name": "Serve Question (Passing)",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/v1/matches/{{matchId}}/live/questions/serve",
+            "header": [{ "key": "Authorization", "value": "Bearer {{scopedAccessToken}}" }, { "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"segmentId\": \"{{passingSegmentId}}\"\n}" }
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('200 OK', () => pm.response.to.have.status(200));",
+            "const body = pm.response.json();",
+            "pm.test('question is live', () => pm.expect(body.state).to.eql('Active'));",
+            "pm.collectionVariables.set('matchQuestionId', body.matchQuestionId);",
+            "pm.collectionVariables.set('correctOptionId', body.correctOptionId);"
+          ] } }]
+        },
+        {
+          "name": "Get State (capture holder)",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/v1/matches/{{matchId}}/live/state",
+            "header": [{ "key": "Authorization", "value": "Bearer {{scopedAccessToken}}" }]
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('200 OK', () => pm.response.to.have.status(200));",
+            "const body = pm.response.json();",
+            "pm.test('someone holds the question', () => pm.expect(body.activeParticipant).to.not.eql(null));",
+            "pm.collectionVariables.set('activeParticipantId', body.activeParticipant.participantId);"
+          ] } }]
+        },
+        {
+          "name": "Pass Question",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/v1/matches/{{matchId}}/live/pass",
+            "header": [{ "key": "Authorization", "value": "Bearer {{scopedAccessToken}}" }, { "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"matchQuestionId\": \"{{matchQuestionId}}\",\n  \"fromParticipantId\": \"{{activeParticipantId}}\"\n}" }
+          },
+          "description": "Passes clockwise by seat; limited by the question's MaxPassCount.",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('200 OK', () => pm.response.to.have.status(200));",
+            "pm.test('question moved to another team', () => pm.expect(pm.response.json().activeParticipant.participantId).to.not.eql(pm.collectionVariables.get('activeParticipantId')));"
+          ] } }]
+        },
+        {
+          "name": "Get State (after pass)",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/v1/matches/{{matchId}}/live/state",
+            "header": [{ "key": "Authorization", "value": "Bearer {{scopedAccessToken}}" }]
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('200 OK', () => pm.response.to.have.status(200));",
+            "const body = pm.response.json();",
+            "pm.test('someone holds the question', () => pm.expect(body.activeParticipant).to.not.eql(null));",
+            "pm.collectionVariables.set('activeParticipantId', body.activeParticipant.participantId);"
+          ] } }]
+        },
+        {
+          "name": "Available Topics",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/v1/matches/{{matchId}}/live/topics/available",
+            "header": [{ "key": "Authorization", "value": "Bearer {{scopedAccessToken}}" }]
+          },
+          "description": "Empty outside a Choice segment.",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('200 OK', () => pm.response.to.have.status(200));"
+          ] } }]
+        },
+        {
+          "name": "Select Topic (not a Choice segment — expect 409)",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/v1/matches/{{matchId}}/live/topics/select",
+            "header": [{ "key": "Authorization", "value": "Bearer {{scopedAccessToken}}" }, { "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"participantId\": \"{{activeParticipantId}}\",\n  \"topicName\": \"Geography\"\n}" }
+          },
+          "description": "Topic picks only apply in a Choice segment.",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('409 Conflict', () => pm.response.to.have.status(409));",
+            "pm.test('problem details', () => pm.expect(pm.response.json().title).to.be.a('string'));"
+          ] } }]
+        },
+        {
+          "name": "Record Answer (Correct, after pass)",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/v1/matches/{{matchId}}/live/answers",
+            "header": [{ "key": "Authorization", "value": "Bearer {{scopedAccessToken}}" }, { "key": "Content-Type", "value": "application/json" }, { "key": "Idempotency-Key", "value": "{{$guid}}" }],
+            "body": { "mode": "raw", "raw": "{\n  \"matchQuestionId\": \"{{matchQuestionId}}\",\n  \"matchParticipantId\": \"{{activeParticipantId}}\",\n  \"outcome\": \"Correct\",\n  \"selectedOptionId\": \"{{correctOptionId}}\",\n  \"selectedOptionIds\": null,\n  \"freeTextAnswer\": null,\n  \"passNumber\": 1,\n  \"answerSource\": \"Operator\",\n  \"buzzPressId\": null,\n  \"responseTimeMs\": 4200\n}" }
+          },
+          "description": "PassNumber must equal the number of times the question has been passed; a correct answer after a pass is recorded as PassedCorrect (the AfterPass scoring rule).",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('200 OK', () => pm.response.to.have.status(200));",
+            "const body = pm.response.json();",
+            "pm.test('PassedCorrect, points awarded', () => { pm.expect(body.outcome).to.eql('PassedCorrect'); pm.expect(body.pointsAwarded).to.be.above(0); });",
+            "pm.collectionVariables.set('answerRecordId', body.answerRecordId);"
+          ] } }]
+        },
+        {
+          "name": "Disqualify Participant",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/v1/matches/{{matchId}}/live/participants/{{participantCId}}/disqualify",
+            "header": [{ "key": "Authorization", "value": "Bearer {{scopedAccessToken}}" }, { "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"reason\": \"Rule breach\",\n  \"approvedByUserId\": \"{{adminUserId}}\",\n  \"excludeFromStandings\": false\n}" }
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('200 OK', () => pm.response.to.have.status(200));",
+            "pm.test('removed, match continues', () => pm.expect(pm.response.json().matchCanContinue).to.eql(true));"
+          ] } }]
+        },
+        {
+          "name": "Reinstate Participant",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/v1/matches/{{matchId}}/live/participants/{{participantCId}}/reinstate",
+            "header": [{ "key": "Authorization", "value": "Bearer {{scopedAccessToken}}" }, { "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"reason\": \"Appeal upheld\"\n}" }
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('200 OK', () => pm.response.to.have.status(200));"
+          ] } }]
+        },
+        {
+          "name": "Timeline",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/v1/matches/{{matchId}}/live/timeline",
+            "header": [{ "key": "Authorization", "value": "Bearer {{scopedAccessToken}}" }]
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('200 OK', () => pm.response.to.have.status(200));",
+            "pm.test('has events', () => pm.expect(pm.response.json().events.length).to.be.above(0));"
+          ] } }]
+        },
+        {
+          "name": "End Match",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/v1/matches/{{matchId}}/live/end",
+            "header": [{ "key": "Authorization", "value": "Bearer {{scopedAccessToken}}" }]
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('200 OK', () => pm.response.to.have.status(200));",
+            "pm.test('Completed', () => pm.expect(pm.response.json().state).to.eql('Completed'));"
+          ] } }]
+        },
+        {
+          "name": "Abandon Match (auto-seeded)",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/v1/matches/{{seededMatchId}}/live/abandon",
+            "header": [{ "key": "Authorization", "value": "Bearer {{scopedAccessToken}}" }, { "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"reason\": \"Venue unavailable\"\n}" }
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('200 OK', () => pm.response.to.have.status(200));",
+            "pm.test('Abandoned', () => pm.expect(pm.response.json().state).to.eql('Abandoned'));"
+          ] } }]
+        }
+      ]
+    },
+    {
+      "name": "12 Scores",
+      "item": [
+        {
+          "name": "Get Match Scores",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/v1/matches/{{matchId}}/scores",
+            "header": [{ "key": "Authorization", "value": "Bearer {{scopedAccessToken}}" }]
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('200 OK', () => pm.response.to.have.status(200));",
+            "pm.test('three teams scored', () => pm.expect(pm.response.json().scores.length).to.eql(3));"
+          ] } }]
+        },
+        {
+          "name": "Score Events",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/v1/matches/{{matchId}}/scores/events",
+            "header": [{ "key": "Authorization", "value": "Bearer {{scopedAccessToken}}" }]
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('200 OK', () => pm.response.to.have.status(200));",
+            "pm.test('reversed event kept in the ledger', () => pm.expect(pm.response.json().events.some(e => e.isReversed)).to.eql(true));"
+          ] } }]
+        },
+        {
+          "name": "Adjust Score",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/v1/matches/{{matchId}}/scores/adjust",
+            "header": [{ "key": "Authorization", "value": "Bearer {{scopedAccessToken}}" }, { "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"teamId\": \"{{teamBId}}\",\n  \"pointsDelta\": 5,\n  \"reason\": \"Judges' review\"\n}" }
+          },
+          "description": "ProgramAdmin/SuperAdmin only (D-013). Updates the match and stage totals in the same transaction.",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('200 OK', () => pm.response.to.have.status(200));"
+          ] } }]
+        },
+        {
+          "name": "Recalculate Scores",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/v1/matches/{{matchId}}/scores/recalculate",
+            "header": [{ "key": "Authorization", "value": "Bearer {{scopedAccessToken}}" }]
+          },
+          "description": "Rebuilds the match and stage read models from the score-event ledger; the totals should not change.",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('200 OK', () => pm.response.to.have.status(200));"
+          ] } }]
+        }
+      ]
+    },
+    {
+      "name": "13 Standings",
+      "item": [
+        {
+          "name": "Overall Standings",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/v1/programs/{{programId}}/standings/overall",
+            "header": [{ "key": "Authorization", "value": "Bearer {{scopedAccessToken}}" }]
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('200 OK', () => pm.response.to.have.status(200));"
+          ] } }]
+        },
+        {
+          "name": "Stage Standings",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/v1/programs/{{programId}}/standings/stages/{{stageId}}",
+            "header": [{ "key": "Authorization", "value": "Bearer {{scopedAccessToken}}" }]
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('200 OK', () => pm.response.to.have.status(200));",
+            "pm.test('three ranked teams', () => pm.expect(pm.response.json().standings.length).to.eql(3));"
+          ] } }]
+        },
+        {
+          "name": "Stage Standings (stages route)",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/v1/programs/{{programId}}/stages/{{stageId}}/standings",
+            "header": [{ "key": "Authorization", "value": "Bearer {{scopedAccessToken}}" }]
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('200 OK', () => pm.response.to.have.status(200));"
+          ] } }]
+        },
+        {
+          "name": "Team Standing",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/v1/programs/{{programId}}/standings/teams/{{teamId}}",
+            "header": [{ "key": "Authorization", "value": "Bearer {{scopedAccessToken}}" }]
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('200 OK', () => pm.response.to.have.status(200));",
+            "pm.test('one match on record', () => pm.expect(pm.response.json().matches.length).to.eql(1));"
           ] } }]
         }
       ]
