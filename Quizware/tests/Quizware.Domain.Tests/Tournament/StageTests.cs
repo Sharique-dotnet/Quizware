@@ -43,4 +43,15 @@ public class StageTests
         stage.StartedAtUtc.Should().NotBeNull();
         stage.CompletedAtUtc.Should().NotBeNull();
     }
+
+    [Fact]
+    public void ConfigureMatchPlay_SetsPolicyAndReorderPermission()
+    {
+        var stage = Create();
+
+        stage.ConfigureMatchPlay(TeamCountChangePolicy.Rebalance, allowSegmentReorderDuringMatch: true, "editor");
+
+        stage.TeamCountChangePolicy.Should().Be(TeamCountChangePolicy.Rebalance);
+        stage.AllowSegmentReorderDuringMatch.Should().BeTrue();
+    }
 }

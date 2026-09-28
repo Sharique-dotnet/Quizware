@@ -107,6 +107,17 @@ public sealed class Stage : BaseEntity, ITenantScoped, IAuditable, ISoftDeletabl
         UpdatedBy = updatedBy;
     }
 
+    /// <summary>How live matches in this stage react to a team leaving, and
+    /// whether pending segments may be reordered mid-match.</summary>
+    public void ConfigureMatchPlay(
+        TeamCountChangePolicy teamCountChangePolicy, bool allowSegmentReorderDuringMatch, string updatedBy)
+    {
+        TeamCountChangePolicy = teamCountChangePolicy;
+        AllowSegmentReorderDuringMatch = allowSegmentReorderDuringMatch;
+        UpdatedAtUtc = DateTime.UtcNow;
+        UpdatedBy = updatedBy;
+    }
+
     public void Start()
     {
         if (State != StageState.Ready)

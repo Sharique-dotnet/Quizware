@@ -85,6 +85,31 @@ public sealed class StageSegmentTemplate : BaseEntity, ITenantScoped, IAuditable
         UpdatedBy = updatedBy;
     }
 
+    /// <summary>How the segment plays on the night: timer, topic picks, passing.</summary>
+    public void ConfigurePlay(
+        string? displayName, int? timeLimitSeconds, TopicSelectionMode topicSelectionMode, int? topicChoiceLimit,
+        bool allowPassing, int? maxPassCount, string updatedBy)
+    {
+        if (timeLimitSeconds is < 1)
+        {
+            throw new ArgumentException("TimeLimitSeconds must be at least 1 when set.", nameof(timeLimitSeconds));
+        }
+
+        if (maxPassCount is < 1)
+        {
+            throw new ArgumentException("MaxPassCount must be at least 1 when set.", nameof(maxPassCount));
+        }
+
+        DisplayName = displayName;
+        TimeLimitSeconds = timeLimitSeconds;
+        TopicSelectionMode = topicSelectionMode;
+        TopicChoiceLimit = topicChoiceLimit;
+        AllowPassing = allowPassing;
+        MaxPassCount = allowPassing ? maxPassCount : null;
+        UpdatedAtUtc = DateTime.UtcNow;
+        UpdatedBy = updatedBy;
+    }
+
     public void Delete(string deletedBy)
     {
         IsDeleted = true;

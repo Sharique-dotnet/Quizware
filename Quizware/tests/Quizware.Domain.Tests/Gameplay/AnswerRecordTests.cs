@@ -46,4 +46,18 @@ public class AnswerRecordTests
 
         act.Should().Throw<ArgumentException>();
     }
+
+    [Fact]
+    public void RecordResponse_StoresWhatTheTeamGave()
+    {
+        var answer = Create();
+        var option = Guid.NewGuid();
+
+        answer.RecordResponse(option, null, "Paris", isCorrect: true, buzzPressId: null, responseTimeMs: 1200);
+
+        answer.SelectedOptionId.Should().Be(option);
+        answer.FreeTextAnswer.Should().Be("Paris");
+        answer.IsCorrect.Should().BeTrue();
+        answer.ResponseTimeMs.Should().Be(1200);
+    }
 }

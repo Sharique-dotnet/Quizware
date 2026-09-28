@@ -56,4 +56,63 @@ public class MatchSegmentTests
 
         act.Should().Throw<SegmentNotReorderableException>();
     }
+
+    [Fact]
+    public void Delete_PendingSegment_SoftDeletes()
+    {
+        var segment = Create(Guid.NewGuid(), 0);
+
+        segment.Delete("owner");
+
+        segment.IsDeleted.Should().BeTrue();
+    }
+
+    [Fact]
+    public void Delete_OpenSegment_Throws()
+    {
+        var segment = Create(Guid.NewGuid(), 0);
+        segment.Open([]);
+
+        var act = () => segment.Delete("owner");
+
+        act.Should().Throw<InvalidStateTransitionException>();
+    }
+
+    [Fact]
+    public void Renumber_MovesALockedSegment()
+    {
+        var segment = Create(Guid.NewGuid(), 3);
+        segment.Lock();
+
+        segment.Renumber(1);
+
+        segment.OrderIndex.Should().Be(1);
+    }
+
+    [Fact]
+    public void AdjustPlannedQuestionCount_NeverBelowServed()
+    {
+        var segment = Create(Guid.NewGuid(), 0);
+        segment.Open([]);
+        segment.RecordQuestionServed();
+        segment.RecordQuestionServed();
+
+        segment.AdjustPlannedQuestionCount(2);
+        var act = () => segment.AdjustPlannedQuestionCount(1);
+
+        segment.PlannedQuestionCount.Should().Be(2);
+        act.Should().Throw<ArgumentException>();
+    }
+
+    [Fact]
+    public void AdjustPlannedQuestionCount_OnACompletedSegment_Throws()
+    {
+        var segment = Create(Guid.NewGuid(), 0);
+        segment.Open([]);
+        segment.Complete();
+
+        var act = () => segment.AdjustPlannedQuestionCount(3);
+
+        act.Should().Throw<InvalidStateTransitionException>();
+    }
 }

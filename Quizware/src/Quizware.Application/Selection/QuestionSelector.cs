@@ -118,15 +118,24 @@ public sealed class QuestionSelector : IQuestionSelector
             .OrderBy(q => q.Id)
             .ToListAsync(cancellationToken);
 
+        // Locked: held (Reserved/Active) by any match, or already in this
+        // match at all — the unique (MatchId, QuestionId) index forbids a
+        // match holding the same question twice. A question another match
+        // has finished with is governed by the repeat policy instead.
         var lockedQuestionIds = await _db.MatchQuestions
-            .Where(mq => mq.State != MatchQuestionState.Released)
+            .Where(mq => mq.State == MatchQuestionState.Reserved
+                || mq.State == MatchQuestionState.Active
+                || (request.MatchId != null && mq.MatchId == request.MatchId && mq.State != MatchQuestionState.Released))
             .Select(mq => mq.QuestionId)
             .ToListAsync(cancellationToken);
         var lockedSet = new HashSet<Guid>(lockedQuestionIds);
-        // A draw must never re-select a question it is currently in the
-        // middle of reserving elsewhere — except its own match, which owns
-        // the lock it is about to extend.
-        var available = basePool.Where(q => !lockedSet.Contains(q.Id) || IsOwnMatchReservation(q.Id, request)).ToList();
+        // Reservations added earlier in this same unit of work (e.g. a
+        // previous segment during match start) are not in the database yet.
+        lockedSet.UnionWith(_db.MatchQuestions.Local
+            .Where(mq => mq.State is MatchQuestionState.Reserved or MatchQuestionState.Active
+                || (mq.MatchId == request.MatchId && mq.State != MatchQuestionState.Released))
+            .Select(mq => mq.QuestionId));
+        var available = basePool.Where(q => !lockedSet.Contains(q.Id)).ToList();
 
         var withTopicFilter = ApplyTopicFilter(available, topicFilter);
         var eligibleAfterFilters = withTopicFilter.Count;
@@ -202,20 +211,6 @@ public sealed class QuestionSelector : IQuestionSelector
         return new DrawOutcome(
             selected, basePool.Count, eligibleAfterFilters, eligibleAfterRepeatPolicy,
             difficultyMixRequested.ToDictionary(kv => kv.Key.ToString(), kv => kv.Value), achievedMix, warnings);
-    }
-
-    /// <summary>A question already Reserved/Active for this same match is not
-    /// a conflict — it is the caller's own earlier segment. Only cross-match
-    /// locks should exclude a candidate.</summary>
-    private bool IsOwnMatchReservation(Guid questionId, SelectionRequest request)
-    {
-        if (request.MatchId is null)
-        {
-            return false;
-        }
-
-        return _db.MatchQuestions.Local
-            .Any(mq => mq.QuestionId == questionId && mq.MatchId == request.MatchId && mq.State != MatchQuestionState.Released);
     }
 
     private static List<Question> ApplyTopicFilter(List<Question> pool, HashSet<Guid>? topicFilter) =>
