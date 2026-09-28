@@ -136,3 +136,23 @@ Newest last. Format: `_meta/SPEC.md` §6.6.
   entries (T-018/T-019 closed on the premise they were opened under, not
   contradicted).
 - **Detail:** `sessions/2026-09-10-01-phase8-question-selection-engine.md`
+
+## S-2026-09-28-01 · phases-9-10-gaps-postman · Claude Opus 5.5 (Claude Code)
+- **Focus:** Merged a brief covering Phase 9 (match engine, PR #1 merged to
+  master), Phase 10 (scoring and standings), a Phase 9 gap-closing pass
+  (reversal authority, per-segment rotation, per-format handlers, passing,
+  Choice board, sudden death, auto-seed, outbox), the Postman refresh, and the
+  first real SQL Server run. Work done in a cloud Linux container on branch
+  `claude/workflows-project-status-bsgu4d` (15 commits ahead of master,
+  pushed, no PR). `CURRENT.md` rewritten — it was two phases stale and
+  described only the Windows/LocalDB environment.
+- **Changed:** `CURRENT.md` (rewritten), `DECISIONS.md` (D-034–D-044, D-029
+  superseded), `TASKS.md` (T-020 closed, T-021/T-022 closed, T-023–T-028,
+  Q-007–Q-011, V-010–V-012 added; V-003 resolved; V-007/V-008/T-012/T-017
+  updated), `LESSONS.md` (L-011–L-017), `PROJECT.md` (repo map, environments,
+  commands, conventions), `HISTORY.md`, `_meta/state.json`.
+- **Added:** D-034 – D-044, T-021 – T-028, Q-007 – Q-011, L-011 – L-017,
+  V-010 – V-012.
+- **Superseded:** D-029 (by D-044 — the lock rule allowed same-match duplicate
+  draws and re-draws of answered questions).
+- **Detail:** `sessions/2026-09-28-01-phases-9-10-gaps-postman.md`

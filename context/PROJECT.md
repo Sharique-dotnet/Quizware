@@ -3,7 +3,7 @@
 Slow-changing orientation. Read `CURRENT.md` first; come here when you need the
 stack, the map, or the conventions.
 
-**Last updated:** 2026-09-08 (S-2026-09-08-02)
+**Last updated:** 2026-09-28 (S-2026-09-28-01)
 
 ---
 
@@ -66,6 +66,10 @@ prior checkpoints stated — that was a stale/transcribed name from before the
 solution itself is unchanged in relative structure: it lives one level down,
 at `Quizware/` under that root.
 
+`[FACT]` (S-2026-09-28-01) In the cloud Claude Code container the same outer
+repo is checked out at `/home/user/Quizware` — the root folder name differs by
+machine; the layout below it is identical.
+
 ```
 C:\Sharique\Projects\Personal\QuizApp\       <- context root (outer git repo)
 ├── context/                 AI-session continuity. Start at CURRENT.md.
@@ -75,7 +79,8 @@ C:\Sharique\Projects\Personal\QuizApp\       <- context root (outer git repo)
 │   ├── QuizApp-9AMM-Technical-Analysis.md   Legacy audit (1,492 lines)
 │   └── QuickBuzz-Technical-Analysis.md      Legacy audit (123 lines)
 ├── Quizware/                 NEW system. `[FACT]` Solution scaffolded, 10 projects,
-│                            Phases 0–8 of 18 all DONE (see `CURRENT.md` §2):
+│                            Phases 0–10 of 18 all DONE as of S-2026-09-28-01
+│                            (see `CURRENT.md` §2):
 │   ├── Quizware.slnx
 │   ├── src/Quizware.Domain/            no project/NuGet references. Phase 1 domain
 │   │                                  model complete: Common/, Enums/, Teams/,
@@ -104,6 +109,13 @@ C:\Sharique\Projects\Personal\QuizApp\       <- context root (outer git repo)
 │   │                                  Phase 8: Selection/ (IQuestionSelector,
 │   │                                  QuestionSelector, SelectionModels — the
 │   │                                  question selection engine, see D-025–D-033)
+│   │                                  Phase 9: Gameplay/ (MatchSetup, TurnRotation,
+│   │                                  LiveStateBuilder, SuddenDeath, TopicPicks,
+│   │                                  Commands/*, Formats/ one handler per format
+│   │                                  D-036), Abstractions/IMatchNotifications
+│   │                                  (D-041). Phase 10: Scoring/ (IScoringEngine,
+│   │                                  standings, adjust/recalculate, D-042),
+│   │                                  Qualification/TieBreakCriteriaService (D-043)
 │   ├── src/Quizware.Infrastructure/    -> Application, Domain. Phase 3: Identity/
 │   │                                  (JWT, AppUser/AppRole, RefreshToken),
 │   │                                  Idempotency/. Phase 4: Persistence/
@@ -112,7 +124,9 @@ C:\Sharique\Projects\Personal\QuizApp\       <- context root (outer git repo)
 │   │                                  Outbox/, Imports/ (Phase 6c/6f Excel import
 │   │                                  parsers). Phase 6e: Media/ (LocalFileStorage).
 │   │                                  Phase 7: Persistence/TournamentSeeder.cs
-│   │                                  (18-team demo tournament, dev-only seed)
+│   │                                  (18-team demo tournament, dev-only seed).
+│   │                                  Phase 9: Outbox/OutboxMatchNotifications.cs
+│   │                                  (transactional outbox writer, D-041)
 │   ├── src/Quizware.Modules.Buzzer/    -> Application, Domain (optional module).
 │   │                                  Phase 4: Manual/ (BuzzSession, BuzzPress,
 │   │                                  BuzzDeviceMapping) + own EF configs, kept out
@@ -122,16 +136,19 @@ C:\Sharique\Projects\Personal\QuizApp\       <- context root (outer git repo)
 │   │                                  area, discriminated-union QuestionResponse),
 │   │                                  Controllers/v1/ (16 controllers). Phases 6–8
 │   │                                  turned most of those from 501 stubs into
-│   │                                  real handlers — only Phase 9+ areas (Matches,
-│   │                                  Live engine, Scores, Standings, Qualification
-│   │                                  commit, Buzzer, Display, Reports) remain stubs.
-│   │                                  `MatchesController.cs` deliberately left a
-│   │                                  501 stub through Phase 8 — Phase 9 territory.
-│   ├── tests/Quizware.Domain.Tests/    xUnit + FluentAssertions; 95 tests
+│   │                                  real handlers. Phases 9–10 implemented
+│   │                                  Matches, LiveMatch, Scores, Standings.
+│   │                                  `[FACT]` still 501 (2026-09-28): admin
+│   │                                  lookups, match preflight, live snapshot/
+│   │                                  restore, Qualification, Buzzer, Display,
+│   │                                  Reports (T-023, T-025).
+│   ├── tests/Quizware.Domain.Tests/    xUnit + FluentAssertions; 131 tests (2026-09-28)
 │   ├── tests/Quizware.Application.Tests/  17 tests
 │   ├── tests/Quizware.Architecture.Tests/ 4 tests (NetArchTest dependency rules)
-│   ├── tests/Quizware.Api.IntegrationTests/ 129 tests `[FACT]`, independently
-│   │                                  re-run S-2026-09-10-01 (persistence,
+│   ├── tests/Quizware.Api.IntegrationTests/ 269 tests `[FACT]` (brief, 2026-09-28;
+│   │                                  Phase 9–10 added MatchTestHarness + Live*/
+│   │                                  Match*/Scor*/Standings*/TieBreak* tests).
+│   │                                  Earlier count 129, re-run S-2026-09-10-01 (persistence,
 │   │                                  auth/health, validators, controller-stub
 │   │                                  reachability, Teams/Topics/Tags/Media/
 │   │                                  QuestionBank/Stages/Rules/Selection
@@ -140,11 +157,11 @@ C:\Sharique\Projects\Personal\QuizApp\       <- context root (outer git repo)
 │   │                                  ~19,400 lines, committed (not regenerated
 │   │                                  since Phase 5 — stale relative to Phase 6/7/8
 │   │                                  endpoints if the Angular front end needs it)
-│   ├── postman/Quizware.postman_collection.json + README.md  80 requests, 10
-│   │                                  folders, covers every implemented endpoint
-│   │                                  through Phase 7 (Phase 8's selection-preview
-│   │                                  endpoint not yet added to the collection);
-│   │                                  committed `d2b16cc`
+│   ├── postman/Quizware.postman_collection.json + README.md  156 requests,
+│   │                                  199 assertions, folders through 13 Standings
+│   │                                  (commit `774264c`, 2026-09-28). Hand-formatted
+│   │                                  — edit as text (L-011). Earlier: 80 requests,
+│   │                                  `d2b16cc`
 │   └── tools/Quizware.BuzzerAgent/     console tray app; no project refs yet (T-006)
 ├── QuizApp-9AMM/            LEGACY MVC 4. Nested git repo.
 ├── QuickBuzz/               LEGACY buzzer. Nested git repo.
@@ -153,7 +170,12 @@ C:\Sharique\Projects\Personal\QuizApp\       <- context root (outer git repo)
 └── .claude/, .cursor/       Tool adapters for the context system
 ```
 
-`[FACT]` As of S-2026-09-10-01, independently re-run this session:
+`[FACT]` As of S-2026-09-28-01 (brief; run in the cloud session):
+`dotnet build Quizware.slnx -c Release /warnaserror` 0 warnings/errors,
+`dotnet test` **421/421** (131 Domain, 17 Application, 4 Architecture, 269
+Api.IntegrationTests). Phases 0–10 DONE; Phase 11 next.
+
+Earlier record — as of S-2026-09-10-01, independently re-run that session:
 `dotnet build` 0 warnings/errors, `dotnet test` **245 passed, 0 failed**
 across all four test projects (95 Domain, 17 Application, 4 Architecture,
 129 Api.IntegrationTests). Phases 0–8 of the 18-phase plan are all marked
@@ -177,7 +199,23 @@ the new work. `[FACT]` verified by `find -type d -name .git`.
 
 ## Environment
 
-- `[FACT]` Windows 10 Pro 10.0.19045, PowerShell 5.1 primary; Git Bash available.
+- `[FACT]` Two environments are in use (S-2026-09-28-01):
+  1. **User's machine** — Windows 10 Pro 10.0.19045, PowerShell 5.1 primary,
+     Git Bash available, LocalDB `(localdb)\MSSQLLocalDB` / `Quizware-Dev`.
+  2. **Cloud Claude Code container** — Linux, repo at `/home/user/Quizware`,
+     .NET SDK at `$HOME/.dotnet` (must be put on `PATH`, see Commands). Docker
+     daemon must be started manually; SQL Server 2022 was run as container
+     `quizware-sql` on port 1433, DB `Quizware-Dev`, then removed. SA password
+     and JWT signing key there were ad-hoc values passed as env vars — not
+     recorded. GitHub push works (after the user reconnected GitHub following a
+     403).
+- `[FACT]` Seeded admin: email `AdminUserSeeder.DefaultEmail`, password
+  `AdminUserSeeder.DefaultPassword` in
+  `Quizware/src/Quizware.Infrastructure/Identity/AdminUserSeeder.cs` (value not
+  recorded here). The Postman `adminPassword` variable mirrors it.
+- `[FACT]` Branch as of 2026-09-28: `claude/workflows-project-status-bsgu4d`,
+  HEAD `774264c`, pushed, 15 commits ahead of `origin/master` (whose tip
+  includes PR #1 merge `3f945cf` and `177a353`, the CLAUDE.md update).
 - `[FACT]` Context root: `C:\Sharique\Projects\Personal\QuizApp` (**corrected
   S-2026-09-10-01** — prior checkpoints stated `...\Personal\Quizware`, a
   stale/transcribed name). The ASP.NET Core solution lives one level down at
@@ -205,6 +243,9 @@ the new work. `[FACT]` verified by `find -type d -name .git`.
   under `C:\Program Files\dotnet\sdk`. Verified via `dotnet --list-sdks`.
 - `[UNVERIFIED]` SQL Server instance available for development. Check: connection
   string in a future `appsettings.Development.json`.
+  **Resolved (S-2026-09-28-01):** `[FACT]` LocalDB on the user's machine; a
+  SQL Server 2022 container in the cloud session — migrations applied cleanly
+  (V-003).
 - `[DECIDED]` Deployment target is an on-premises venue server, no cloud
   dependency (D-014). Buzzer device count is configurable, default 3 (D-014).
 
@@ -221,6 +262,21 @@ dotnet test Quizware.slnx --no-build  # 245 passed, 0 failed, independently re-v
 dotnet list <project> reference    # verify a project's dependency edges
 npx --yes newman run Quizware/postman/Quizware.postman_collection.json  # requires `dotnet run` already active; see postman/README.md for folder order
 ```
+
+`[FACT]` Cloud container (Linux), S-2026-09-28-01:
+
+```bash
+export PATH=$HOME/.dotnet:$HOME/.dotnet/tools:$PATH DOTNET_ROOT=$HOME/.dotnet DOTNET_CLI_TELEMETRY_OPTOUT=1
+dotnet build Quizware/Quizware.slnx -c Release /warnaserror
+dotnet test Quizware/Quizware.slnx --no-build -c Release          # 421/421
+dotnet ef migrations has-pending-model-changes --project src/Quizware.Infrastructure --startup-project src/Quizware.Api
+# API against SQL Server: env ConnectionStrings__Default, Jwt__Issuer, Jwt__Audience,
+# Jwt__SigningKey, ASPNETCORE_URLS=http://localhost:5299, ASPNETCORE_ENVIRONMENT=Development
+cd Quizware && npx --yes newman run postman/Quizware.postman_collection.json  # expect exactly 5 failures (file attachments)
+```
+
+Stop the API by PID, never `pkill -f 'Quizware.Api'` (L-012); don't pipe
+newman into `head` (L-013).
 
 `[FACT]` EF Core migrations exist: `InitialIdentitySchema` (Phase 3) and
 `AddBusinessSchema` (Phase 4, ~58 tables total). Integration tests run against
@@ -255,6 +311,16 @@ dotnet --list-sdks          # confirmed: 8.0.421 and 10.0.400
   commit messages; the user runs `git commit`. See `TASKS.md` V-005 for the
   git-log evidence this pattern is actually being followed, and L-004 for a
   related pitfall (a brief's claim about commit state can be stale).
+- `[FACT]` (user stated; `CLAUDE.md` updated on master `177a353`) Commit
+  messages are single-line and must **not** contain `Co-Authored-By:` or
+  `Claude-Session:` trailers. Separate commits for API and Angular changes.
+- `[FACT]` (user stated, S-2026-09-28-01) Work only on branch
+  `claude/workflows-project-status-bsgu4d`; do not create another branch; do
+  not open PRs unless asked (PR #1 was opened by the user from the UI).
+- `[FACT]` (user stated, S-2026-09-28-01) Scoped exception to "commit only when
+  asked": for Phases 9–10 the user said "test the changes, when all tests pass
+  commit, then move to the next phase" — the assistant committed per phase
+  under that instruction. Treat it as applying only when the user says so again.
 - `[FACT]` The user makes incremental, narrow requests rather than specifying
   everything up front (e.g. narrowing the Judge role's authority across four
   separate messages before asking for full removal, D-013). Expect more of this
