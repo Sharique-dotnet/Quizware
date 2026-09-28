@@ -22,6 +22,11 @@ public sealed record ResponseEvaluation(bool? IsCorrect, bool IsObjective)
 /// every team has passed.</summary>
 public sealed record QuestionPassRules(int MaxPassCount, PassDirection Direction, bool RevealAnswerIfAllPass);
 
+/// <summary>How a question appears on a topic-pick board: its label, whether
+/// picking it removes every other question with that label from the board,
+/// and its position on the board.</summary>
+public sealed record TopicChoice(string Label, bool IsExclusive, int? DisplayOrder);
+
 /// <summary>P9-07: everything that differs between formats on the night. The
 /// engine asks the handler for the question's format and is otherwise
 /// format-agnostic. Handlers are discovered by assembly scanning, so adding a
@@ -45,6 +50,10 @@ public interface IQuestionFormatHandler
     /// <summary>The question's own passing rules, for formats that carry
     /// them; null means the segment's passing settings apply.</summary>
     QuestionPassRules? PassRules(Question question);
+
+    /// <summary>The question's own topic-board entry, for formats that carry
+    /// one; null means the question's Topic name is used.</summary>
+    TopicChoice? TopicChoice(Question question);
 
     Task<FormatContent> PresentAsync(Question question, MatchQuestion matchQuestion, CancellationToken cancellationToken);
 

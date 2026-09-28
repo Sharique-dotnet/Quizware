@@ -20,7 +20,8 @@ public sealed class SelectTopicCommandValidator : AbstractValidator<SelectTopicC
 }
 
 /// <summary>Only the team whose turn it is may pick. The first reserved
-/// question on that topic is moved to the front of the segment's queue.</summary>
+/// question under that label is moved to the front of the segment's queue; if
+/// the topic is exclusive (P9-09), the rest under that label leave the board.</summary>
 public sealed class SelectTopicCommandHandler : IRequestHandler<SelectTopicCommand, LiveMatchStateDto>
 {
     private readonly IAppDbContext _db;
@@ -56,14 +57,17 @@ public sealed class SelectTopicCommandHandler : IRequestHandler<SelectTopicComma
             throw new InvalidStateTransitionException("Only the team whose turn it is may pick the topic.");
         }
 
-        var candidates = await TopicPicks.CandidatesAsync(_db, open.Segment.Id, cancellationToken);
+        var candidates = await TopicPicks.CandidatesAsync(_db, _formats, open.Segment.Id, cancellationToken);
         var chosen = candidates.FirstOrDefault(c => string.Equals(c.TopicName, request.TopicName, StringComparison.OrdinalIgnoreCase))
             ?? throw new ValidationException(new Dictionary<string, string[]>
             {
                 ["topicName"] = [$"'{request.TopicName}' is not one of the topics left in this segment."],
             });
 
-        chosen.MatchQuestion.SelectTopic(chosen.TopicId);
+        if (chosen.TopicId is { } topicId)
+        {
+            chosen.MatchQuestion.SelectTopic(topicId);
+        }
 
         // Two-phase (D-023): the unique (MatchSegmentId, OrderIndex) index.
         var reserved = await LiveRules.ReservedInSegmentAsync(_db, open.Segment.Id, cancellationToken);
@@ -83,11 +87,26 @@ public sealed class SelectTopicCommandHandler : IRequestHandler<SelectTopicComma
             }
         }
 
+        // An exclusive topic leaves the board the moment it is picked: every
+        // other reserved question under the same label goes back to the pool.
+        var removedFromBoard = chosen.IsExclusive
+            ? candidates
+                .Where(c => c.MatchQuestion.Id != chosen.MatchQuestion.Id
+                    && string.Equals(c.TopicName, chosen.TopicName, StringComparison.OrdinalIgnoreCase))
+                .Select(c => c.MatchQuestion)
+                .ToList()
+            : [];
+        foreach (var removed in removedFromBoard)
+        {
+            removed.Release();
+        }
+
         await _eventLog.AppendAsync(match, MatchEventTypes.TopicSelected, new
         {
             participantId = request.ParticipantId,
             topic = chosen.TopicName,
             matchQuestionId = chosen.MatchQuestion.Id,
+            removedFromBoard = removedFromBoard.Select(q => q.Id),
         }, cancellationToken);
         await _db.SaveChangesAsync(cancellationToken);
 

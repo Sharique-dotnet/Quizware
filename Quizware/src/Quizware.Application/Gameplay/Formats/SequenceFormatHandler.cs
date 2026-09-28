@@ -31,6 +31,8 @@ public sealed class SequenceFormatHandler : IQuestionFormatHandler
 
     public QuestionPassRules? PassRules(Question question) => null;
 
+    public TopicChoice? TopicChoice(Question question) => null;
+
     public async Task<FormatContent> PresentAsync(Question question, MatchQuestion matchQuestion, CancellationToken cancellationToken)
     {
         var items = await _db.SequenceItems.Where(i => i.QuestionId == question.Id).OrderBy(i => i.DisplayOrder).ToListAsync(cancellationToken);

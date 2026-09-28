@@ -114,11 +114,12 @@ public sealed class LiveStateBuilder
     {
         var question = await _db.Questions.IgnoreQueryFilters()
             .SingleAsync(q => q.Id == matchQuestion.QuestionId, cancellationToken);
-        var content = await _formats.For(question.FormatCode).PresentAsync(question, matchQuestion, cancellationToken);
+        var handler = _formats.For(question.FormatCode);
+        var content = await handler.PresentAsync(question, matchQuestion, cancellationToken);
 
-        string? topicName = null;
+        var topicName = handler.TopicChoice(question)?.Label;
         var topicId = matchQuestion.SelectedTopicId ?? question.TopicId;
-        if (topicId is not null)
+        if (topicName is null && topicId is not null)
         {
             topicName = await _db.Topics.IgnoreQueryFilters()
                 .Where(t => t.Id == topicId)

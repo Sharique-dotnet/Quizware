@@ -18,6 +18,8 @@ public sealed class AudioVisualFormatHandler : IQuestionFormatHandler
 
     public QuestionPassRules? PassRules(Question question) => null;
 
+    public TopicChoice? TopicChoice(Question question) => null;
+
     public Task<FormatContent> PresentAsync(Question question, MatchQuestion matchQuestion, CancellationToken cancellationToken)
     {
         var audioVisual = (AudioVisualQuestion)question;

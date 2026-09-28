@@ -19,6 +19,8 @@ public sealed class RapidFireFormatHandler : IQuestionFormatHandler
 
     public QuestionPassRules? PassRules(Question question) => null;
 
+    public TopicChoice? TopicChoice(Question question) => null;
+
     public Task<FormatContent> PresentAsync(Question question, MatchQuestion matchQuestion, CancellationToken cancellationToken) =>
         Task.FromResult(new FormatContent([], null, null));
 
