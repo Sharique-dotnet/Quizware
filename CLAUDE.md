@@ -66,7 +66,10 @@ wrong one.
 
 ## Instructions
 - Never commit the change on your own until asked.
-- Always provide plans in phases, after each phase meaningful single line commit message.
-- Separate commit messages for API and Angular changes.
+- Always provide plans in phases, after each phase meaningful single line commit message.  
+- Never add in commit message lik 'Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com'or'
+Claude-Session: https://claude.a..
+-.........'
+-  Separate commit messages for API and Angular changes.
 - In Plan, always mention What you are changing/adding, Why you are doing this, Where you will add/delete/change things, What it will affect.
 - Always refer to the `context/` folder before and during work in this repo — it is the source of continuity across sessions and tools. Read `context/CURRENT.md` first, and keep it (and the rest of `context/`) in mind for every decision, not just at session start.
