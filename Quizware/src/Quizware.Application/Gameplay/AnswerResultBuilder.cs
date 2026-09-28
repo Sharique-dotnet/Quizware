@@ -72,8 +72,7 @@ public sealed class AnswerResultBuilder
             return null;
         }
 
-        var segments = await MatchSetup.LoadSegmentsAsync(_db, match.Id, cancellationToken);
-        var nextParticipant = TurnRotation.NextParticipantOrNull(participants, segments);
+        var nextParticipant = TurnRotation.NextParticipantOrNull(participants, segment);
         return new NextQuestionPreviewDto(reserved.Id, nextParticipant, NameOf(nextParticipant));
     }
 }

@@ -49,9 +49,13 @@ public sealed class ServeQuestionCommandHandler : IRequestHandler<ServeQuestionC
             ?? throw new InvalidStateTransitionException($"Segment {segment.OrderIndex} has no questions left to serve; close it.");
 
         var participants = await MatchSetup.LoadParticipantsAsync(_db, match.Id, cancellationToken);
-        var targetId = TurnRotation.NextParticipantOrNull(participants, segments)
-            ?? throw new NoActiveParticipantsException();
-        var target = participants.Single(p => p.Id == targetId);
+        var targetId = TurnRotation.NextParticipantOrNull(participants, segment);
+        if (targetId is null && !TurnRotation.AnyTeamMayAnswer(segment.FormatCode))
+        {
+            throw new NoActiveParticipantsException();
+        }
+
+        var target = targetId is null ? null : participants.Single(p => p.Id == targetId);
 
         var question = await _db.Questions.IgnoreQueryFilters().SingleAsync(q => q.Id == next.QuestionId, cancellationToken);
         var template = await _db.StageSegmentTemplates.IgnoreQueryFilters()
@@ -59,18 +63,18 @@ public sealed class ServeQuestionCommandHandler : IRequestHandler<ServeQuestionC
         var timeLimit = question.TimeLimitSeconds ?? template?.TimeLimitSeconds ?? LiveQuestionFormats.DefaultTimeLimitSeconds(question);
         var segmentQuestions = await _db.MatchQuestions.Where(q => q.MatchSegmentId == segment.Id).ToListAsync(cancellationToken);
 
-        next.AssignTarget(target.TeamId, target.Id);
+        next.AssignTarget(target?.TeamId, target?.Id);
         next.Activate(segmentQuestions, next.OptionOrderJson ?? "[]", timeLimit);
         segment.RecordQuestionServed();
         question.RecordUsage();
-        _db.QuestionUsageHistories.Add(QuestionUsageHistory.Record(match.ProgramId, question.Id, match.Id, match.StageId, target.TeamId));
+        _db.QuestionUsageHistories.Add(QuestionUsageHistory.Record(match.ProgramId, question.Id, match.Id, match.StageId, target?.TeamId));
 
         await _eventLog.AppendAsync(match, MatchEventTypes.QuestionServed, new
         {
             matchQuestionId = next.Id,
             questionId = question.Id,
             segmentId = segment.Id,
-            participantId = target.Id,
+            participantId = target?.Id,
         }, cancellationToken);
         await _db.SaveChangesAsync(cancellationToken);
 

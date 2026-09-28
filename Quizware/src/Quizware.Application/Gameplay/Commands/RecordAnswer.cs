@@ -55,10 +55,11 @@ public sealed class RecordAnswerCommandValidator : AbstractValidator<RecordAnswe
 }
 
 /// <summary>One unit of work: the answer record, its score event (the
-/// immutable ledger) and the running match and stage totals (IScoringEngine). Outside a buzzer
-/// segment only the team holding the question may answer; in a buzzer segment
-/// any active team may, and — when the question allows a steal — a wrong
-/// answer leaves it open to the rest until someone gets it or everyone has tried.</summary>
+/// immutable ledger) and the running match and stage totals (IScoringEngine).
+/// Only the team holding the question may answer, except in Buzzer and Rapid
+/// Fire segments (BR-2.4), where any active team may — and a wrong answer
+/// leaves the question open to the rest (for Buzzer, only when the question
+/// allows a steal) until someone gets it or everyone has tried.</summary>
 public sealed class RecordAnswerCommandHandler : IRequestHandler<RecordAnswerCommand, RecordAnswerResultDto>
 {
     private readonly IAppDbContext _db;
@@ -110,9 +111,9 @@ public sealed class RecordAnswerCommandHandler : IRequestHandler<RecordAnswerCom
         var priorOnQuestion = await _db.AnswerRecords
             .Where(a => a.MatchQuestionId == question.Id && !a.IsReversed && a.Outcome != AnswerOutcome.Voided)
             .ToListAsync(cancellationToken);
-        var isBuzzer = segment.FormatCode == QuestionFormatCode.Buzzer;
+        var anyTeam = TurnRotation.AnyTeamMayAnswer(segment.FormatCode);
 
-        if (!isBuzzer && question.TargetParticipantId != participant.Id)
+        if (!anyTeam && question.TargetParticipantId != participant.Id)
         {
             throw new InvalidStateTransitionException("Only the team holding this question may answer it.");
         }
@@ -150,11 +151,11 @@ public sealed class RecordAnswerCommandHandler : IRequestHandler<RecordAnswerCom
         _db.AnswerRecords.Add(answer);
         var (rule, points) = await _scoring.ScoreAnswerAsync(match, segment, participant, answer, userId, cancellationToken);
 
-        var stealAllowed = isBuzzer && await _db.Questions.IgnoreQueryFilters()
+        var stealAllowed = anyTeam && (segment.FormatCode != QuestionFormatCode.Buzzer || await _db.Questions.IgnoreQueryFilters()
             .OfType<BuzzerQuestion>()
             .Where(q => q.Id == question.QuestionId)
             .Select(q => q.AllowStealAfterWrong)
-            .SingleOrDefaultAsync(cancellationToken);
+            .SingleOrDefaultAsync(cancellationToken));
         if (ClosesQuestion(stealAllowed, outcome, priorOnQuestion.Count(a => a.Outcome != AnswerOutcome.Passed) + 1, participants))
         {
             question.MarkAnswered();

@@ -67,7 +67,7 @@ public sealed class LiveStateBuilder
         var activeParticipantId = activeQuestion?.TargetParticipantId
             ?? (openSegment is null || match.State != MatchState.InProgress
                 ? null
-                : TurnRotation.NextParticipantOrNull(participants, segments));
+                : TurnRotation.NextParticipantOrNull(participants, openSegment));
         if (activeParticipantId is not null)
         {
             var p = participants.Single(x => x.Id == activeParticipantId);

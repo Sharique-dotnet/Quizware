@@ -120,7 +120,7 @@ public sealed class DisqualifyParticipantCommandHandler : IRequestHandler<Disqua
             matchCanContinue,
             TurnOrderRecalculated: true,
             adjustment,
-            matchCanContinue ? TurnRotation.NextParticipantOrNull(participants, segments) : null,
+            matchCanContinue && openSegment is not null ? TurnRotation.NextParticipantOrNull(participants, openSegment) : null,
             match.State == MatchState.Completed,
             match.WinnerTeamId);
     }

@@ -4,18 +4,22 @@ using Quizware.Domain.Tournament;
 
 namespace Quizware.Application.Gameplay;
 
-/// <summary>Whose turn it is. The rotation runs across the whole match —
-/// question N of the match goes to active participant N mod count — so it
-/// carries over between segments instead of restarting with the same team.</summary>
+/// <summary>Whose turn it is. BR-2.2: question N of a segment goes to active
+/// participant N mod count, so each segment starts again with the first team
+/// in turn order. BR-2.4: in formats any team may answer, nobody holds the
+/// question.</summary>
 internal static class TurnRotation
 {
-    public static Guid? NextParticipantOrNull(IReadOnlyList<MatchParticipant> participants, IReadOnlyList<MatchSegment> segments)
+    public static bool AnyTeamMayAnswer(QuestionFormatCode format) =>
+        format is QuestionFormatCode.Buzzer or QuestionFormatCode.RapidFire;
+
+    public static Guid? NextParticipantOrNull(IReadOnlyList<MatchParticipant> participants, MatchSegment segment)
     {
-        if (participants.All(p => p.Status != ParticipantStatus.Active))
+        if (AnyTeamMayAnswer(segment.FormatCode) || participants.All(p => p.Status != ParticipantStatus.Active))
         {
             return null;
         }
 
-        return TurnOrderCalculator.GetNextParticipant(participants, segments.Sum(s => s.ServedQuestionCount));
+        return TurnOrderCalculator.GetNextParticipant(participants, segment.ServedQuestionCount);
     }
 }

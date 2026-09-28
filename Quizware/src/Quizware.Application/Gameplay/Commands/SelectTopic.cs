@@ -48,8 +48,7 @@ public sealed class SelectTopicCommandHandler : IRequestHandler<SelectTopicComma
         }
 
         var participants = await MatchSetup.LoadParticipantsAsync(_db, match.Id, cancellationToken);
-        var segments = await MatchSetup.LoadSegmentsAsync(_db, match.Id, cancellationToken);
-        if (TurnRotation.NextParticipantOrNull(participants, segments) != request.ParticipantId)
+        if (TurnRotation.NextParticipantOrNull(participants, open.Segment) != request.ParticipantId)
         {
             throw new InvalidStateTransitionException("Only the team whose turn it is may pick the topic.");
         }
