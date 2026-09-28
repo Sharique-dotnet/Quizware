@@ -4,7 +4,7 @@ Approaches that failed, bugs, and environment traps. **Read this before proposin
 an approach** — it is the list of things that already cost someone time.
 Format: `_meta/SPEC.md` §6.5.
 
-**Last updated:** 2026-09-10 (S-2026-09-10-01)
+**Last updated:** 2026-09-28 (S-2026-09-28-01)
 
 ---
 
@@ -273,3 +273,77 @@ Format: `_meta/SPEC.md` §6.5.
   have ids for yet. L-007's original advice ("add a pre-check or map the
   exception") under-specified this — the pre-check itself must match the full
   constraint, not just primary key.
+
+### L-011 · Round-tripping the Postman collection through json.load/json.dump rewrites the whole file
+- **Added:** 2026-09-28 (S-2026-09-28-01)
+- **Tried:** Adding requests to `Quizware/postman/Quizware.postman_collection.json`
+  by loading it with Python's `json.load`, appending, and `json.dump`-ing it back.
+- **Result:** A ~2,300-line diff — the hand-formatted file was reformatted
+  wholesale. Reverted.
+- **Root cause:** `[FACT]` The collection is hand-formatted; any JSON serializer
+  imposes its own layout.
+- **Instead:** Edit the collection as text — generate hand-formatted JSON
+  fragments and splice them in at the right place, then validate it still
+  parses.
+- **Still true?** As long as the collection is maintained by hand.
+
+### L-012 · `pkill -f 'Quizware.Api'` kills the calling shell
+- **Added:** 2026-09-28 (S-2026-09-28-01)
+- **Tried:** Stopping the dev API with `pkill -f 'Quizware.Api'` from the Bash tool.
+- **Result:** Exit 144; the tool's own bash shell was killed.
+- **Root cause:** `[FACT]` The shell's command line contains the pattern, so
+  `pkill -f` matches it too.
+- **Instead:** Record the API's PID when starting it, or find it by port, and
+  `kill <pid>`.
+- **Still true?** Yes, on any shell where the command line is visible to `pkill -f`.
+
+### L-013 · Piping newman into `head` leaves a stale JSON report
+- **Added:** 2026-09-28 (S-2026-09-28-01)
+- **Tried:** `newman run … --reporters cli,json | head`.
+- **Result:** `head` closed the pipe, newman was killed before the JSON reporter
+  wrote, and the report on disk was from a previous run.
+- **Instead:** Don't truncate newman output when exporting JSON; redirect to a
+  file and inspect afterwards.
+- **Still true?** Yes.
+
+### L-014 · Live segment reorder returns 409 SEGMENT_NOT_REORDERABLE — no endpoint enables it
+- **Added:** 2026-09-28 (S-2026-09-28-01)
+- **Tried:** A Postman live-reorder request during a running match.
+- **Result:** `409 SEGMENT_NOT_REORDERABLE`.
+- **Root cause:** `[FACT]` `Stage.AllowSegmentReorderDuringMatch` defaults to
+  false and only the domain (`Stage.ConfigureMatchPlay`) can set it — no API.
+- **Instead:** The collection now expects 409 there. Enabling it via API is Q-008.
+- **Still true?** Until an endpoint for stage match-play settings exists.
+
+### L-015 · Enum-typed contract fields reject strings — the API has no JsonStringEnumConverter
+- **Added:** 2026-09-28 (S-2026-09-28-01)
+- **Tried:** Sending `"PassDirection": "Clockwise"` to
+  `CreatePassingQuestionRequest`.
+- **Result:** 400. Numbers work (`1` = Clockwise).
+- **Root cause:** `[FACT]` (brief) No `JsonStringEnumConverter` is registered;
+  contracts typed as C# enums deserialize numbers only, while contracts typed as
+  strings accept names — inconsistent across the API.
+- **Instead:** Send numeric values for enum-typed fields until Q-009 is decided.
+- **Still true?** Until Q-009 is answered.
+
+### L-016 · Match-setup API gotchas found while writing Phase 9 tests and Postman
+- **Added:** 2026-09-28 (S-2026-09-28-01)
+- **Result / facts** (all `[FACT]`, from the brief):
+  - A new match starts in `Draft`, not `Scheduled`. The `ListMatches` state
+    filter accepts Draft, Ready, InProgress, Paused, Completed, Abandoned.
+  - Adding a match segment requires the stage to have a segment template of
+    that format.
+  - Adding a stage segment returns 200, not 201.
+  - Default scoring rules lack Incorrect rules for AudioVisual and Sequence, so
+    `MarkMatchReady` blocks matches with those segments (T-027, Q-010).
+- **Instead:** Build fixtures in that order: stage → segment templates → rules →
+  match → segments → Ready → Start.
+- **Still true?** Until any of the above is changed deliberately.
+
+### L-017 · FluentValidation's `ValidationException` clashes with the app's own
+- **Added:** 2026-09-28 (S-2026-09-28-01)
+- **Result:** Ambiguous-reference build errors in files that import both
+  `FluentValidation` and `Quizware.Application.Common.Exceptions`.
+- **Instead:** Alias it:
+  `using ValidationException = Quizware.Application.Common.Exceptions.ValidationException;`
+- **Still true?** While both types share the name.

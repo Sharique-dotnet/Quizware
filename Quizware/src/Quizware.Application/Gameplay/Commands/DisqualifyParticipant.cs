@@ -3,6 +3,7 @@ using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Quizware.Application.Abstractions;
 using Quizware.Application.Gameplay.Dtos;
+using Quizware.Application.Gameplay.Formats;
 using Quizware.Domain.Common.Exceptions;
 using Quizware.Domain.Enums;
 using Quizware.Domain.Gameplay;
@@ -32,12 +33,18 @@ public sealed class DisqualifyParticipantCommandHandler : IRequestHandler<Disqua
     private readonly IAppDbContext _db;
     private readonly MatchEventLog _eventLog;
     private readonly MatchCompletion _completion;
+    private readonly QuestionFormatHandlers _formats;
+    private readonly IMatchNotifications _notifications;
 
-    public DisqualifyParticipantCommandHandler(IAppDbContext db, MatchEventLog eventLog, MatchCompletion completion)
+    public DisqualifyParticipantCommandHandler(
+        IAppDbContext db, MatchEventLog eventLog, MatchCompletion completion, QuestionFormatHandlers formats,
+        IMatchNotifications notifications)
     {
         _db = db;
         _eventLog = eventLog;
         _completion = completion;
+        _formats = formats;
+        _notifications = notifications;
     }
 
     public async Task<DisqualifyResultDto> Handle(DisqualifyParticipantCommand request, CancellationToken cancellationToken)
@@ -88,6 +95,12 @@ public sealed class DisqualifyParticipantCommandHandler : IRequestHandler<Disqua
             segmentAdjustment = adjustment,
         }, cancellationToken);
 
+        _notifications.Publish("ParticipantRemoved", match.ProgramId, match.Id, new
+        {
+            participantId = participant.Id,
+            turnOrder = remaining.OrderBy(p => p.TurnOrder).Select(p => new { participantId = p.Id, p.TurnOrder }),
+        });
+
         var matchCanContinue = remaining.Count >= 2;
         if (!matchCanContinue)
         {
@@ -120,7 +133,7 @@ public sealed class DisqualifyParticipantCommandHandler : IRequestHandler<Disqua
             matchCanContinue,
             TurnOrderRecalculated: true,
             adjustment,
-            matchCanContinue ? TurnRotation.NextParticipantOrNull(participants, segments) : null,
+            matchCanContinue && openSegment is not null ? TurnRotation.NextParticipantOrNull(participants, openSegment, _formats) : null,
             match.State == MatchState.Completed,
             match.WinnerTeamId);
     }

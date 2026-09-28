@@ -29,15 +29,30 @@ public sealed class TeamStageScore : BaseEntity, ITenantScoped
     public int? Rank { get; private set; }
     public bool QualifiedFlag { get; private set; }
 
-    public void RecordMatchResult(int points, bool won)
+    /// <summary>Every score event in a match that counts toward the stage
+    /// lands here too, in the same transaction — the stage total is never
+    /// recomputed on a read.</summary>
+    public void ApplyPoints(int points)
     {
         TotalPoints += points;
+    }
+
+    public void RecordMatchCompleted(bool won)
+    {
         MatchesPlayed++;
 
         if (won)
         {
             Wins++;
         }
+    }
+
+    /// <summary>Overwrites the totals with values rebuilt from the ledger.</summary>
+    public void Rebuild(int totalPoints, int matchesPlayed, int wins)
+    {
+        TotalPoints = totalPoints;
+        MatchesPlayed = matchesPlayed;
+        Wins = wins;
     }
 
     public void SetRank(int rank)

@@ -305,4 +305,50 @@ public class LiveSegmentsAndServingTests : IClassFixture<CustomWebApplicationFac
         timeline.Events.Select(e => e.EventType).Should().Equal(
             "MatchStarted", "SegmentOpened", "QuestionServed", "QuestionRevealed", "QuestionSkipped", "SegmentCompleted");
     }
+
+    [Fact]
+    public async Task EachSegment_StartsTheRotationAgain_WithTheFirstTeam()
+    {
+        var h = await MatchTestHarness.CreateAsync(_factory);
+        var started = await h.StartWithFirstSegmentOpenAsync(await h.CreateReadyToStartMatchAsync(3, 2, 2));
+        var firstSegmentTurns = new List<int>();
+        for (var i = 0; i < 2; i++)
+        {
+            var question = await h.ServeAsync(started);
+            firstSegmentTurns.Add((await h.StateAsync(started)).ActiveParticipant!.TurnOrder);
+            await h.Client.PostAsJsonAsync($"{started.Live}/questions/{question.MatchQuestionId}/skip", new SkipQuestionRequest("next"));
+        }
+
+        await h.Client.PostAsync($"{started.Live}/segments/{started.Segments[0].Id}/close", null);
+        await h.Client.PostAsync($"{started.Live}/segments/{started.Segments[1].Id}/open", null);
+        await h.ServeAsync(started, 1);
+
+        firstSegmentTurns.Should().Equal(1, 2);
+        (await h.StateAsync(started)).ActiveParticipant!.TurnOrder.Should().Be(1, "BR-2.2: the index is the question's position in its segment");
+    }
+
+    [Fact]
+    public async Task RapidFire_NobodyHoldsTheQuestion_SoAnyTeamMayAnswer()
+    {
+        var h = await MatchTestHarness.CreateAsync(_factory);
+        await h.ResetScoringDefaultsAsync();
+        await h.SeedAsync((db, p) =>
+        {
+            var q = Domain.QuestionBank.RapidFireQuestion.CreateStored(
+                p, Domain.Enums.QuestionOwnerScope.Program, "Capital of Peru?", "Lima", Domain.Enums.DifficultyLevel.Medium, "en", "t");
+            q.Approve(Guid.NewGuid());
+            db.Questions.Add(q);
+        });
+        var stage = await h.CreateStageAsync(("RapidFire", 1));
+        var started = await h.StartWithFirstSegmentOpenAsync(await h.CreateMatchAsync(stage.Id, 1, await h.CreateTeamsAsync(3)));
+        var question = await h.ServeAsync(started);
+        var state = await h.StateAsync(started);
+        var lastInTurn = state.Participants.Single(p => p.TurnOrder == 3).ParticipantId;
+
+        var answer = await h.AnswerAsync(started, question.MatchQuestionId, lastInTurn, "Correct");
+
+        state.ActiveParticipant.Should().BeNull();
+        answer.StatusCode.Should().Be(HttpStatusCode.OK);
+        (await answer.Content.ReadFromJsonAsync<RecordAnswerResponse>())!.PointsAwarded.Should().Be(5);
+    }
 }

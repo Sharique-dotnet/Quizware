@@ -4,11 +4,12 @@ using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Quizware.Application.Abstractions;
 using Quizware.Application.Gameplay.Dtos;
+using Quizware.Application.Gameplay.Formats;
 using Quizware.Domain.Common.Exceptions;
 using Quizware.Domain.Enums;
 using Quizware.Domain.Gameplay;
 using Quizware.Domain.QuestionBank;
-using Quizware.Domain.Scoring;
+using Quizware.Application.Scoring;
 using ValidationException = Quizware.Application.Common.Exceptions.ValidationException;
 
 namespace Quizware.Application.Gameplay.Commands;
@@ -55,22 +56,25 @@ public sealed class RecordAnswerCommandValidator : AbstractValidator<RecordAnswe
 }
 
 /// <summary>One unit of work: the answer record, its score event (the
-/// immutable ledger) and the running TeamMatchScore total. Outside a buzzer
-/// segment only the team holding the question may answer; in a buzzer segment
-/// any active team may, and — when the question allows a steal — a wrong
-/// answer leaves it open to the rest until someone gets it or everyone has tried.</summary>
+/// immutable ledger) and the running match and stage totals (IScoringEngine).
+/// Only the team holding the question may answer, except in Buzzer and Rapid
+/// Fire segments (BR-2.4), where any active team may — and a wrong answer
+/// leaves the question open to the rest (for Buzzer, only when the question
+/// allows a steal) until someone gets it or everyone has tried.</summary>
 public sealed class RecordAnswerCommandHandler : IRequestHandler<RecordAnswerCommand, RecordAnswerResultDto>
 {
     private readonly IAppDbContext _db;
     private readonly ICurrentUser _currentUser;
-    private readonly ScoringResolver _scoring;
+    private readonly IScoringEngine _scoring;
     private readonly MatchEventLog _eventLog;
     private readonly AnswerResultBuilder _results;
-    private readonly LiveQuestionFormats _formats;
+    private readonly QuestionFormatHandlers _formats;
+    private readonly SuddenDeath _suddenDeath;
+    private readonly IMatchNotifications _notifications;
 
     public RecordAnswerCommandHandler(
-        IAppDbContext db, ICurrentUser currentUser, ScoringResolver scoring, MatchEventLog eventLog, AnswerResultBuilder results,
-        LiveQuestionFormats formats)
+        IAppDbContext db, ICurrentUser currentUser, IScoringEngine scoring, MatchEventLog eventLog, AnswerResultBuilder results,
+        QuestionFormatHandlers formats, SuddenDeath suddenDeath, IMatchNotifications notifications)
     {
         _db = db;
         _currentUser = currentUser;
@@ -78,6 +82,8 @@ public sealed class RecordAnswerCommandHandler : IRequestHandler<RecordAnswerCom
         _eventLog = eventLog;
         _results = results;
         _formats = formats;
+        _suddenDeath = suddenDeath;
+        _notifications = notifications;
     }
 
     public async Task<RecordAnswerResultDto> Handle(RecordAnswerCommand request, CancellationToken cancellationToken)
@@ -110,9 +116,11 @@ public sealed class RecordAnswerCommandHandler : IRequestHandler<RecordAnswerCom
         var priorOnQuestion = await _db.AnswerRecords
             .Where(a => a.MatchQuestionId == question.Id && !a.IsReversed && a.Outcome != AnswerOutcome.Voided)
             .ToListAsync(cancellationToken);
-        var isBuzzer = segment.FormatCode == QuestionFormatCode.Buzzer;
+        var handler = _formats.For(segment.FormatCode);
+        var bankQuestion = await _db.Questions.IgnoreQueryFilters().SingleAsync(q => q.Id == question.QuestionId, cancellationToken);
+        var anyTeam = handler.AnyTeamMayAnswer;
 
-        if (!isBuzzer && question.TargetParticipantId != participant.Id)
+        if (!anyTeam && question.TargetParticipantId != participant.Id)
         {
             throw new InvalidStateTransitionException("Only the team holding this question may answer it.");
         }
@@ -132,9 +140,8 @@ public sealed class RecordAnswerCommandHandler : IRequestHandler<RecordAnswerCom
         }
 
         var outcome = NormalizeOutcome(Enum.Parse<AnswerOutcome>(request.Outcome, ignoreCase: true), passNumber);
-        var isCorrect = await CheckResponseAsync(question, outcome, request, cancellationToken);
+        var isCorrect = await CheckResponseAsync(handler, bankQuestion, outcome, request, cancellationToken);
 
-        var rule = await _scoring.ResolveAsync(match, segment, outcome, passNumber, cancellationToken);
         var actor = _currentUser.Email ?? "unknown";
         var source = request.AnswerSource is null ? AnswerSource.Operator : Enum.Parse<AnswerSource>(request.AnswerSource, ignoreCase: true);
 
@@ -149,17 +156,9 @@ public sealed class RecordAnswerCommandHandler : IRequestHandler<RecordAnswerCom
             request.BuzzPressId,
             request.ResponseTimeMs);
         _db.AnswerRecords.Add(answer);
-        _db.ScoreEvents.Add(ScoreEvent.ForAnswer(
-            match.ProgramId, match.Id, participant.TeamId, participant.Id, answer.Id, rule.Id, rule.Points, userId, segment.Id));
+        var (rule, points) = await _scoring.ScoreAnswerAsync(match, segment, participant, answer, userId, cancellationToken);
 
-        var score = await _db.TeamMatchScores.SingleAsync(s => s.MatchParticipantId == participant.Id, cancellationToken);
-        score.ApplyAnswer(outcome, rule.Points);
-
-        var stealAllowed = isBuzzer && await _db.Questions.IgnoreQueryFilters()
-            .OfType<BuzzerQuestion>()
-            .Where(q => q.Id == question.QuestionId)
-            .Select(q => q.AllowStealAfterWrong)
-            .SingleOrDefaultAsync(cancellationToken);
+        var stealAllowed = anyTeam && handler.WrongAnswerLeavesQuestionOpen(bankQuestion);
         if (ClosesQuestion(stealAllowed, outcome, priorOnQuestion.Count(a => a.Outcome != AnswerOutcome.Passed) + 1, participants))
         {
             question.MarkAnswered();
@@ -171,12 +170,21 @@ public sealed class RecordAnswerCommandHandler : IRequestHandler<RecordAnswerCom
             matchQuestionId = question.Id,
             participantId = participant.Id,
             outcome = outcome.ToString(),
-            points = rule.Points,
+            points,
             scoringRuleId = rule.Id,
         }, cancellationToken);
+        await _suddenDeath.TryCloseAsync(match, segment, cancellationToken);
+        _notifications.Publish(MatchEventTypes.AnswerRecorded, match.ProgramId, match.Id, new
+        {
+            answerRecordId = answer.Id,
+            matchQuestionId = question.Id,
+            participantId = participant.Id,
+            outcome = outcome.ToString(),
+            points,
+        });
         await _db.SaveChangesAsync(cancellationToken);
 
-        return await _results.BuildAsync(match, segment, answer, rule.Points, rule.Id, cancellationToken);
+        return await _results.BuildAsync(match, segment, answer, points, rule.Id, cancellationToken);
     }
 
     /// <summary>After a pass, a right/wrong answer is the "after pass" kind,
@@ -209,14 +217,14 @@ public sealed class RecordAnswerCommandHandler : IRequestHandler<RecordAnswerCom
     /// <summary>When the response can be checked objectively (options, a
     /// sequence order), the stated outcome must agree with it — a mis-click is
     /// refused, not scored.</summary>
-    private async Task<bool?> CheckResponseAsync(
-        MatchQuestion matchQuestion, AnswerOutcome outcome, RecordAnswerCommand request, CancellationToken cancellationToken)
+    private static async Task<bool?> CheckResponseAsync(
+        IQuestionFormatHandler handler, Question question, AnswerOutcome outcome, RecordAnswerCommand request,
+        CancellationToken cancellationToken)
     {
         var selected = request.SelectedOptionIds is { Count: > 0 } many
             ? many.ToList()
             : request.SelectedOptionId is { } one ? [one] : null;
-        var question = await _db.Questions.IgnoreQueryFilters().SingleAsync(q => q.Id == matchQuestion.QuestionId, cancellationToken);
-        var evaluation = await _formats.EvaluateAsync(question, selected, request.FreeTextAnswer, cancellationToken);
+        var evaluation = await handler.EvaluateAsync(question, selected, request.FreeTextAnswer, cancellationToken);
 
         if (evaluation.IsObjective && evaluation.IsCorrect is { } isCorrect)
         {

@@ -26,6 +26,8 @@ public static class MatchEventTypes
     public const string QuestionPassed = "QuestionPassed";
     public const string ParticipantDisqualified = "ParticipantDisqualified";
     public const string ParticipantReinstated = "ParticipantReinstated";
+    public const string ScoreAdjusted = "ScoreAdjusted";
+    public const string ScoresRecalculated = "ScoresRecalculated";
 }
 
 /// <summary>Appends to the append-only MatchEvent timeline. Scoped per

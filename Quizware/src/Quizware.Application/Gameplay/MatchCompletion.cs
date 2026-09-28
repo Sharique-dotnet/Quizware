@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Quizware.Application.Abstractions;
+using Quizware.Application.Scoring;
 using Quizware.Application.Selection;
 using Quizware.Domain.Common.Exceptions;
 using Quizware.Domain.Enums;
@@ -17,12 +18,17 @@ public sealed class MatchCompletion
     private readonly IAppDbContext _db;
     private readonly IQuestionSelector _selector;
     private readonly MatchEventLog _eventLog;
+    private readonly IScoringEngine _scoring;
+    private readonly IMatchNotifications _notifications;
 
-    public MatchCompletion(IAppDbContext db, IQuestionSelector selector, MatchEventLog eventLog)
+    public MatchCompletion(
+        IAppDbContext db, IQuestionSelector selector, MatchEventLog eventLog, IScoringEngine scoring, IMatchNotifications notifications)
     {
         _db = db;
         _selector = selector;
         _eventLog = eventLog;
+        _scoring = scoring;
+        _notifications = notifications;
     }
 
     /// <summary>Does not call SaveChangesAsync — the caller owns the unit of work.</summary>
@@ -36,6 +42,38 @@ public sealed class MatchCompletion
         await CloseOutstandingWorkAsync(match, "Match ended", cancellationToken);
 
         var participants = await MatchSetup.LoadParticipantsAsync(_db, match.Id, cancellationToken);
+        var result = await RankAsync(match, participants, cancellationToken);
+
+        match.Complete(result.WinnerTeamId, result.IsTied);
+        await _scoring.RecordMatchCompletedAsync(match, participants, cancellationToken);
+        await _eventLog.AppendAsync(match, MatchEventTypes.MatchCompleted, new
+        {
+            reason,
+            winnerTeamId = result.WinnerTeamId,
+            isTied = result.IsTied,
+            results = result.Ranked.Select(p => new { participantId = p.Id, points = p.FinalScore, rank = p.FinalRank }),
+        }, cancellationToken);
+        _notifications.Publish(MatchEventTypes.MatchCompleted, match.ProgramId, match.Id, new
+        {
+            winnerTeamId = result.WinnerTeamId,
+            isTied = result.IsTied,
+            results = result.Ranked.Select(p => new { participantId = p.Id, teamId = p.TeamId, points = p.FinalScore, rank = p.FinalRank }),
+        });
+    }
+
+    /// <summary>Re-ranks an already completed match after its scores changed
+    /// (a manual adjustment or a recalculation), updating the winner too.</summary>
+    public async Task ReviseResultAsync(Match match, CancellationToken cancellationToken)
+    {
+        var participants = await MatchSetup.LoadParticipantsAsync(_db, match.Id, cancellationToken);
+        var result = await RankAsync(match, participants, cancellationToken);
+        match.ReviseResult(result.WinnerTeamId, result.IsTied);
+    }
+
+    private sealed record Ranking(IReadOnlyList<MatchParticipant> Ranked, Guid? WinnerTeamId, bool IsTied);
+
+    private async Task<Ranking> RankAsync(Match match, IReadOnlyList<MatchParticipant> participants, CancellationToken cancellationToken)
+    {
         var scores = await _db.TeamMatchScores.Where(s => s.MatchId == match.Id).ToListAsync(cancellationToken);
         var scoreByParticipant = scores.ToDictionary(s => s.MatchParticipantId);
 
@@ -61,15 +99,7 @@ public sealed class MatchCompletion
 
         var isTied = ranked.Count > 1 && ranked[0].Points == ranked[1].Points;
         var winnerTeamId = ranked.Count == 0 || isTied ? (Guid?)null : ranked[0].Participant.TeamId;
-
-        match.Complete(winnerTeamId, isTied);
-        await _eventLog.AppendAsync(match, MatchEventTypes.MatchCompleted, new
-        {
-            reason,
-            winnerTeamId,
-            isTied,
-            results = ranked.Select(r => new { participantId = r.Participant.Id, points = r.Points, rank = r.Participant.FinalRank }),
-        }, cancellationToken);
+        return new Ranking(ranked.Select(r => r.Participant).ToList(), winnerTeamId, isTied);
     }
 
     /// <summary>Whatever was left mid-flight: the active question is skipped,

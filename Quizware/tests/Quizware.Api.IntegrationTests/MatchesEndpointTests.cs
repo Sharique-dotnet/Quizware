@@ -1,6 +1,7 @@
 using System.Net;
 using System.Net.Http.Json;
 using FluentAssertions;
+using Microsoft.EntityFrameworkCore;
 using Quizware.Api.Contracts.V1.Matches;
 using Quizware.Application.Authorization;
 
@@ -345,5 +346,63 @@ public class MatchesEndpointTests : IClassFixture<CustomWebApplicationFactory>
         result.IsReady.Should().BeTrue(string.Join("; ", result.Blockers));
         readyState.Should().Be("Ready");
         afterEdit.Should().Be("Draft");
+    }
+
+    [Fact]
+    public async Task AutoSeed_CreatesEvenMatches_WithSegmentsAndSeats()
+    {
+        var h = await MatchTestHarness.CreateAsync(_factory);
+        var stage = await h.CreateStageAsync(("Mcq", 3), ("Buzzer", 2));
+        await h.CreateTeamsAsync(6);
+
+        var response = await h.Client.PostAsJsonAsync($"{h.MatchesUrl}/auto-seed", new AutoSeedMatchesRequest(stage.Id, "ByRank"));
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        (await response.Content.ReadFromJsonAsync<AutoSeedMatchesResponse>())!.MatchesCreated.Should().Be(2);
+        var matches = (await h.Client.GetFromJsonAsync<List<MatchSummaryResponse>>($"{h.MatchesUrl}?stageId={stage.Id}"))!;
+        matches.Select(m => m.MatchNumber).Should().Equal(1, 2);
+        foreach (var summary in matches)
+        {
+            var detail = (await h.Client.GetFromJsonAsync<MatchDetailResponse>($"{h.MatchesUrl}/{summary.Id}"))!;
+            detail.Participants.Select(p => p.SeatNumber).Should().Equal(1, 2, 3);
+            detail.Participants.Select(p => p.TurnOrder).Should().Equal(1, 2, 3);
+            (await GetSegmentsAsync(h, summary.Id)).Segments.Select(s => s.FormatCode).Should().Equal("Mcq", "Buzzer");
+        }
+
+        var placed = await h.ReadDbAsync(db => db.MatchParticipants.Where(p => matches.Select(m => m.Id).Contains(p.MatchId)).Select(p => p.TeamId).ToListAsync());
+        placed.Should().HaveCount(6).And.OnlyHaveUniqueItems();
+    }
+
+    [Fact]
+    public async Task AutoSeed_LeavesOutTeamsAlreadyInAMatchOfTheStage()
+    {
+        var h = await MatchTestHarness.CreateAsync(_factory);
+        var stage = await h.CreateStageAsync(("Mcq", 3));
+        var teams = await h.CreateTeamsAsync(6);
+        await h.CreateMatchAsync(stage.Id, 1, teams.Take(2).ToList());
+
+        var response = await h.Client.PostAsJsonAsync($"{h.MatchesUrl}/auto-seed", new AutoSeedMatchesRequest(stage.Id, "Snake"));
+
+        (await response.Content.ReadFromJsonAsync<AutoSeedMatchesResponse>())!.MatchesCreated.Should().Be(2);
+        var numbers = (await h.Client.GetFromJsonAsync<List<MatchSummaryResponse>>($"{h.MatchesUrl}?stageId={stage.Id}"))!.Select(m => m.MatchNumber);
+        numbers.Should().Equal(1, 2, 3);
+    }
+
+    [Fact]
+    public async Task AutoSeed_RefusesManualMode_TooFewTeams_AndOperators()
+    {
+        var h = await MatchTestHarness.CreateAsync(_factory);
+        var stage = await h.CreateStageAsync(("Mcq", 3));
+        await h.CreateTeamsAsync(1);
+        var operatorClient = await h.CreateClientAsync(Roles.Operator);
+
+        var manual = await h.Client.PostAsJsonAsync($"{h.MatchesUrl}/auto-seed", new AutoSeedMatchesRequest(stage.Id, "Manual"));
+        var tooFew = await h.Client.PostAsJsonAsync($"{h.MatchesUrl}/auto-seed", new AutoSeedMatchesRequest(stage.Id, "Random"));
+        var asOperator = await operatorClient.PostAsJsonAsync($"{h.MatchesUrl}/auto-seed", new AutoSeedMatchesRequest(stage.Id, "Random"));
+
+        manual.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        tooFew.StatusCode.Should().Be(HttpStatusCode.Conflict);
+        (await MatchTestHarness.ErrorCodeAsync(tooFew)).Should().Be("INSUFFICIENT_PARTICIPANTS");
+        asOperator.StatusCode.Should().Be(HttpStatusCode.Forbidden);
     }
 }

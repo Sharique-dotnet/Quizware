@@ -336,4 +336,26 @@ public class LiveAnswersAndScoringTests : IClassFixture<CustomWebApplicationFact
         result.Blockers.Should().Contain("SCORING_RULE_MISSING: no scoring rule for an incorrect AudioVisual answer.");
         result.Blockers.Should().NotContain(b => b.Contains("a correct AudioVisual"));
     }
+
+    [Theory]
+    [InlineData(Roles.Operator)]
+    [InlineData(Roles.Scorer)]
+    public async Task ReversalAndDisqualification_AreProgramAdminOnly(string role)
+    {
+        var h = await MatchTestHarness.CreateAsync(_factory);
+        var started = await h.StartWithFirstSegmentOpenAsync(await h.CreateReadyToStartMatchAsync(3, 2));
+        var question = await h.ServeAsync(started);
+        var holder = await HolderAsync(h, started);
+        var answered = (await (await h.AnswerAsync(started, question.MatchQuestionId, holder, "Correct"))
+            .Content.ReadFromJsonAsync<RecordAnswerResponse>())!;
+        var client = await h.CreateClientAsync(role);
+
+        var reverse = await client.PostAsJsonAsync(
+            $"{started.Live}/answers/{answered.AnswerRecordId}/reverse", new ReverseAnswerRequest("Not allowed"));
+        var disqualify = await client.PostAsJsonAsync(
+            $"{started.Live}/participants/{holder}/disqualify", new DisqualifyParticipantRequest("Not allowed", Guid.NewGuid(), true));
+
+        reverse.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+        disqualify.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+    }
 }

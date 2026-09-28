@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Quizware.Application.Abstractions;
 using Quizware.Application.Authorization;
 using Quizware.Application.Gameplay.Dtos;
+using Quizware.Application.Gameplay.Formats;
 using Quizware.Domain.Enums;
 using Quizware.Domain.Gameplay;
 using Quizware.Domain.Tournament;
@@ -15,9 +16,9 @@ public sealed class LiveStateBuilder
     private readonly IAppDbContext _db;
     private readonly ICurrentUser _currentUser;
     private readonly IClock _clock;
-    private readonly LiveQuestionFormats _formats;
+    private readonly QuestionFormatHandlers _formats;
 
-    public LiveStateBuilder(IAppDbContext db, ICurrentUser currentUser, IClock clock, LiveQuestionFormats formats)
+    public LiveStateBuilder(IAppDbContext db, ICurrentUser currentUser, IClock clock, QuestionFormatHandlers formats)
     {
         _db = db;
         _currentUser = currentUser;
@@ -67,7 +68,7 @@ public sealed class LiveStateBuilder
         var activeParticipantId = activeQuestion?.TargetParticipantId
             ?? (openSegment is null || match.State != MatchState.InProgress
                 ? null
-                : TurnRotation.NextParticipantOrNull(participants, segments));
+                : TurnRotation.NextParticipantOrNull(participants, openSegment, _formats));
         if (activeParticipantId is not null)
         {
             var p = participants.Single(x => x.Id == activeParticipantId);
@@ -113,11 +114,12 @@ public sealed class LiveStateBuilder
     {
         var question = await _db.Questions.IgnoreQueryFilters()
             .SingleAsync(q => q.Id == matchQuestion.QuestionId, cancellationToken);
-        var content = await _formats.PresentAsync(question, matchQuestion, cancellationToken);
+        var handler = _formats.For(question.FormatCode);
+        var content = await handler.PresentAsync(question, matchQuestion, cancellationToken);
 
-        string? topicName = null;
+        var topicName = handler.TopicChoice(question)?.Label;
         var topicId = matchQuestion.SelectedTopicId ?? question.TopicId;
-        if (topicId is not null)
+        if (topicName is null && topicId is not null)
         {
             topicName = await _db.Topics.IgnoreQueryFilters()
                 .Where(t => t.Id == topicId)

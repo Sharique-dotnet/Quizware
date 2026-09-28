@@ -4,7 +4,7 @@ Work items (`T-###`), open questions (`Q-###`), and things that need checking
 before they can be relied on. Done items stay — they are the record of what was
 already tried. Format: `_meta/SPEC.md` §6.4.
 
-**Last updated:** 2026-09-10 (S-2026-09-10-01)
+**Last updated:** 2026-09-28 (S-2026-09-28-01)
 
 ---
 
@@ -18,23 +18,63 @@ already tried. Format: `_meta/SPEC.md` §6.4.
   - Blocked by: nothing urgent — this is Phase 14 work per
     `docs/Implementation-Plan.md`. Flagged now so it isn't assumed silently later.
 
-- **T-020** `TODO` · Implement Phase 9 — the match engine
-  - Why: Both stated prerequisites are now done — Phase 7 (rule management,
-    `3dbc6f2`) and Phase 8 (question selection engine, `IQuestionSelector`,
-    `31d2f22`). Phase 9 is the next actionable item per
-    `docs/Implementation-Plan.md`'s dependency map.
-  - Where: `docs/Implementation-Plan.md` Phase 9 section — **re-read it fresh**,
-    do not assume its text matches `CURRENT.md`. `MatchesController.cs`
-    (currently all `501 NotImplemented` stubs) is the likely API surface;
-    `MatchQuestion.Activate(...)` (see D-025) is the domain method Phase 9
-    needs for actually serving a reserved question, reusing the same
-    `RandomSeed` the Phase 8 reservation used so `OptionOrderJson` reproduces
-    identically.
-  - Blocked by: nothing hard. Note P9-02's "Start is one transaction; a
-    failure reserves nothing" criterion is already anticipated by D-031 —
-    `IQuestionSelector`'s write methods deliberately don't call
-    `SaveChangesAsync`, so Phase 9's handler must call it once after every
-    segment's selector call succeeds.
+- **T-023** `TODO` · Implement Phase 11 — qualification and tie-breaking (next)
+  - Why: Phases 9 and 10 are done (T-020, T-021). Phase 11 is next per
+    `docs/Implementation-Plan.md` (heading at ~line 586) — **re-read it fresh**.
+  - Where: `Quizware/src/Quizware.Api/Controllers/v1/QualificationController.cs`
+    (all 501 stubs), `Application/Qualification/` (TieBreakCriteriaService
+    already exists, D-043), tie-break matches through the existing engine (D-011).
+  - Notes: wire `MatchSegment.MakeSuddenDeath` from `TieBreakRule` (D-039,
+    V-010); respect `ScoreCountsTowardStage` (D-042). Plan in phases with
+    What/Why/Where/Impact and one-line commit messages per `CLAUDE.md`.
+  - Blocked by: nothing.
+
+- **T-024** `TODO` · Outbox dispatcher and SignalR delivery of match events
+  - Why: `OutboxMessage` rows are written transactionally (D-041) but nothing
+    delivers them yet.
+  - Where: `Quizware/src/Quizware.Infrastructure/Outbox/`; Phase 12 (live push).
+  - Blocked by: Phase 12 scheduling.
+
+- **T-025** `TODO` · Remaining 501 stubs not owned by Phase 11
+  - `[FACT]` (brief; grep of `StatusCode(501` in `Controllers/v1`, 2026-09-28):
+    AdminController (lookups, 1), MatchesController (preflight, 1),
+    LiveMatchController (snapshot/restore, 2), BuzzerController (10),
+    DisplayController (4), ReportsController (6); QualificationController (10)
+    is T-023.
+  - `[UNVERIFIED]` which plan phase owns match preflight and live
+    snapshot/restore — check `docs/Implementation-Plan.md` Phases 9/12/15.
+  - Blocked by: nothing; phase-ordered.
+
+- **T-026** `TODO` · Live-contract gaps found while building Phase 9
+  - `[FACT]` (brief): MCQ with multiple correct options returns
+    `CorrectOptionId` null; VisualRapidFire image URLs are carried in option
+    `Text`; typed (free-text) answers are not evaluated from the contract; there
+    is no media download endpoint — `MediaUrl` points to `/api/v1/media/{id}`,
+    which is not served.
+  - Where: `Contracts/V1/LiveMatch/`, `Application/Gameplay/Formats/`,
+    `MediaController`.
+  - Blocked by: nothing; needs a user decision on contract changes before
+    Angular live screens.
+
+- **T-027** `BLOCKED` · Add default Incorrect scoring rules for AudioVisual and Sequence
+  - Why: `[FACT]` (brief) default scoring rules lack Incorrect rules for these
+    two formats, so `MarkMatchReady` blocks any match containing those
+    segments until rules are added manually.
+  - Where: `Quizware.Domain/Scoring/DefaultScoringValues.cs` (seed values).
+  - Blocked by: Q-010.
+
+- **T-028** `TODO` · Check whether Phase 9 persists the shuffled option order (D-025)
+  - `[FACT]` Keeper observation from code, not from the conversation:
+    `QuestionSelector.cs:65-72` computes a shuffled `OptionOrderJson` and
+    returns it on `SelectedQuestion`, but `MatchQuestion.Reserve` does not
+    store it, and `Gameplay/Commands/ServeQuestion.cs:71` calls
+    `Activate(..., next.OptionOrderJson ?? "[]", ...)` — i.e. `"[]"` at serve,
+    since nothing sets it earlier. D-025 required Activate to reproduce the
+    reservation's order from the same seed.
+  - `[UNVERIFIED]` whether options are therefore unshuffled at runtime, or
+    another path covers it. Check: serve an MCQ with shuffle enabled and read
+    `MatchQuestions.OptionOrderJson`.
+  - Blocked by: nothing.
 
 - **T-017** `TODO` · Re-sync `docs/Implementation-Plan.md`'s "Start here" section
   (~line 794) with actual progress
@@ -45,6 +85,8 @@ already tried. Format: `_meta/SPEC.md` §6.4.
     doesn't block code work, but misleads anyone reading the plan doc cold.
   - Where: `docs/Implementation-Plan.md` lines ~794–823.
   - Blocked by: nothing; low priority, cosmetic-but-misleading.
+  - Updated 2026-09-28: `[FACT]` the Phase 9 and Phase 10 headings (~lines
+    520, 563) also lack a **DONE** marker, though both phases are complete.
 
 ## Open questions
 
@@ -109,6 +151,38 @@ already tried. Format: `_meta/SPEC.md` §6.4.
     invented this session (D-030) to unblock P8-03, since the column existed
     since Phase 7 but had never actually been written anywhere.
 
+- **Q-007** `OPEN` (added S-2026-09-28-01) · Approve adding a target-participant
+  field to `PassQuestionRequest` so `OperatorChoice` pass direction works?
+  - Blocks: real OperatorChoice passing. Until answered, OperatorChoice falls
+    back to clockwise (D-037, `[ASSUMED]` acceptable — V-011). The contract is
+    treated as frozen, so this is the user's call.
+
+- **Q-008** `OPEN` (added S-2026-09-28-01) · Add API endpoints for
+  segment-template play settings (e.g. `MaxPassCount`, topic selection —
+  `StageSegmentTemplate.ConfigurePlay`) and stage match-play settings
+  (`Stage.ConfigureMatchPlay`, e.g. `AllowSegmentReorderDuringMatch`)? In which
+  phase?
+  - Blocks: configuring these without code; live segment reorder is
+    unreachable via API today (L-014).
+
+- **Q-009** `OPEN` (added S-2026-09-28-01) · Register `JsonStringEnumConverter`
+  globally (breaks numeric-enum callers) or keep numeric enums?
+  - Context: `[FACT]` (brief) no converter is registered; enum-typed contract
+    fields (e.g. `CreatePassingQuestionRequest.PassDirection`) reject strings
+    with 400 and need numbers, while other contracts use strings (L-015).
+  - Blocks: nothing now; should be settled before Angular/TS client regen.
+
+- **Q-010** `OPEN` (added S-2026-09-28-01) · Add default Incorrect scoring rules
+  for AudioVisual and Sequence? If yes, with what point values?
+  - Blocks: T-027; matches with those segments cannot be marked Ready on
+    default rules.
+
+- **Q-011** `OPEN` (added S-2026-09-28-01) · Open a PR for the 15 commits on
+  `claude/workflows-project-status-bsgu4d` not yet on master (`2431cb2` …
+  `774264c`)?
+  - `[FACT]` `git rev-list --count origin/master..HEAD` = 15 on 2026-09-28.
+    Only if the user asks — standing rule: no PRs unless asked.
+
 ## Verification queue
 
 Things currently tagged `[ASSUMED]` or `[UNVERIFIED]` that will mislead someone if
@@ -125,6 +199,11 @@ they stay unchecked.
   - Matters for: Phase 4 (schema and migrations). Superseded in practice by
     V-006/V-007 below — Phase 4 shipped against SQLite instead, real SQL Server
     still unverified.
+  - **Resolved `[FACT]` (S-2026-09-28-01):** a SQL Server 2022 Docker
+    container was run in the cloud session; all migrations applied cleanly and
+    the full newman collection ran against it (only the 5 file-attachment
+    requests failed, as documented). On the user's Windows machine, LocalDB
+    was already in use in earlier sessions.
 
 - **V-006** (added S-2026-09-07-01) · `[UNVERIFIED]` `docker compose up`
   (`Quizware/docker-compose.yml`) and the GitHub Actions CI workflow
@@ -144,6 +223,10 @@ they stay unchecked.
     Docker is available.
   - Matters for: trusting the migration in production without surprises from
     SQL-Server-specific behavior SQLite doesn't share.
+  - Update (S-2026-09-28-01): `[FACT]` all migrations apply cleanly to a real
+    SQL Server 2022 and the live API passes the newman collection against it.
+    Still `[UNVERIFIED]`: the *test suite* itself has not run against SQL
+    Server via Testcontainers.
 
 - **V-008** (added S-2026-09-08-01) · `[UNVERIFIED]` The three migrations
   generated this session (`FixMatchParticipantRemovalCheckConstraint`,
@@ -166,6 +249,26 @@ they stay unchecked.
     preview response back. Not a direct `__EFMigrationsHistory` query, so
     left `[UNVERIFIED]` rather than promoted to `[FACT]` — but the check
     above would very likely now just confirm it.
+  - **Update (S-2026-09-28-01):** `[FACT]` the same migrations (latest still
+    `20260908084206_AddQuestionDifficultyCheckConstraint`) applied cleanly to a
+    fresh SQL Server 2022 container. Remains `[UNVERIFIED]` for the user's
+    LocalDB `Quizware-Dev` specifically; no new migration was added in Phases
+    9–10, so nothing new needs applying there.
+
+- **V-010** (added S-2026-09-28-01) · `[ASSUMED]` Sudden-death marking
+  (`MatchSegment.MakeSuddenDeath`) will be driven by Phase 11's tie-break match
+  setup (D-039).
+  - Check: confirm while implementing Phase 11 (T-023).
+
+- **V-011** (added S-2026-09-28-01) · `[ASSUMED]` OperatorChoice pass → clockwise
+  fallback is acceptable until the contract gains a target field (D-037).
+  - Check: Q-007.
+
+- **V-012** (added S-2026-09-28-01) · `[FACT]` Test/build status on 2026-09-28:
+  `dotnet build Quizware.slnx -c Release /warnaserror` → 0 warnings/errors;
+  `dotnet test` → **421/421** (17 Application, 131 Domain, 4 Architecture, 269
+  Api.IntegrationTests). Reported by the brief, run in the cloud session; not
+  re-run by the keeper. Re-run before relying on it after new commits.
 
 - **V-009** · Resolved `[FACT]` (S-2026-09-10-01) — independently re-run this
   session: `dotnet build Quizware.slnx` -> 0 warnings/0 errors;
@@ -195,6 +298,52 @@ they stay unchecked.
     against `git log` this session. Lesson recorded as L-004.
 
 ## Closed
+
+- **T-022** `DONE` · Refresh the Postman collection for Phases 9–10
+  - Delivered S-2026-09-28-01, commit `774264c`: new folders 10 Matches, 11
+    Live Match, 12 Scores, 13 Standings; 156 requests, 199 assertions.
+    `adminPassword` variable fixed (was stale) to match
+    `AdminUserSeeder.DefaultPassword` — value lives in
+    `Quizware/src/Quizware.Infrastructure/Identity/AdminUserSeeder.cs`, not
+    recorded here. `[FACT]` newman against real SQL Server: only the 5
+    documented manual-file-attachment requests fail.
+  - Edited as text, not via json.dump (L-011).
+
+- **T-021** `DONE` · Implement Phase 10 — scoring and standings
+  - Delivered S-2026-09-28-01 (commits `2431cb2`, `738e947`, `d6cdc1f`,
+    `3aaea4e`), on branch `claude/workflows-project-status-bsgu4d`, pushed, no
+    PR open. ScoreEvent ledger + TeamMatchScore/TeamStageScore read models
+    (D-042), manual adjust + recalculate (ProgramAdmin-only), tie-break
+    criteria service (D-043), overall/stage/team standings
+    (`ScoresController`, `StandingsController`, `GET stages/{id}/standings`).
+
+- **T-020** `DONE` · Implement Phase 9 — the match engine
+  - Delivered S-2026-09-28-01. Phase 9a–9f merged to master via PR #1
+    (merge `3f945cf`); gap-closing pass on the branch (commits `e609f0f` …
+    `5d580be`): reversal ProgramAdmin-only (D-034), per-segment rotation
+    (D-035), per-format handlers (D-036), pass direction/limits (D-037),
+    Choice topic board (D-038), sudden death (D-039), auto-seed (D-040),
+    transactional outbox (D-041), Phase 9 required tests; selector lock fix
+    (D-044). No new EF migration. Still 501: match preflight, live
+    snapshot/restore (T-025).
+  - Original text (S-2026-09-10-01), kept per I1:
+    - **T-020** `TODO` · Implement Phase 9 — the match engine
+      - Why: Both stated prerequisites are now done — Phase 7 (rule management,
+        `3dbc6f2`) and Phase 8 (question selection engine, `IQuestionSelector`,
+        `31d2f22`). Phase 9 is the next actionable item per
+        `docs/Implementation-Plan.md`'s dependency map.
+      - Where: `docs/Implementation-Plan.md` Phase 9 section — **re-read it fresh**,
+        do not assume its text matches `CURRENT.md`. `MatchesController.cs`
+        (currently all `501 NotImplemented` stubs) is the likely API surface;
+        `MatchQuestion.Activate(...)` (see D-025) is the domain method Phase 9
+        needs for actually serving a reserved question, reusing the same
+        `RandomSeed` the Phase 8 reservation used so `OptionOrderJson` reproduces
+        identically.
+      - Blocked by: nothing hard. Note P9-02's "Start is one transaction; a
+        failure reserves nothing" criterion is already anticipated by D-031 —
+        `IQuestionSelector`'s write methods deliberately don't call
+        `SaveChangesAsync`, so Phase 9's handler must call it once after every
+        segment's selector call succeeds.
 
 - **T-019** `DONE` · Implement Phase 8 — Question selection engine (`IQuestionSelector`)
   - Delivered in S-2026-09-10-01, committed as `31d2f22` ("Add question
@@ -345,7 +494,10 @@ they stay unchecked.
     picked up via a new `IEntityConfigurationAssemblyMarker` port in
     Application, so Infrastructure never references the buzzer module directly.
   - Admin user seeded (`admin@quizapp.local` / `ChangeMe!123`, `SuperAdmin`,
-    skipped in Production) via `AdminUserSeeder`.
+    skipped in Production) via `AdminUserSeeder`. **Update 2026-09-28:** that
+    password value is stale — the seeded password has since changed; the
+    current value lives in `AdminUserSeeder.DefaultPassword`. Never copy
+    credential values into `context/` (SPEC §4.1).
   - Tests: 115 passing at the time (95 Domain, 4 Application, 4 Architecture, 12
     Api.IntegrationTests — 6 new persistence tests: tenant isolation, soft
     delete, audit stamping, audit log, NOT-NULL enforcement, seed fidelity), run

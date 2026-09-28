@@ -1,5 +1,6 @@
 using FluentValidation;
 using MediatR;
+using Microsoft.EntityFrameworkCore;
 using Quizware.Application.Abstractions;
 using Quizware.Application.Gameplay.Dtos;
 
@@ -22,12 +23,14 @@ public sealed class SkipQuestionCommandHandler : IRequestHandler<SkipQuestionCom
     private readonly IAppDbContext _db;
     private readonly MatchEventLog _eventLog;
     private readonly LiveStateBuilder _state;
+    private readonly SuddenDeath _suddenDeath;
 
-    public SkipQuestionCommandHandler(IAppDbContext db, MatchEventLog eventLog, LiveStateBuilder state)
+    public SkipQuestionCommandHandler(IAppDbContext db, MatchEventLog eventLog, LiveStateBuilder state, SuddenDeath suddenDeath)
     {
         _db = db;
         _eventLog = eventLog;
         _state = state;
+        _suddenDeath = suddenDeath;
     }
 
     public async Task<LiveMatchStateDto> Handle(SkipQuestionCommand request, CancellationToken cancellationToken)
@@ -38,6 +41,8 @@ public sealed class SkipQuestionCommandHandler : IRequestHandler<SkipQuestionCom
 
         question.Skip();
         await _eventLog.AppendAsync(match, MatchEventTypes.QuestionSkipped, new { matchQuestionId = question.Id, reason = request.Reason }, cancellationToken);
+        var segment = await _db.MatchSegments.SingleAsync(s => s.Id == question.MatchSegmentId, cancellationToken);
+        await _suddenDeath.TryCloseAsync(match, segment, cancellationToken);
         await _db.SaveChangesAsync(cancellationToken);
 
         return await _state.BuildAsync(match, cancellationToken);

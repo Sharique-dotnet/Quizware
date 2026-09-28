@@ -115,4 +115,18 @@ public class MatchSegmentTests
 
         act.Should().Throw<InvalidStateTransitionException>();
     }
+
+    [Fact]
+    public void MakeSuddenDeath_OnlyBeforeTheSegmentOpens()
+    {
+        var pending = Create(Guid.NewGuid(), 0);
+        var open = Create(Guid.NewGuid(), 1);
+        open.Open([]);
+
+        pending.MakeSuddenDeath();
+        var act = () => open.MakeSuddenDeath();
+
+        pending.IsSuddenDeath.Should().BeTrue();
+        act.Should().Throw<InvalidStateTransitionException>();
+    }
 }

@@ -149,7 +149,10 @@ public sealed class MatchesController : ControllerBase
 
     [HttpPost("auto-seed")]
     [Authorize(Policy = Policies.CanManageProgram)]
-    public ActionResult<AutoSeedMatchesResponse> AutoSeed(Guid programId, [FromBody] AutoSeedMatchesRequest request) => StatusCode(StatusCodes.Status501NotImplemented);
+    public async Task<ActionResult<AutoSeedMatchesResponse>> AutoSeed(
+        Guid programId, [FromBody] AutoSeedMatchesRequest request, CancellationToken cancellationToken) =>
+        Ok(new AutoSeedMatchesResponse(await _sender.Send(
+            new AutoSeedMatchesCommand(programId, request.StageId, request.SeedingMode), cancellationToken)));
 
     [HttpGet("{id:guid}/preflight")]
     [Authorize(Policy = Policies.CanOperateMatch)]

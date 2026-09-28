@@ -7,6 +7,21 @@ namespace Quizware.Domain.Tests.Scoring;
 public class TeamMatchScoreTests
 {
     [Fact]
+    public void Rebuild_OverwritesTheTotalAndEveryCount()
+    {
+        var score = TeamMatchScore.CreateForParticipant(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid());
+        score.ApplyAnswer(AnswerOutcome.Correct, 50);
+
+        score.Rebuild(totalPoints: 7, correctCount: 2, incorrectCount: 1, noAnswerCount: 3, passedCount: 4);
+
+        score.TotalPoints.Should().Be(7);
+        score.CorrectCount.Should().Be(2);
+        score.IncorrectCount.Should().Be(1);
+        score.NoAnswerCount.Should().Be(3);
+        score.PassedCount.Should().Be(4);
+    }
+
+    [Fact]
     public void ApplyAnswer_Correct_AddsPointsAndIncrementsCorrectCount()
     {
         var score = TeamMatchScore.CreateForParticipant(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid());

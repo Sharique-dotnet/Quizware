@@ -7,7 +7,8 @@ re-propose it. Format: `_meta/SPEC.md` §6.3.
 **Index:** D-001 · D-002 · D-003 · D-004 · D-005 · D-006 · D-007 · D-008 · D-009 ·
 D-010 · D-011 · D-012 · D-013 · D-014 · D-015 · D-016 · D-017 · D-018 · D-019 ·
 D-020 · D-021 · D-022 · D-023 · D-024 · D-025 · D-026 · D-027 · D-028 · D-029 ·
-D-030 · D-031 · D-032 · D-033
+D-030 · D-031 · D-032 · D-033 · D-034 · D-035 · D-036 · D-037 · D-038 · D-039 ·
+D-040 · D-041 · D-042 · D-043 · D-044
 
 ---
 
@@ -724,8 +725,8 @@ remaining Phase 0 assumptions has still not happened — see Q-001 in `TASKS.md`
 - **Confidence:** [DECIDED]
 
 ### D-029 · Cross-match reservation locking — any non-`Released` `MatchQuestion` row excludes that question from every other match's draw
-- **Status:** ACTIVE
-- **Added:** 2026-09-10 (S-2026-09-10-01)
+- **Status:** SUPERSEDED by D-044
+- **Added:** 2026-09-10 (S-2026-09-10-01) · **Updated:** 2026-09-28 (S-2026-09-28-01)
 - **Decision:** A question that is `Reserved`/`Active`/`Answered`/`Skipped`
   (i.e. any `MatchQuestion.State != Released`) in **any** match's
   `MatchQuestion` row is excluded from every other draw's pool — a separate
@@ -837,4 +838,204 @@ remaining Phase 0 assumptions has still not happened — see Q-001 in `TASKS.md`
 - **Consequences:** None negative; `SelectionPreviewRequest` callers (Postman
   collection, future Angular screens) now need to supply `SegmentTemplateId`
   for segment-specific rule resolution to work correctly.
+- **Confidence:** [DECIDED]
+
+### D-034 · Answer reversal is ProgramAdmin/SuperAdmin only — Operators may not reverse answers
+- **Status:** ACTIVE
+- **Added:** 2026-09-28 (S-2026-09-28-01)
+- **Decision:** `POST /matches/{id}/live/answers/{aid}/reverse` is authorized
+  with `Policies.CanAdjustScore` (ProgramAdmin/SuperAdmin). `[FACT]`
+  `Quizware/src/Quizware.Api/Controllers/v1/LiveMatchController.cs:121`.
+  `docs/new-system/05-API-Design.md` (reverse route role) and
+  `docs/Implementation-Plan.md` row P9-10 were corrected to say ProgramAdmin.
+- **Why:** D-013 already binds reversal, disqualification, and score
+  adjustment to ProgramAdmin. The API design doc and the plan's P9-10 row had
+  not caught up with D-013 and still suggested Operators could reverse; the
+  open question "may Operators reverse answers?" was answered by applying the
+  existing binding decision, not by a new product choice.
+- **Alternatives rejected:** *Operator may reverse (as the stale docs read)* —
+  contradicts D-013's explicit narrowing of reversal authority.
+- **Consequences:** Operator UIs must not offer reversal. Any test or Postman
+  request reversing an answer must authenticate as ProgramAdmin/SuperAdmin.
+- **Confidence:** [DECIDED]
+
+### D-035 · Turn rotation is per segment; Buzzer and RapidFire have no turn holder
+- **Status:** ACTIVE
+- **Added:** 2026-09-28 (S-2026-09-28-01)
+- **Decision:** The turn holder for a served question is the active
+  participant at index `segment.ServedQuestionCount` (mod count) over active
+  participants ordered by `TurnOrder` (`Application/Gameplay/TurnRotation.cs`).
+  Formats whose handler reports `AnyTeamMayAnswer` (Buzzer, RapidFire — BR-2.4)
+  have no turn holder (null).
+- **Why:** Business rule BR-2.2 in `docs/Implementation-Plan.md` says rotation
+  restarts per segment. The first Phase 9 implementation rotated across the
+  whole match, which drifted from the rule as soon as a segment had a question
+  count not divisible by the team count.
+- **Alternatives rejected:** *Match-wide rotation* — the original
+  implementation; contradicts BR-2.2.
+- **Consequences:** Any new format must declare `AnyTeamMayAnswer` correctly on
+  its handler, or it will silently get (or lose) a turn holder.
+- **Confidence:** [DECIDED]
+
+### D-036 · One `IQuestionFormatHandler` per question format, discovered by assembly scan
+- **Status:** ACTIVE
+- **Added:** 2026-09-28 (S-2026-09-28-01)
+- **Decision:** Live rendering and answer evaluation live in one handler class
+  per format under `Quizware/src/Quizware.Application/Gameplay/Formats/` (Mcq,
+  Buzzer, Card, Choice, Passing, TieBreaker, AudioVisual, RapidFire, Sequence,
+  VisualRapidFire), with an `OptionFormatHandler` base for option-based formats
+  and an `AcceptedAnswers` helper. Handlers are discovered by assembly scan and
+  resolved via `QuestionFormatHandlers.For(format)`. The previous switch-based
+  `LiveQuestionFormats.cs` was deleted.
+- **Why:** Plan task P9-07 calls for a handler per format; one class per format
+  keeps each format's rules closed to changes in the others and lets a new
+  format be added without touching a central switch.
+- **Alternatives rejected:** *Single switch-based `LiveQuestionFormats.cs`* —
+  what shipped in PR #1; replaced because it violated P9-07 and concentrated all
+  ten formats' rules in one file.
+- **Consequences:** Adding a format = add a handler class; no registration
+  edit needed. Format-level flags (`AnyTeamMayAnswer`, `TopicChoice`, shuffle)
+  live on the handler.
+- **Confidence:** [DECIDED]
+
+### D-037 · Passing (BR-2.5): seat-order direction, min-of-two pass limit, reveal-if-all-pass
+- **Status:** ACTIVE
+- **Added:** 2026-09-28 (S-2026-09-28-01)
+- **Decision:** A pass goes to the next active participant by seat in the
+  question's `PassDirection` (Clockwise/Anticlockwise). The limit is
+  `min(question.MaxPassCount, segmentTemplate.MaxPassCount)`. If every team
+  passes and `RevealAnswerIfAllPass` is set, the answer is revealed and the
+  question skipped. An answer after a pass must send `PassNumber` = number of
+  passes so far; the outcome resolves to `PassedCorrect` (scoring context key
+  `AfterPass`). `OperatorChoice` falls back to clockwise because
+  `PassQuestionRequest` has no target-participant field.
+- **Why:** BR-2.5 in the plan. The first Phase 9 cut ignored direction and the
+  question-level limit. The OperatorChoice fallback exists only because the
+  frozen contract lacks a target field (Q-007).
+- **Alternatives rejected:** *Invent a target field without approval* — the
+  contract is treated as frozen; changing it is the user's call (Q-007).
+- **Consequences:** Clients must send `PassNumber` on post-pass answers.
+  OperatorChoice is not truly supported until Q-007 is answered.
+- **Confidence:** [DECIDED] (the OperatorChoice fallback part is [ASSUMED] —
+  confirm via Q-007)
+
+### D-038 · Choice round board is built from each question's TopicChoice label
+- **Status:** ACTIVE
+- **Added:** 2026-09-28 (S-2026-09-28-01)
+- **Decision:** The Choice-round topic board groups reserved questions by the
+  handler's `TopicChoice` label (from the question's TopicChoice field); the
+  displayed topic name prefers that label. When an exclusive topic is played,
+  other questions with the same label are released.
+- **Why:** Plan's Choice-round rule: teams pick a topic; an exclusive topic is
+  consumed once played. Grouping by the label (not only `TopicId`) matches how
+  Choice questions are authored.
+- **Alternatives rejected:** none recorded in the brief.
+- **Consequences:** Choice questions without a label fall back to the topic
+  name. Released questions return to the pool via the normal release path.
+- **Confidence:** [DECIDED]
+
+### D-039 · Sudden-death segments close as soon as one team leads after equal turns
+- **Status:** ACTIVE
+- **Added:** 2026-09-28 (S-2026-09-28-01)
+- **Decision:** A segment marked sudden-death (`MatchSegment.MakeSuddenDeath`)
+  closes as soon as one team leads after all teams have had equal turns
+  (`Application/Gameplay/SuddenDeath.TryCloseAsync`). Marking is domain-only for
+  now; no API sets it.
+- **Why:** BR-5.6. Wiring the flag from configuration belongs with Phase 11's
+  tie-break matches, which are the only intended user of sudden death.
+- **Alternatives rejected:** *Add an API flag in Phase 9* — premature; the
+  tie-break setup that should drive it doesn't exist yet.
+- **Consequences:** Phase 11 must call `MakeSuddenDeath` when building a
+  tie-break match whose `TieBreakRule` asks for sudden death. `[ASSUMED]` that
+  Phase 11 is where this gets driven from — confirm when implementing Phase 11
+  (V-010).
+- **Confidence:** [DECIDED]
+
+### D-040 · Match auto-seeding endpoint with Random / Rank / Snake modes
+- **Status:** ACTIVE
+- **Added:** 2026-09-28 (S-2026-09-28-01)
+- **Decision:** `POST /programs/{pid}/matches/auto-seed {stageId, seedingMode}`
+  groups unplaced Registered/Active teams — or the stage's committed
+  `StageQualifications`, if any exist — into Draft matches, using the pure
+  domain function `Domain/Tournament/MatchSeeding.Group(rankedTeams, min, max,
+  mode, Random)`.
+- **Why:** Plan gap item (auto-seed) left open after PR #1. Using committed
+  qualifications when present lets later stages seed from earlier results.
+- **Alternatives rejected:** none recorded in the brief.
+- **Consequences:** Seeding logic is unit-testable in Domain; teams already
+  placed in a match are skipped.
+- **Confidence:** [DECIDED]
+
+### D-041 · Transactional outbox via Application port `IMatchNotifications`
+- **Status:** ACTIVE
+- **Added:** 2026-09-28 (S-2026-09-28-01)
+- **Decision:** Application defines `IMatchNotifications.Publish(eventType,
+  programId, matchId, payload)`; Infrastructure implements it as
+  `Outbox/OutboxMatchNotifications.cs`, which writes `OutboxMessage` rows into
+  the same `AppDbContext` so they commit in the same transaction as the match
+  change. Events emitted: `MatchStateChanged` (start), `AnswerRecorded`,
+  `ParticipantRemoved`, `MatchCompleted`. Delivery (dispatcher, SignalR) is
+  later work (Phase 12).
+- **Why:** ADR-006 (SignalR + outbox): notifications must not be lost or sent
+  for rolled-back changes. Named `IMatchNotifications`, not
+  `INotificationPublisher`, to avoid clashing with MediatR's type of that name.
+- **Alternatives rejected:** *`INotificationPublisher`* — name collision with
+  MediatR. *Publish directly to SignalR* — not transactional.
+- **Consequences:** Outbox rows accumulate until a dispatcher exists (T-024).
+- **Confidence:** [DECIDED]
+
+### D-042 · Scoring is an event-sourced ScoreEvent ledger with transactional read models
+- **Status:** ACTIVE
+- **Added:** 2026-09-28 (S-2026-09-28-01)
+- **Decision:** `IScoringEngine` (`Application/Scoring/`) writes `ScoreEvent`
+  rows and updates `TeamMatchScore`/`TeamStageScore` in the same transaction.
+  Reversal writes compensating state and marks the original `IsReversed`.
+  `RecalculateMatch`/`RecalculateStage` rebuild the read models from the ledger.
+  Tie-break matches count toward stage totals only if
+  `TieBreakRule.ScoreCountsTowardStage`. Manual adjustment and recalculation are
+  ProgramAdmin-only (D-013).
+- **Why:** Architecture decision (event-sourced scoring, ADR-004) plus D-011's
+  requirement that tie-break points don't leak into standings by default.
+  Rebuild-from-ledger makes read models disposable and auditable.
+- **Alternatives rejected:** *Mutable score totals only* — rejected at design
+  level (ADR-004).
+- **Consequences:** Standings read stored totals, not the ledger; any code that
+  writes a `ScoreEvent` must go through `IScoringEngine` or totals drift.
+- **Confidence:** [DECIDED]
+
+### D-043 · Tie-break criteria service with five criteria and a reported deciding criterion
+- **Status:** ACTIVE
+- **Added:** 2026-09-28 (S-2026-09-28-01)
+- **Decision:** `Application/Qualification/TieBreakCriteriaService`
+  (`ITieBreakCriteriaService`) orders tied teams by configured criteria:
+  `TotalScore`, `FewerIncorrect`, `MoreCorrectAtHighDifficulty` (alias
+  `HigherDifficultyCorrect`), `FasterAverageBuzzTime`, `HeadToHead`, and reports
+  which criterion decided. Built on the Phase 1 pure evaluator
+  (`TieBreakCriteriaEvaluator`).
+- **Why:** D-011's phase 1 (non-playing criteria) of tie-breaking; the alias
+  exists because both names appear in docs/config.
+- **Alternatives rejected:** none recorded in the brief.
+- **Consequences:** Phase 11 qualification uses this before falling back to a
+  tie-break match.
+- **Confidence:** [DECIDED]
+
+### D-044 · Question selector locked set: Reserved/Active in any match, or non-released in the same match
+- **Status:** ACTIVE
+- **Added:** 2026-09-28 (S-2026-09-28-01)
+- **Decision:** A question is excluded from a draw if it is `Reserved` or
+  `Active` in **any** match, or in **any non-Released** state in the **same**
+  match. Supersedes D-029.
+- **What changed the answer:** D-029 locked every non-Released state across all
+  matches and carved out the drawing match's own reservations
+  (`IsOwnMatchReservation`). `[FACT]` (brief) Phase 9 hit same-match duplicate
+  draws and re-draws of already-answered questions; `[UNVERIFIED]` that the
+  own-match carve-out was the specific cause — check the diff of
+  `Application/Selection/QuestionSelector.cs` in this session's commits. Answered/Skipped questions in *other* matches are governed
+  by the repeat policy via `QuestionUsageHistory`, not by the lock.
+- **Why:** Keeps D-029's goal (a reserved question is unavailable to other
+  matches, P8-07) while fixing the duplicate/re-draw bug; regression tests
+  added to `SelectionEngineTests`.
+- **Alternatives rejected:** *D-029 as written* — produced the bug above.
+- **Consequences:** Abandoned matches must still release reservations (P8-10),
+  or questions stay locked.
 - **Confidence:** [DECIDED]

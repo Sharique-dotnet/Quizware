@@ -161,6 +161,14 @@ public sealed class Match : BaseEntity, ITenantScoped, IAuditable, ISoftDeletabl
         IsTied = isTied;
     }
 
+    /// <summary>A completed match's result after a later score correction.</summary>
+    public void ReviseResult(Guid? winnerTeamId, bool isTied)
+    {
+        RequireState(MatchState.Completed, "re-scored");
+        WinnerTeamId = winnerTeamId;
+        IsTied = isTied;
+    }
+
     public void Abandon(string reason)
     {
         if (string.IsNullOrWhiteSpace(reason))

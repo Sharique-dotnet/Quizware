@@ -1,10 +1,10 @@
 # Quizware Postman collection
 
 `Quizware.postman_collection.json` covers every implemented endpoint through
-**Phase 7 (Tournament configuration)**. Endpoints that are still `501`
-stubs — Matches, Live match engine, Scores, Standings, Qualification
-commit, Buzzer, Display, Reports (Phase 8 onward) — are intentionally not
-included; there's nothing real to test yet.
+**Phase 10 (match engine, scoring and standings)**. Endpoints that are still
+`501` stubs — admin lookups, match preflight, live snapshot/restore, Qualification,
+Buzzer, Display, Reports — are intentionally not included; there's nothing
+real to test yet.
 
 All variables (`baseUrl`, tokens, ids) are **collection variables**, saved by
 each request's test script for the next request to use — no separate
@@ -20,7 +20,7 @@ Postman environment file is needed.
    `baseUrl` collection variable after import.)
 2. In Postman: **Import** → select `Quizware.postman_collection.json`.
 3. The seeded admin credentials (`adminEmail` / `adminPassword` variables)
-   default to `admin@quizapp.local` / `ChangeMe!123` — the values
+   default to `admin@quizapp.local` / `KeepMeUpdated@123` — the values
    `AdminUserSeeder` creates on a fresh dev database. Update them if your
    database already has a different admin password.
 
@@ -66,6 +66,30 @@ variable.
     seed realistic starting data before the matching `Upsert` requests are
     exercised. `Preview Selection` reports `canSatisfy: false` until you've
     approved at least one MCQ question in **07 Questions**.
+11. **10 Matches** — the `Setup —` requests first capture the admin's user
+    id (the disqualify request needs it), create teams B–E, shrink the
+    League MCQ template to 2 questions, add a Passing template, and create
+    and approve 3 MCQ questions and 1 Passing question, so the match below
+    can be started. Then it runs the whole match-setup API: create, list,
+    get, update, add three participants, order them, add/remove segments,
+    reset to template, reorder, and **Mark Match Ready** (asserts no
+    blockers). It also creates and deletes a scratch match, and auto-seeds
+    teams D and E into a second match, which is abandoned in the next folder.
+12. **11 Live Match** — plays the match end to end: start, state, open a
+    segment, preview/serve/get a question, pause/resume, record an answer
+    (with an `Idempotency-Key` header), reverse it and re-record it,
+    reveal and skip a question, close a segment and skip another, then pass
+    a Passing question and answer it with `passNumber: 1`, disqualify and
+    reinstate a team, read the timeline, end the match, and abandon the
+    auto-seeded match. Three requests **expect a 409** on purpose: passing
+    an MCQ question, selecting a topic outside a Choice segment, and
+    reordering segments live (no endpoint can yet set the stage's
+    `AllowSegmentReorderDuringMatch` flag).
+13. **12 Scores** — match scores, the score-event ledger (the reversed
+    answer is still there, marked `isReversed`), a +5 adjustment, and a
+    recalculation that must leave the totals unchanged.
+14. **13 Standings** — overall, stage (both routes) and team standings for
+    the completed match.
 
 ## Notes
 
@@ -79,6 +103,12 @@ variable.
   first, except for the two Excel-import requests (they need a file
   re-attached each run, since Postman doesn't persist the attachment in the
   exported JSON).
+- An unattended `newman` run therefore reports exactly **5 failures**: the
+  team-import validate/commit pair, media upload, and the MCQ-import
+  validate/commit pair. Everything else should pass.
+- `Create Passing Question` sends `passDirection` as a number (`1` =
+  Clockwise). The API has no string-enum JSON converter, so `"Clockwise"`
+  is rejected with a 400.
 - `Delete Stage` in folder 08 only works on a stage with zero matches — that
   is why the Final stage (never given a match) is the one deleted, not
   League.

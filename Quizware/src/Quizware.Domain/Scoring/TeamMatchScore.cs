@@ -90,6 +90,17 @@ public sealed class TeamMatchScore : BaseEntity, ITenantScoped
         LastUpdatedUtc = DateTime.UtcNow;
     }
 
+    /// <summary>Overwrites the totals with values rebuilt from the ledger.</summary>
+    public void Rebuild(int totalPoints, int correctCount, int incorrectCount, int noAnswerCount, int passedCount)
+    {
+        TotalPoints = totalPoints;
+        CorrectCount = correctCount;
+        IncorrectCount = incorrectCount;
+        NoAnswerCount = noAnswerCount;
+        PassedCount = passedCount;
+        LastUpdatedUtc = DateTime.UtcNow;
+    }
+
     public void SetRank(int rank)
     {
         Rank = rank;
