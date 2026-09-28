@@ -76,3 +76,18 @@ public sealed record LiveMatchStateDto(
 public sealed record MatchEventItemDto(long SequenceNumber, string EventType, string? Detail, DateTime OccurredAtUtc);
 
 public sealed record AvailableTopicsDto(IReadOnlyList<string> Topics, int? TopicChoiceLimit);
+
+public sealed record RankedTeamScoreDto(Guid TeamId, int Score, int Rank);
+
+public sealed record NextQuestionPreviewDto(Guid MatchQuestionId, Guid? ActiveParticipantId, string? ActiveTeamName);
+
+public sealed record RecordAnswerResultDto(
+    Guid AnswerRecordId,
+    string Outcome,
+    int PointsAwarded,
+    Guid ScoringRuleId,
+    int TeamScore,
+    IReadOnlyList<RankedTeamScoreDto> Scores,
+    NextQuestionPreviewDto? NextQuestion,
+    bool SegmentComplete,
+    bool MatchComplete);

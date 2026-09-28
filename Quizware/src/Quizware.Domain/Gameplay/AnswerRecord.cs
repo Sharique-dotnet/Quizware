@@ -67,6 +67,20 @@ public sealed class AnswerRecord : BaseEntity, ITenantScoped, IAuditable, ISoftD
     public bool IsDeleted { get; private set; }
     public DateTime? DeletedAtUtc { get; private set; }
 
+    /// <summary>What the team actually gave, and whether it was right, when
+    /// the question has an objectively checkable answer.</summary>
+    public void RecordResponse(
+        Guid? selectedOptionId, string? selectedOptionIdsJson, string? freeTextAnswer, bool? isCorrect,
+        Guid? buzzPressId, int? responseTimeMs)
+    {
+        SelectedOptionId = selectedOptionId;
+        SelectedOptionIdsJson = selectedOptionIdsJson;
+        FreeTextAnswer = freeTextAnswer;
+        IsCorrect = isCorrect;
+        BuzzPressId = buzzPressId;
+        ResponseTimeMs = responseTimeMs;
+    }
+
     /// <summary>Marks this record as reversed by a compensating record —
     /// never deleted, never mutated in place beyond this marker.</summary>
     public void MarkReversed(Guid reversedByAnswerId, string reason)

@@ -140,6 +140,47 @@ public sealed class MatchTestHarness
     public async Task<Contracts.V1.LiveMatch.LiveMatchStateResponse> StateAsync(StartedMatch started) =>
         (await Client.GetFromJsonAsync<Contracts.V1.LiveMatch.LiveMatchStateResponse>($"{started.Live}/state"))!;
 
+    public async Task<HttpResponseMessage> AnswerAsync(
+        StartedMatch started, Guid matchQuestionId, Guid participantId, string outcome, int passNumber = 0,
+        Guid? selectedOptionId = null, string? idempotencyKey = null)
+    {
+        var message = new HttpRequestMessage(HttpMethod.Post, $"{started.Live}/answers")
+        {
+            Content = JsonContent.Create(new Contracts.V1.LiveMatch.RecordAnswerRequest(
+                matchQuestionId, participantId, outcome, selectedOptionId, null, null, passNumber, "Operator", null, null)),
+        };
+        if (idempotencyKey is not null)
+        {
+            message.Headers.Add("Idempotency-Key", idempotencyKey);
+        }
+
+        return await Client.SendAsync(message);
+    }
+
+    public async Task AddScoringRuleAsync(string format, string outcome, string? contextKey, int points)
+    {
+        var response = await Client.PutAsJsonAsync(
+            $"/api/v1/programs/{ProgramId}/rules/scoring",
+            new Contracts.V1.Rules.UpsertScoringRulesRequest([new Contracts.V1.Rules.ScoringRuleDto(Guid.Empty, format, outcome, contextKey, points)]));
+        response.EnsureSuccessStatusCode();
+    }
+
+    public async Task SeedBuzzerAsync(int count, bool allowStealAfterWrong = true)
+    {
+        using var scope = _factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        for (var i = 0; i < count; i++)
+        {
+            var question = BuzzerQuestion.Create(
+                ProgramId, QuestionOwnerScope.Program, $"Buzzer {i} {Guid.NewGuid():N}", DifficultyLevel.Medium, "en", "test",
+                allowStealAfterWrong: allowStealAfterWrong);
+            question.Approve(Guid.NewGuid());
+            db.Questions.Add(question);
+        }
+
+        await db.SaveChangesAsync();
+    }
+
     public sealed record StartedMatch(MatchDetailResponse Match, string Live, IReadOnlyList<MatchSegmentSummaryDto> Segments);
 
     /// <summary>Approved MCQ questions, each with one correct option (A) and

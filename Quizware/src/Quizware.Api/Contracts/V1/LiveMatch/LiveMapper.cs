@@ -62,4 +62,18 @@ public static class LiveMapper
 
     public static LiveParticipantScoreDto ToResponse(App.LiveParticipantScoreDto dto) =>
         new(dto.ParticipantId, dto.TeamName, dto.SeatNumber, dto.TurnOrder, dto.Status, dto.Score);
+
+    public static RecordAnswerResponse ToResponse(App.RecordAnswerResultDto dto) =>
+        new(
+            dto.AnswerRecordId,
+            dto.Outcome,
+            dto.PointsAwarded,
+            dto.ScoringRuleId,
+            dto.TeamScore,
+            dto.Scores.Select(s => new RankedTeamScoreDto(s.TeamId, s.Score, s.Rank)).ToList(),
+            dto.NextQuestion is null
+                ? null
+                : new NextQuestionPreviewDto(dto.NextQuestion.MatchQuestionId, dto.NextQuestion.ActiveParticipantId, dto.NextQuestion.ActiveTeamName),
+            dto.SegmentComplete,
+            dto.MatchComplete);
 }

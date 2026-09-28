@@ -26,6 +26,8 @@ public static class DependencyInjection
         services.AddScoped<MatchEventLog>();
         services.AddScoped<LiveStateBuilder>();
         services.AddScoped<MatchCompletion>();
+        services.AddScoped<ScoringResolver>();
+        services.AddScoped<AnswerResultBuilder>();
 
         return services;
     }

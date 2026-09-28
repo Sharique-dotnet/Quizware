@@ -60,6 +60,30 @@ public sealed class TeamMatchScore : BaseEntity, ITenantScoped
         LastUpdatedUtc = DateTime.UtcNow;
     }
 
+    /// <summary>The exact inverse of <see cref="ApplyAnswer"/>, for a reversed answer.</summary>
+    public void RevertAnswer(AnswerOutcome outcome, int points)
+    {
+        TotalPoints -= points;
+
+        switch (outcome)
+        {
+            case AnswerOutcome.Correct or AnswerOutcome.PassedCorrect:
+                CorrectCount--;
+                break;
+            case AnswerOutcome.Incorrect or AnswerOutcome.PassedIncorrect:
+                IncorrectCount--;
+                break;
+            case AnswerOutcome.NoAnswer:
+                NoAnswerCount--;
+                break;
+            case AnswerOutcome.Passed:
+                PassedCount--;
+                break;
+        }
+
+        LastUpdatedUtc = DateTime.UtcNow;
+    }
+
     public void ApplyAdjustment(int points)
     {
         TotalPoints += points;

@@ -98,4 +98,20 @@ public class MatchQuestionTests
         selectAfterServe.Should().Throw<InvalidStateTransitionException>();
         moveAfterServe.Should().Throw<InvalidStateTransitionException>();
     }
+
+    [Fact]
+    public void Reopen_PutsAnAnsweredQuestionBackOnScreen_ButNothingElse()
+    {
+        var answered = Reserve(Guid.NewGuid(), 0);
+        answered.Activate([], "[]", null);
+        answered.MarkAnswered();
+        var reserved = Reserve(Guid.NewGuid(), 1);
+
+        answered.Reopen();
+        var act = () => reserved.Reopen();
+
+        answered.State.Should().Be(MatchQuestionState.Active);
+        answered.ClosedAtUtc.Should().BeNull();
+        act.Should().Throw<InvalidStateTransitionException>();
+    }
 }

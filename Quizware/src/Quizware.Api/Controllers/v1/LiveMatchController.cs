@@ -102,15 +102,33 @@ public sealed class LiveMatchController : ControllerBase
 
     [HttpPost("answers")]
     [Authorize(Policy = Policies.CanRecordAnswer)]
-    public ActionResult<RecordAnswerResponse> RecordAnswer(Guid matchId, [FromBody] RecordAnswerRequest request) => StatusCode(StatusCodes.Status501NotImplemented);
+    public async Task<ActionResult<RecordAnswerResponse>> RecordAnswer(
+        Guid matchId,
+        [FromBody] RecordAnswerRequest request,
+        [FromHeader(Name = "Idempotency-Key")] string? idempotencyKey,
+        CancellationToken cancellationToken)
+    {
+        var result = await _sender.Send(
+            new RecordAnswerCommand(
+                matchId, request.MatchQuestionId, request.MatchParticipantId, request.Outcome, request.SelectedOptionId,
+                request.SelectedOptionIds, request.FreeTextAnswer, request.PassNumber, request.AnswerSource, request.BuzzPressId,
+                request.ResponseTimeMs, idempotencyKey),
+            cancellationToken);
+        return Ok(LiveMapper.ToResponse(result));
+    }
 
     [HttpPost("answers/{id:guid}/reverse")]
     [Authorize(Policy = Policies.CanOperateMatch)]
-    public ActionResult<RecordAnswerResponse> ReverseAnswer(Guid matchId, Guid id, [FromBody] ReverseAnswerRequest request) => StatusCode(StatusCodes.Status501NotImplemented);
+    public async Task<ActionResult<RecordAnswerResponse>> ReverseAnswer(
+        Guid matchId, Guid id, [FromBody] ReverseAnswerRequest request, CancellationToken cancellationToken) =>
+        Ok(LiveMapper.ToResponse(await _sender.Send(new ReverseAnswerCommand(matchId, id, request.Reason), cancellationToken)));
 
     [HttpPost("pass")]
     [Authorize(Policy = Policies.CanOperateMatch)]
-    public ActionResult<LiveMatchStateResponse> Pass(Guid matchId, [FromBody] PassQuestionRequest request) => StatusCode(StatusCodes.Status501NotImplemented);
+    public async Task<ActionResult<LiveMatchStateResponse>> Pass(
+        Guid matchId, [FromBody] PassQuestionRequest request, CancellationToken cancellationToken) =>
+        Ok(LiveMapper.ToResponse(await _sender.Send(
+            new PassQuestionCommand(matchId, request.MatchQuestionId, request.FromParticipantId), cancellationToken)));
 
     [HttpPost("topics/select")]
     [Authorize(Policy = Policies.CanOperateMatch)]

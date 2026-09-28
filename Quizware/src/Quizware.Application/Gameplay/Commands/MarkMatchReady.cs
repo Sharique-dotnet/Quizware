@@ -2,7 +2,6 @@ using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Quizware.Application.Abstractions;
 using Quizware.Application.Gameplay.Dtos;
-using Quizware.Application.Rules.Services;
 using Quizware.Application.Selection;
 using Quizware.Domain.Common.Exceptions;
 using Quizware.Domain.Enums;
@@ -11,8 +10,9 @@ namespace Quizware.Application.Gameplay.Commands;
 
 public sealed record MarkMatchReadyCommand(Guid ProgramId, Guid MatchId) : IRequest<MatchReadyDto>;
 
-/// <summary>Checks everything start would otherwise fail on — team count,
-/// segments, question supply per format, a scoring rule per format — and
+/// <summary>Checks everything start or play would otherwise fail on — team
+/// count, segments, question supply per format, and a scoring rule for a
+/// correct and an incorrect answer in each format — and
 /// reports every blocker at once. Only a match with no blockers becomes
 /// Ready; one that no longer passes drops back to Draft.</summary>
 public sealed class MarkMatchReadyCommandHandler : IRequestHandler<MarkMatchReadyCommand, MatchReadyDto>
@@ -20,15 +20,15 @@ public sealed class MarkMatchReadyCommandHandler : IRequestHandler<MarkMatchRead
     private readonly IAppDbContext _db;
     private readonly ICurrentUser _currentUser;
     private readonly IQuestionSelector _selector;
-    private readonly IRuleService _ruleService;
+    private readonly ScoringResolver _scoring;
 
     public MarkMatchReadyCommandHandler(
-        IAppDbContext db, ICurrentUser currentUser, IQuestionSelector selector, IRuleService ruleService)
+        IAppDbContext db, ICurrentUser currentUser, IQuestionSelector selector, ScoringResolver scoring)
     {
         _db = db;
         _currentUser = currentUser;
         _selector = selector;
-        _ruleService = ruleService;
+        _scoring = scoring;
     }
 
     public async Task<MatchReadyDto> Handle(MarkMatchReadyCommand request, CancellationToken cancellationToken)
@@ -76,14 +76,12 @@ public sealed class MarkMatchReadyCommandHandler : IRequestHandler<MarkMatchRead
                 blockers.Add($"QUESTION_POOL_EXHAUSTED: {group.Key} needs {needed} questions; {preview.Questions.Count} available.");
             }
 
-            try
+            foreach (var outcome in new[] { AnswerOutcome.Correct, AnswerOutcome.Incorrect })
             {
-                await _ruleService.ResolveScoringRuleAsync(
-                    match.ProgramId, group.Key, AnswerOutcome.Correct, match.StageId, first.SegmentTemplateId, null, cancellationToken);
-            }
-            catch (ScoringRuleNotFoundException)
-            {
-                blockers.Add($"SCORING_RULE_MISSING: no scoring rule for a correct {group.Key} answer.");
+                if (await _scoring.TryResolveAsync(match, first, outcome, passNumber: 0, cancellationToken) is null)
+                {
+                    blockers.Add($"SCORING_RULE_MISSING: no scoring rule for a{(outcome == AnswerOutcome.Incorrect ? "n" : "")} {outcome.ToString().ToLowerInvariant()} {group.Key} answer.");
+                }
             }
         }
 

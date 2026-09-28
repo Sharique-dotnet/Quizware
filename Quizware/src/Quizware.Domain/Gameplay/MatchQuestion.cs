@@ -131,6 +131,19 @@ public sealed class MatchQuestion : BaseEntity, ITenantScoped, IAuditable, ISoft
         ClosedAtUtc = DateTime.UtcNow;
     }
 
+    /// <summary>Puts an answered question back on screen after its answer was
+    /// reversed, so the correct outcome can be recorded.</summary>
+    public void Reopen()
+    {
+        if (State != MatchQuestionState.Answered)
+        {
+            throw new InvalidStateTransitionException($"Question at position {OrderIndex} must be Answered to reopen; it is {State}.");
+        }
+
+        State = MatchQuestionState.Active;
+        ClosedAtUtc = null;
+    }
+
     public void Release()
     {
         State = MatchQuestionState.Released;
