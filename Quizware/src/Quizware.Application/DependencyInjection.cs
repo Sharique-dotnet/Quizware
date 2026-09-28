@@ -32,6 +32,7 @@ public static class DependencyInjection
         services.AddScoped<ScoringResolver>();
         services.AddScoped<AnswerResultBuilder>();
         services.AddScoped<QuestionFormatHandlers>();
+        services.AddScoped<SuddenDeath>();
         services.AddScoped<IScoringEngine, ScoringEngine>();
         services.AddScoped<ITieBreakCriteriaService, TieBreakCriteriaService>();
         services.AddScoped<Standings>();

@@ -96,6 +96,18 @@ public sealed class MatchSegment : BaseEntity, ITenantScoped, IAuditable, ISoftD
         PlannedQuestionCount = plannedQuestionCount;
     }
 
+    /// <summary>BR-5.6: the segment closes as soon as one team leads, once
+    /// every team has faced the same number of questions. Set before play.</summary>
+    public void MakeSuddenDeath()
+    {
+        if (State != MatchSegmentState.Pending)
+        {
+            throw new InvalidStateTransitionException($"Segment {OrderIndex} is {State}; sudden death must be set before it opens.");
+        }
+
+        IsSuddenDeath = true;
+    }
+
     public void Lock()
     {
         IsOrderLocked = true;

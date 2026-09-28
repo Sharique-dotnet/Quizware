@@ -69,10 +69,11 @@ public sealed class RecordAnswerCommandHandler : IRequestHandler<RecordAnswerCom
     private readonly MatchEventLog _eventLog;
     private readonly AnswerResultBuilder _results;
     private readonly QuestionFormatHandlers _formats;
+    private readonly SuddenDeath _suddenDeath;
 
     public RecordAnswerCommandHandler(
         IAppDbContext db, ICurrentUser currentUser, IScoringEngine scoring, MatchEventLog eventLog, AnswerResultBuilder results,
-        QuestionFormatHandlers formats)
+        QuestionFormatHandlers formats, SuddenDeath suddenDeath)
     {
         _db = db;
         _currentUser = currentUser;
@@ -80,6 +81,7 @@ public sealed class RecordAnswerCommandHandler : IRequestHandler<RecordAnswerCom
         _eventLog = eventLog;
         _results = results;
         _formats = formats;
+        _suddenDeath = suddenDeath;
     }
 
     public async Task<RecordAnswerResultDto> Handle(RecordAnswerCommand request, CancellationToken cancellationToken)
@@ -169,6 +171,7 @@ public sealed class RecordAnswerCommandHandler : IRequestHandler<RecordAnswerCom
             points,
             scoringRuleId = rule.Id,
         }, cancellationToken);
+        await _suddenDeath.TryCloseAsync(match, segment, cancellationToken);
         await _db.SaveChangesAsync(cancellationToken);
 
         return await _results.BuildAsync(match, segment, answer, points, rule.Id, cancellationToken);
