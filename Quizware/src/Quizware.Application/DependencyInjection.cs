@@ -24,6 +24,8 @@ public static class DependencyInjection
         services.AddScoped<IRuleService, RuleService>();
         services.AddScoped<IQuestionSelector, QuestionSelector>();
         services.AddScoped<MatchEventLog>();
+        services.AddScoped<LiveStateBuilder>();
+        services.AddScoped<MatchCompletion>();
 
         return services;
     }

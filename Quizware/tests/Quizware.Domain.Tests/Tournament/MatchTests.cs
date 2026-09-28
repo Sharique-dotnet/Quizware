@@ -113,4 +113,17 @@ public class MatchTests
         act.Should().Throw<InvalidStateTransitionException>();
         unstarted.IsDeleted.Should().BeTrue();
     }
+
+    [Fact]
+    public void Abandon_AfterCompletion_Throws()
+    {
+        var match = Create();
+        match.Start(activeParticipantCount: 2);
+        match.Complete(winnerTeamId: null, isTied: true);
+
+        var act = () => match.Abandon("Too late");
+
+        act.Should().Throw<InvalidStateTransitionException>();
+        match.State.Should().Be(MatchState.Completed);
+    }
 }

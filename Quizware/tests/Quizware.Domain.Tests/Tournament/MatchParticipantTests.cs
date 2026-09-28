@@ -49,4 +49,19 @@ public class MatchParticipantTests
         mp.TurnOrder.Should().Be(2);
         mp.SeatNumber.Should().Be(3);
     }
+
+    [Fact]
+    public void RecordResult_StoresScoreAndRank_AndAllowsNoRank()
+    {
+        var ranked = MatchParticipant.Create(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), seatNumber: 1, turnOrder: 1, createdBy: "owner");
+        var unranked = MatchParticipant.Create(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), seatNumber: 2, turnOrder: 2, createdBy: "owner");
+
+        ranked.RecordResult(40, 1);
+        unranked.RecordResult(25, null);
+
+        ranked.FinalScore.Should().Be(40);
+        ranked.FinalRank.Should().Be(1);
+        unranked.FinalScore.Should().Be(25);
+        unranked.FinalRank.Should().BeNull();
+    }
 }

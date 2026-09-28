@@ -1,33 +1,49 @@
+using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Quizware.Api.Contracts.V1.LiveMatch;
 using Quizware.Api.Contracts.V1.Matches;
 using Quizware.Application.Authorization;
+using Quizware.Application.Gameplay.Commands;
+using Quizware.Application.Gameplay.Queries;
+using App = Quizware.Application.Gameplay.Dtos;
 
 namespace Quizware.Api.Controllers.v1;
 
-/// <summary>The match engine (05-API-Design.md §5.3). Contract-only in Phase
-/// 5 — every action returns 501 until IMatchEngine is implemented in Phase 9.</summary>
+/// <summary>The match engine (05-API-Design.md §5.3). The match id alone
+/// identifies the match — the tenant query filter keeps it inside the caller's
+/// program. Snapshot/restore are not implemented yet and still return 501.</summary>
 [ApiController]
 [Route("api/v1/matches/{matchId:guid}/live")]
 [Authorize]
 public sealed class LiveMatchController : ControllerBase
 {
+    private readonly ISender _sender;
+
+    public LiveMatchController(ISender sender)
+    {
+        _sender = sender;
+    }
+
     [HttpGet("state")]
     [Authorize(Policy = Policies.CanViewLive)]
-    public ActionResult<LiveMatchStateResponse> GetState(Guid matchId) => StatusCode(StatusCodes.Status501NotImplemented);
+    public async Task<ActionResult<LiveMatchStateResponse>> GetState(Guid matchId, CancellationToken cancellationToken) =>
+        Ok(LiveMapper.ToResponse(await _sender.Send(new GetLiveMatchStateQuery(matchId), cancellationToken)));
 
     [HttpPost("start")]
     [Authorize(Policy = Policies.CanOperateMatch)]
-    public ActionResult<StartMatchResponse> Start(Guid matchId) => StatusCode(StatusCodes.Status501NotImplemented);
+    public async Task<ActionResult<StartMatchResponse>> Start(Guid matchId, CancellationToken cancellationToken) =>
+        Ok(LiveMapper.ToResponse(await _sender.Send(new StartMatchCommand(matchId), cancellationToken)));
 
     [HttpPost("pause")]
     [Authorize(Policy = Policies.CanOperateMatch)]
-    public ActionResult<LiveMatchStateResponse> Pause(Guid matchId) => StatusCode(StatusCodes.Status501NotImplemented);
+    public async Task<ActionResult<LiveMatchStateResponse>> Pause(Guid matchId, CancellationToken cancellationToken) =>
+        Ok(LiveMapper.ToResponse(await _sender.Send(new PauseMatchCommand(matchId), cancellationToken)));
 
     [HttpPost("resume")]
     [Authorize(Policy = Policies.CanOperateMatch)]
-    public ActionResult<LiveMatchStateResponse> Resume(Guid matchId) => StatusCode(StatusCodes.Status501NotImplemented);
+    public async Task<ActionResult<LiveMatchStateResponse>> Resume(Guid matchId, CancellationToken cancellationToken) =>
+        Ok(LiveMapper.ToResponse(await _sender.Send(new ResumeMatchCommand(matchId), cancellationToken)));
 
     [HttpPost("segments/{segId:guid}/open")]
     [Authorize(Policy = Policies.CanOperateMatch)]
@@ -99,15 +115,23 @@ public sealed class LiveMatchController : ControllerBase
 
     [HttpPost("end")]
     [Authorize(Policy = Policies.CanOperateMatch)]
-    public ActionResult<LiveMatchStateResponse> End(Guid matchId) => StatusCode(StatusCodes.Status501NotImplemented);
+    public async Task<ActionResult<LiveMatchStateResponse>> End(Guid matchId, CancellationToken cancellationToken) =>
+        Ok(LiveMapper.ToResponse(await _sender.Send(new EndMatchCommand(matchId), cancellationToken)));
 
     [HttpPost("abandon")]
     [Authorize(Policy = Policies.CanDisqualify)]
-    public ActionResult<LiveMatchStateResponse> Abandon(Guid matchId, [FromBody] AbandonMatchRequest request) => StatusCode(StatusCodes.Status501NotImplemented);
+    public async Task<ActionResult<LiveMatchStateResponse>> Abandon(
+        Guid matchId, [FromBody] AbandonMatchRequest request, CancellationToken cancellationToken) =>
+        Ok(LiveMapper.ToResponse(await _sender.Send(new AbandonMatchCommand(matchId, request.Reason), cancellationToken)));
 
     [HttpGet("timeline")]
     [Authorize(Roles = $"{Roles.SuperAdmin},{Roles.ProgramAdmin},{Roles.Operator},{Roles.Auditor}")]
-    public ActionResult<MatchTimelineResponse> Timeline(Guid matchId) => StatusCode(StatusCodes.Status501NotImplemented);
+    public async Task<ActionResult<MatchTimelineResponse>> Timeline(Guid matchId, CancellationToken cancellationToken)
+    {
+        var events = await _sender.Send(new GetMatchTimelineQuery(matchId), cancellationToken);
+        return Ok(new MatchTimelineResponse(
+            events.Select(e => new MatchEventDto(e.SequenceNumber, e.EventType, e.Detail, e.OccurredAtUtc)).ToList()));
+    }
 
     [HttpPost("snapshot")]
     [Authorize(Policy = Policies.CanDisqualify)]

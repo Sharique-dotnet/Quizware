@@ -151,6 +151,19 @@ public sealed class MatchTestHarness
         return await CreateMatchAsync(stage.Id, 1, teams);
     }
 
+    /// <summary>A ProblemDetails body's errorCode extension (GlobalExceptionHandler).</summary>
+    public static async Task<string?> ErrorCodeAsync(HttpResponseMessage response)
+    {
+        var body = await response.Content.ReadFromJsonAsync<System.Text.Json.JsonElement>();
+        return body.TryGetProperty("errorCode", out var code) ? code.GetString() : null;
+    }
+
+    public async Task<T> ReadDbAsync<T>(Func<AppDbContext, Task<T>> query)
+    {
+        using var scope = _factory.Services.CreateScope();
+        return await query(scope.ServiceProvider.GetRequiredService<AppDbContext>());
+    }
+
     private int _nextOrderIndex;
 
     private int NextOrderIndex() => _nextOrderIndex++;

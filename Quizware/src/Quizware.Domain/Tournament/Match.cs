@@ -168,6 +168,11 @@ public sealed class Match : BaseEntity, ITenantScoped, IAuditable, ISoftDeletabl
             throw new ArgumentException("A reason is required to abandon a match.", nameof(reason));
         }
 
+        if (State is MatchState.Completed or MatchState.Abandoned)
+        {
+            throw new InvalidStateTransitionException($"Match {MatchNumber} is already {State}.");
+        }
+
         State = MatchState.Abandoned;
         AbandonReason = reason;
     }

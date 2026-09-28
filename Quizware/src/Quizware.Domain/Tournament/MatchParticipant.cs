@@ -89,6 +89,14 @@ public sealed class MatchParticipant : BaseEntity, ITenantScoped, IAuditable, IS
         UpdatedBy = deletedBy;
     }
 
+    /// <summary>Written once when the match completes. A participant excluded
+    /// from standings keeps its score but gets no rank.</summary>
+    public void RecordResult(int finalScore, int? finalRank)
+    {
+        FinalScore = finalScore;
+        FinalRank = finalRank;
+    }
+
     /// <summary>Applies a TurnOrderCalculator.Recompact result to this participant.</summary>
     public void ApplyTurnOrder(int newTurnOrder)
     {
