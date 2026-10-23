@@ -19,4 +19,47 @@ public sealed class BuzzerOptions
 
     /// <summary>How long a session stays open for presses.</summary>
     public int WindowMs { get; set; } = 30_000;
+
+    public SerialOptions Serial { get; set; } = new();
+}
+
+/// <summary>The RS-485 bus settings QuickBuzz hardcoded in SerialService.
+/// The defaults are QuickBuzz's values; <see cref="Commands"/> are not
+/// recorded in the QuickBuzz audit and must be checked against its
+/// SerialService before real hardware is connected.</summary>
+public sealed class SerialOptions
+{
+    public string PortName { get; set; } = "COM3";
+
+    public int BaudRate { get; set; } = 38400;
+
+    public int FrameLength { get; set; } = 24;
+
+    /// <summary>Per-byte read timeout.</summary>
+    public int ReadTimeoutMs { get; set; } = 1500;
+
+    public int RetryCount { get; set; } = 3;
+
+    /// <summary>Settling delay between devices on the shared bus (tuned on real hardware).</summary>
+    public int BusDelayMs { get; set; } = 150;
+
+    /// <summary>Hard limit on finding a frame's start byte. QuickBuzz had none,
+    /// so line noise could hang a poll forever (audit defect #2).</summary>
+    public int SyncDeadlineMs { get; set; } = 3000;
+
+    /// <summary>The buttons whose timers count as a press, earliest wins.</summary>
+    public List<string> Buttons { get; set; } = ["A", "B", "C", "D", "E"];
+
+    public SerialCommands Commands { get; set; } = new();
+}
+
+/// <summary>Command bytes sent to a device. [ASSUMED] defaults — confirm
+/// against QuickBuzz's SerialService (start/reset/read) before go-live.</summary>
+public sealed class SerialCommands
+{
+    public byte Read { get; set; } = 0x47;
+
+    public byte Arm { get; set; } = 0x53;
+
+    public byte Reset { get; set; } = 0x52;
 }

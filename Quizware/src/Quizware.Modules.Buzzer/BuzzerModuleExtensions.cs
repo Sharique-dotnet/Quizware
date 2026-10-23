@@ -6,6 +6,7 @@ using Quizware.Application.Abstractions;
 using Quizware.Application.Buzzer;
 using Quizware.Modules.Buzzer.Abstractions;
 using Quizware.Modules.Buzzer.Manual;
+using Quizware.Modules.Buzzer.Serial;
 
 namespace Quizware.Modules.Buzzer;
 
@@ -34,6 +35,12 @@ public static class BuzzerModuleExtensions
         services.RemoveAll<IBuzzerProvider>();
         switch (options.Provider)
         {
+            case BuzzerOptions.ProviderSerial:
+                services.AddSingleton<ISerialPortConnection>(sp => new SystemSerialPortConnection(
+                    sp.GetRequiredService<Microsoft.Extensions.Options.IOptions<BuzzerOptions>>().Value.Serial));
+                services.AddSingleton<SerialDeviceBus>();
+                services.AddSingleton<IBuzzerProvider, SerialBuzzerAdapter>();
+                break;
             default:
                 services.AddSingleton<IBuzzerProvider>(new NullBuzzerAdapter(
                     options.DeviceCount, $"No buzzer provider is configured (Buzzer:Provider is '{options.Provider}')."));
