@@ -165,4 +165,14 @@ public class BuzzSessionTests : IClassFixture<BuzzerWebApplicationFactory>
         current!.State.Should().Be("Reset");
         current.FailureReason.Should().Be("Reset: False start");
     }
+
+    [Fact]
+    public async Task TheAgentHeartbeat_Is503_WhenTheProviderIsNotTheHttpAgent()
+    {
+        var heartbeat = await _factory.CreateAgentClient().PostAsJsonAsync(
+            "/api/v1/buzzer/agent/heartbeat", new AgentHeartbeatRequest("pc", "COM3", []));
+
+        heartbeat.StatusCode.Should().Be(HttpStatusCode.ServiceUnavailable);
+        (await MatchTestHarness.ErrorCodeAsync(heartbeat)).Should().Be("BUZZER_UNAVAILABLE");
+    }
 }

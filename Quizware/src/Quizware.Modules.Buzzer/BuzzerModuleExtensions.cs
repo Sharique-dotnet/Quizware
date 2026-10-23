@@ -5,6 +5,7 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 using Quizware.Application.Abstractions;
 using Quizware.Application.Buzzer;
 using Quizware.Modules.Buzzer.Abstractions;
+using Quizware.Modules.Buzzer.Agent;
 using Quizware.Modules.Buzzer.Manual;
 using Quizware.Modules.Buzzer.Serial;
 
@@ -40,6 +41,12 @@ public static class BuzzerModuleExtensions
                     sp.GetRequiredService<Microsoft.Extensions.Options.IOptions<BuzzerOptions>>().Value.Serial));
                 services.AddSingleton<SerialDeviceBus>();
                 services.AddSingleton<IBuzzerProvider, SerialBuzzerAdapter>();
+                break;
+            case BuzzerOptions.ProviderHttpAgent:
+                services.AddSingleton<AgentHeartbeatRegistry>();
+                services.RemoveAll<IBuzzerAgentLink>();
+                services.AddSingleton<IBuzzerAgentLink>(sp => sp.GetRequiredService<AgentHeartbeatRegistry>());
+                services.AddSingleton<IBuzzerProvider, HttpAgentBuzzerAdapter>();
                 break;
             default:
                 services.AddSingleton<IBuzzerProvider>(new NullBuzzerAdapter(

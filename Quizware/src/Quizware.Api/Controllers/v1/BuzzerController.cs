@@ -83,6 +83,25 @@ public sealed class BuzzerController : ControllerBase
         Ok(ToResponse(await _sender.Send(
             new SubmitBuzzPressCommand(id, request.DeviceId, request.ElapsedMs, request.RawFrameHex, request.ButtonKey), cancellationToken)));
 
+    /// <summary>The buzzer agent's heartbeat (added in Phase 14, agent key
+    /// only). The reply names the armed sessions — the agent's only way to
+    /// learn of one, since the API never connects to the operator PC.
+    /// 503 unless <c>Buzzer:Provider</c> is <c>HttpAgent</c>.</summary>
+    [HttpPost("agent/heartbeat")]
+    [Authorize(Policy = Policies.BuzzerAgent)]
+    public async Task<ActionResult<AgentHeartbeatResponse>> AgentHeartbeat([FromBody] AgentHeartbeatRequest request, CancellationToken cancellationToken)
+    {
+        var reply = await _sender.Send(
+            new RecordAgentHeartbeatCommand(new AgentHeartbeat(
+                request.AgentId,
+                request.PortName,
+                request.Devices.Select(d => new AgentDeviceReport(d.DeviceId, d.IsOnline, d.ButtonTimesMs, d.RawFrameHex)).ToList())),
+            cancellationToken);
+        return Ok(new AgentHeartbeatResponse(
+            reply.ArmedSessions.Select(s => new AgentArmedSessionDto(s.SessionId, s.DeviceIds, s.WindowMs, s.ArmedAtUtc)).ToList(),
+            reply.PollIntervalMs));
+    }
+
     [HttpPost("sessions/{id:guid}/collect")]
     [Authorize(Policy = Policies.CanOperateMatch)]
     public async Task<ActionResult<BuzzSessionResponse>> Collect(Guid id, CancellationToken cancellationToken) =>

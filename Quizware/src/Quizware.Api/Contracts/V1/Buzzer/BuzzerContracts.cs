@@ -56,3 +56,14 @@ public sealed record SubmitBuzzPressRequest(int DeviceId, long ElapsedMs, string
 public sealed record ResetBuzzSessionRequest(string? Reason);
 
 public sealed record BuzzerTestResponse(IReadOnlyList<BuzzerDeviceDto> Devices);
+
+/// <summary>The buzzer agent's heartbeat (added in Phase 14): who it is, which
+/// port it owns, and what each device last read.</summary>
+public sealed record AgentHeartbeatRequest(string AgentId, string? PortName, IReadOnlyList<AgentDeviceReportDto> Devices);
+
+public sealed record AgentDeviceReportDto(int DeviceId, bool IsOnline, IReadOnlyDictionary<string, int>? ButtonTimesMs, string? RawFrameHex);
+
+/// <summary>The sessions the agent should be polling, and when to call back.</summary>
+public sealed record AgentHeartbeatResponse(IReadOnlyList<AgentArmedSessionDto> ArmedSessions, int PollIntervalMs);
+
+public sealed record AgentArmedSessionDto(Guid SessionId, IReadOnlyList<int> DeviceIds, int WindowMs, DateTime ArmedAtUtc);

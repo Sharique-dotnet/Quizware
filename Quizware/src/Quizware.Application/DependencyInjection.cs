@@ -49,6 +49,7 @@ public static class DependencyInjection
         // is installed, replaces both registrations.
         services.TryAddSingleton<IBuzzerProvider, NullBuzzerAdapter>();
         services.TryAddScoped<IBuzzerSessionService, UnavailableBuzzerSessionService>();
+        services.TryAddSingleton<IBuzzerAgentLink, NoBuzzerAgentLink>();
 
         // P9-07: every IQuestionFormatHandler in this assembly is picked up, so
         // a new format is one new class.

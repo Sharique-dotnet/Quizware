@@ -21,6 +21,21 @@ public sealed class BuzzerOptions
     public int WindowMs { get; set; } = 30_000;
 
     public SerialOptions Serial { get; set; } = new();
+
+    public AgentOptions Agent { get; set; } = new();
+}
+
+/// <summary>The HTTP-agent provider. <see cref="ApiKey"/> is read by the API's
+/// agent authentication (Q-005); empty means no agent can connect.</summary>
+public sealed class AgentOptions
+{
+    public string ApiKey { get; set; } = string.Empty;
+
+    /// <summary>The agent counts as gone after this long without a heartbeat.</summary>
+    public int StaleAfterSeconds { get; set; } = 10;
+
+    /// <summary>How often the agent is told to call back while idle or armed.</summary>
+    public int PollIntervalMs { get; set; } = 250;
 }
 
 /// <summary>The RS-485 bus settings QuickBuzz hardcoded in SerialService.
