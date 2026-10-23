@@ -36,12 +36,14 @@ public sealed class AutoSeedMatchesCommandHandler : IRequestHandler<AutoSeedMatc
     private readonly IAppDbContext _db;
     private readonly ICurrentUser _currentUser;
     private readonly Standings _standings;
+    private readonly StageSeeder _seeder;
 
-    public AutoSeedMatchesCommandHandler(IAppDbContext db, ICurrentUser currentUser, Standings standings)
+    public AutoSeedMatchesCommandHandler(IAppDbContext db, ICurrentUser currentUser, Standings standings, StageSeeder seeder)
     {
         _db = db;
         _currentUser = currentUser;
         _standings = standings;
+        _seeder = seeder;
     }
 
     public async Task<int> Handle(AutoSeedMatchesCommand request, CancellationToken cancellationToken)
@@ -53,27 +55,10 @@ public sealed class AutoSeedMatchesCommandHandler : IRequestHandler<AutoSeedMatc
         var actor = _currentUser.Email ?? "unknown";
 
         var ranked = await RankedPoolAsync(request.ProgramId, stage.Id, cancellationToken);
-        var groups = MatchSeeding.Group(
-            ranked, Math.Max(2, stage.MinTeamsPerMatch), stage.MaxTeamsPerMatch, mode, new Random(Random.Shared.Next()));
-
-        var templates = await _db.StageSegmentTemplates.Where(t => t.StageId == stage.Id).ToListAsync(cancellationToken);
-        var nextNumber = (await _db.Matches.Where(m => m.StageId == stage.Id).Select(m => (int?)m.MatchNumber).MaxAsync(cancellationToken) ?? 0) + 1;
-
-        foreach (var group in groups)
-        {
-            var match = Match.Create(
-                request.ProgramId, stage.Id, nextNumber, Random.Shared.NextInt64(1, long.MaxValue), actor, name: $"Match {nextNumber}");
-            nextNumber++;
-            _db.Matches.Add(match);
-            _db.MatchSegments.AddRange(CreateMatchCommandHandler.InstantiateSegments(match, stage, templates, actor));
-            for (var i = 0; i < group.Count; i++)
-            {
-                _db.MatchParticipants.Add(MatchParticipant.Create(request.ProgramId, match.Id, group[i], i + 1, i + 1, actor));
-            }
-        }
+        var created = await _seeder.SeedAsync(request.ProgramId, stage, ranked, mode, actor, cancellationToken);
 
         await _db.SaveChangesAsync(cancellationToken);
-        return groups.Count;
+        return created;
     }
 
     private async Task<List<Guid>> RankedPoolAsync(Guid programId, Guid stageId, CancellationToken cancellationToken)

@@ -39,6 +39,7 @@ public static class DependencyInjection
         services.AddScoped<QualificationEvaluator>();
         services.AddScoped<TieViews>();
         services.AddScoped<TieBreakMatches>();
+        services.AddScoped<StageSeeder>();
 
         // P9-07: every IQuestionFormatHandler in this assembly is picked up, so
         // a new format is one new class.

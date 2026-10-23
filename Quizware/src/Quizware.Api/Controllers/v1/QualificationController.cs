@@ -30,10 +30,15 @@ public sealed class QualificationController : ControllerBase
         Ok(QualificationMapper.ToResponse(await _sender.Send(new SetWildcardsCommand(programId, stageId, request.TeamIds), cancellationToken)));
 
     [HttpPost("stages/{stageId:guid}/commit")]
-    public ActionResult<CommitQualificationResponse> Commit(Guid programId, Guid stageId) => StatusCode(StatusCodes.Status501NotImplemented);
+    public async Task<ActionResult<CommitQualificationResponse>> Commit(Guid programId, Guid stageId, CancellationToken cancellationToken) =>
+        Ok(new CommitQualificationResponse(await _sender.Send(new CommitQualificationCommand(programId, stageId), cancellationToken)));
 
     [HttpPost("stages/{stageId:guid}/rollback")]
-    public IActionResult Rollback(Guid programId, Guid stageId) => StatusCode(StatusCodes.Status501NotImplemented);
+    public async Task<IActionResult> Rollback(Guid programId, Guid stageId, CancellationToken cancellationToken)
+    {
+        await _sender.Send(new RollbackQualificationCommand(programId, stageId), cancellationToken);
+        return NoContent();
+    }
 
     [HttpGet("stages/{stageId:guid}/ties")]
     public async Task<ActionResult<TiesResponse>> GetTies(Guid programId, Guid stageId, CancellationToken cancellationToken) =>
