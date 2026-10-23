@@ -29,6 +29,7 @@ public static class DependencyInjection
         services.AddScoped<Live.ILivePusher, Live.SignalRLivePusher>();
         services.AddSingleton<Live.OutboxDispatcher>();
         services.AddHostedService(sp => sp.GetRequiredService<Live.OutboxDispatcher>());
+        services.AddHostedService<Live.LiveTimerService>();
 
         services.AddHealthChecks()
             .AddDbContextCheck<AppDbContext>("database");
