@@ -250,16 +250,13 @@ public sealed class QualificationEvaluator
             blockers);
     }
 
-    /// <summary>The stage's own rule for <paramref name="scope"/>, else the
-    /// program-wide one; a match-level tie falls back to the stage-qualification rule.</summary>
+    /// <summary>See <see cref="TieBreakRuleResolution"/>.</summary>
     public async Task<TieBreakRule?> ResolveTieBreakRuleAsync(Guid programId, Guid stageId, TieBreakScope scope, CancellationToken cancellationToken)
     {
         var rules = await _db.TieBreakRules
             .Where(r => r.ProgramId == programId && (r.StageId == stageId || r.StageId == null))
             .ToListAsync(cancellationToken);
-        TieBreakRule? Pick(TieBreakScope s) => rules.Where(r => r.Scope == s).OrderByDescending(r => r.StageId is not null).FirstOrDefault();
-
-        return Pick(scope) ?? (scope == TieBreakScope.MatchRanking ? Pick(TieBreakScope.StageQualification) : null);
+        return TieBreakRuleResolution.Resolve(rules, stageId, scope);
     }
 
     public static QualificationReason ReasonFor(TieBreakResolutionMethod? method) => method switch

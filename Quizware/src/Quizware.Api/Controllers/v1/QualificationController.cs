@@ -36,13 +36,16 @@ public sealed class QualificationController : ControllerBase
     public IActionResult Rollback(Guid programId, Guid stageId) => StatusCode(StatusCodes.Status501NotImplemented);
 
     [HttpGet("stages/{stageId:guid}/ties")]
-    public ActionResult<TiesResponse> GetTies(Guid programId, Guid stageId) => StatusCode(StatusCodes.Status501NotImplemented);
+    public async Task<ActionResult<TiesResponse>> GetTies(Guid programId, Guid stageId, CancellationToken cancellationToken) =>
+        Ok(QualificationMapper.ToResponse(await _sender.Send(new GetStageTiesQuery(programId, stageId), cancellationToken)));
 
     [HttpPost("stages/{stageId:guid}/ties/detect")]
-    public ActionResult<TiesResponse> DetectTies(Guid programId, Guid stageId) => StatusCode(StatusCodes.Status501NotImplemented);
+    public async Task<ActionResult<TiesResponse>> DetectTies(Guid programId, Guid stageId, CancellationToken cancellationToken) =>
+        Ok(QualificationMapper.ToResponse(await _sender.Send(new DetectTiesCommand(programId, stageId), cancellationToken)));
 
     [HttpGet("ties/{tieId:guid}")]
-    public ActionResult<TieDto> GetTie(Guid programId, Guid tieId) => StatusCode(StatusCodes.Status501NotImplemented);
+    public async Task<ActionResult<TieDto>> GetTie(Guid programId, Guid tieId, CancellationToken cancellationToken) =>
+        Ok(QualificationMapper.ToResponse(await _sender.Send(new GetTieQuery(programId, tieId), cancellationToken)));
 
     [HttpPost("ties/{tieId:guid}/tie-break-match")]
     public ActionResult<CreateTieBreakMatchResponse> CreateTieBreakMatch(Guid programId, Guid tieId, [FromBody] CreateTieBreakMatchRequest? request) => StatusCode(StatusCodes.Status501NotImplemented);

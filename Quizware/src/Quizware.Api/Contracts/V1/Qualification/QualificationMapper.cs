@@ -24,6 +24,22 @@ public static class QualificationMapper
             dto.CanCommit,
             dto.BlockedReason);
 
+    public static TiesResponse ToResponse(StageTiesDto dto) => new(dto.StageId, dto.Ties.Select(ToResponse).ToList(), dto.BlocksCommit);
+
+    public static TieDto ToResponse(TieEntryDto dto) =>
+        new(
+            dto.TieBreakEventId,
+            dto.State,
+            dto.ContestedRank,
+            dto.ContestedSlots,
+            dto.AffectsQualification,
+            dto.Teams.Select(t => new TieTeamDto(t.TeamId, t.TeamName, t.EnteringScore)).ToList(),
+            dto.CriteriaApplied.Select(c => new TieCriterionResultDto(c.Criterion, c.Separated, c.Values, c.Reason)).ToList(),
+            new TieBreakRulePreviewDto(
+                dto.Rule.TieBreakFormat, dto.Rule.QuestionCount, dto.Rule.DifficultyRange, dto.Rule.SuddenDeath, dto.Rule.MaxExtraRounds,
+                dto.Rule.ScoreCountsTowardStage, dto.Rule.OnStillTied),
+            dto.AvailableActions);
+
     private static Contracts.V1.Qualification.StageRefDto ToRef(Application.Qualification.Dtos.StageRefDto stage) =>
         new(stage.Id, stage.Name, stage.OrderIndex);
 }

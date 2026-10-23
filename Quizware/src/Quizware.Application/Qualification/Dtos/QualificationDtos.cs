@@ -24,3 +24,24 @@ public sealed record QualificationPreviewDto(
     IReadOnlyList<UnresolvedTieSummaryDto> UnresolvedTies,
     bool CanCommit,
     string? BlockedReason);
+
+public sealed record TieTeamEntryDto(Guid TeamId, string TeamName, int EnteringScore);
+
+public sealed record TieCriterionEntryDto(string Criterion, bool Separated, IReadOnlyList<int>? Values, string? Reason);
+
+public sealed record TieBreakRuleSummaryDto(
+    string TieBreakFormat, int QuestionCount, IReadOnlyList<int> DifficultyRange, bool SuddenDeath, int MaxExtraRounds,
+    bool ScoreCountsTowardStage, string OnStillTied);
+
+public sealed record TieEntryDto(
+    Guid TieBreakEventId,
+    string State,
+    int ContestedRank,
+    int ContestedSlots,
+    bool AffectsQualification,
+    IReadOnlyList<TieTeamEntryDto> Teams,
+    IReadOnlyList<TieCriterionEntryDto> CriteriaApplied,
+    TieBreakRuleSummaryDto Rule,
+    IReadOnlyList<string> AvailableActions);
+
+public sealed record StageTiesDto(Guid StageId, IReadOnlyList<TieEntryDto> Ties, bool BlocksCommit);

@@ -49,6 +49,26 @@ public class TieBreakCriteriaServiceTests : IClassFixture<CustomWebApplicationFa
     }
 
     [Fact]
+    public async Task AStageRuleSavedThroughTheApi_IsUsedForThatStage_OverTheProgramDefault()
+    {
+        // The rules API has no scope field and stores stage rules as
+        // MatchRanking; the stage's own rule must still govern its ties.
+        var h = await MatchTestHarness.CreateAsync(_factory);
+        var stage = await h.CreateStageAsync(("Mcq", 1));
+        (await h.Client.PostAsync($"/api/v1/programs/{h.ProgramId}/rules/tie-break/reset-defaults", null)).EnsureSuccessStatusCode();
+        (await h.Client.PutAsJsonAsync(
+            $"/api/v1/programs/{h.ProgramId}/rules/tie-break",
+            new Contracts.V1.Rules.UpsertTieBreakRulesRequest([new Contracts.V1.Rules.TieBreakRuleDto(
+                Guid.Empty, stage.Id, ["FewerIncorrect", "HeadToHead"], "Mcq", 3, false, 3, false, "ManualDecision")])))
+            .EnsureSuccessStatusCode();
+
+        var criteria = await h.UseServiceAsync<ITieBreakCriteriaService, IReadOnlyList<string>>(
+            s => s.CriteriaForStageAsync(stage.Id, CancellationToken.None));
+
+        criteria.Should().Equal("FewerIncorrect", "HeadToHead");
+    }
+
+    [Fact]
     public async Task FewerIncorrect_SeparatesTeamsLevelOnPoints()
     {
         var h = await MatchTestHarness.CreateAsync(_factory);

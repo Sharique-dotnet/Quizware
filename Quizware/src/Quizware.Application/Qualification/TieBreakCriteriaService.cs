@@ -37,10 +37,9 @@ public sealed class TieBreakCriteriaService : ITieBreakCriteriaService
         var stage = await _db.Stages.SingleOrDefaultAsync(s => s.Id == stageId, cancellationToken)
             ?? throw new KeyNotFoundException($"Stage '{stageId}' was not found.");
         var rules = await _db.TieBreakRules
-            .Where(r => r.ProgramId == stage.ProgramId && r.Scope == TieBreakScope.StageQualification
-                && (r.StageId == stageId || r.StageId == null))
+            .Where(r => r.ProgramId == stage.ProgramId && (r.StageId == stageId || r.StageId == null))
             .ToListAsync(cancellationToken);
-        var rule = rules.OrderByDescending(r => r.StageId is not null).FirstOrDefault();
+        var rule = TieBreakRuleResolution.Resolve(rules, stageId, TieBreakScope.StageQualification);
 
         return rule is null
             ? DefaultCriteria
