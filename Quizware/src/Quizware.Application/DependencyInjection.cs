@@ -36,6 +36,7 @@ public static class DependencyInjection
         services.AddScoped<IScoringEngine, ScoringEngine>();
         services.AddScoped<ITieBreakCriteriaService, TieBreakCriteriaService>();
         services.AddScoped<Standings>();
+        services.AddScoped<QualificationEvaluator>();
 
         // P9-07: every IQuestionFormatHandler in this assembly is picked up, so
         // a new format is one new class.

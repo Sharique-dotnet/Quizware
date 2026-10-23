@@ -1,7 +1,10 @@
+using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Quizware.Api.Contracts.V1.Qualification;
 using Quizware.Application.Authorization;
+using Quizware.Application.Qualification.Commands;
+using Quizware.Application.Qualification.Queries;
 
 namespace Quizware.Api.Controllers.v1;
 
@@ -10,11 +13,21 @@ namespace Quizware.Api.Controllers.v1;
 [Authorize(Policy = Policies.CanManageProgram)]
 public sealed class QualificationController : ControllerBase
 {
+    private readonly ISender _sender;
+
+    public QualificationController(ISender sender)
+    {
+        _sender = sender;
+    }
+
     [HttpGet("stages/{stageId:guid}/preview")]
-    public ActionResult<QualificationPreviewResponse> Preview(Guid programId, Guid stageId) => StatusCode(StatusCodes.Status501NotImplemented);
+    public async Task<ActionResult<QualificationPreviewResponse>> Preview(Guid programId, Guid stageId, CancellationToken cancellationToken) =>
+        Ok(QualificationMapper.ToResponse(await _sender.Send(new GetQualificationPreviewQuery(programId, stageId), cancellationToken)));
 
     [HttpPost("stages/{stageId:guid}/wildcards")]
-    public ActionResult<QualificationPreviewResponse> SetWildcards(Guid programId, Guid stageId, [FromBody] SetWildcardsRequest request) => StatusCode(StatusCodes.Status501NotImplemented);
+    public async Task<ActionResult<QualificationPreviewResponse>> SetWildcards(
+        Guid programId, Guid stageId, [FromBody] SetWildcardsRequest request, CancellationToken cancellationToken) =>
+        Ok(QualificationMapper.ToResponse(await _sender.Send(new SetWildcardsCommand(programId, stageId, request.TeamIds), cancellationToken)));
 
     [HttpPost("stages/{stageId:guid}/commit")]
     public ActionResult<CommitQualificationResponse> Commit(Guid programId, Guid stageId) => StatusCode(StatusCodes.Status501NotImplemented);
