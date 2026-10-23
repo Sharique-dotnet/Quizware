@@ -53,7 +53,8 @@ public class ControllerStubReachabilityTests : IClassFixture<CustomWebApplicatio
         // GET /api/v1/programs/{programId}/qualification/stages/{stageId}/preview
         // is no longer a stub (Phase 11b) — covered by QualificationPreviewTests.cs.
         [HttpMethod.Get, "/api/v1/buzzer/capability"],
-        [HttpMethod.Get, "/api/v1/programs/{programId}/reports/questions/usage"],
+        // GET /api/v1/programs/{programId}/reports/questions/usage is no longer
+        // a stub (Phase 13b) — covered by ReportsEndpointTests.cs.
         [HttpMethod.Get, "/api/v1/admin/lookups"],
         // GET /api/v1/auth/me is no longer a stub (Phase 6b) — covered by
         // AuthEndpointsTests.cs instead.

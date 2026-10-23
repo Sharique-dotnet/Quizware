@@ -91,7 +91,8 @@ public static class DependencyInjection
             .AddPolicy(Policies.CanDisqualify, p => p.RequireRole(Roles.SuperAdmin, Roles.ProgramAdmin))
             .AddPolicy(Policies.CanResolveTie, p => p.RequireRole(Roles.SuperAdmin, Roles.ProgramAdmin))
             .AddPolicy(Policies.CanViewLive, p => p.RequireAuthenticatedUser())
-            .AddPolicy(Policies.DisplayOnly, p => p.RequireRole(Roles.Display));
+            .AddPolicy(Policies.DisplayOnly, p => p.RequireRole(Roles.Display))
+            .AddPolicy(Policies.CanViewReports, p => p.RequireRole(Roles.SuperAdmin, Roles.ProgramAdmin, Roles.Auditor));
     }
 
     private static void AddSwagger(IServiceCollection services)

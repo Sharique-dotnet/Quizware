@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Quizware.Application.Abstractions;
+using Quizware.Infrastructure.Auditing;
 using Quizware.Infrastructure.Common;
 using Quizware.Infrastructure.Identity;
 using Quizware.Infrastructure.Idempotency;
@@ -11,6 +12,7 @@ using Quizware.Infrastructure.Media;
 using Quizware.Infrastructure.Outbox;
 using Quizware.Infrastructure.Persistence;
 using Quizware.Infrastructure.Persistence.Interceptors;
+using Quizware.Infrastructure.Reporting;
 
 namespace Quizware.Infrastructure;
 
@@ -32,6 +34,8 @@ public static class DependencyInjection
 
         services.AddScoped<IAppDbContext>(sp => sp.GetRequiredService<AppDbContext>());
         services.AddScoped<IMatchNotifications, OutboxMatchNotifications>();
+        services.AddScoped<IAuditLogReader, AuditLogReader>();
+        services.AddSingleton<IReportExporter, ReportExporter>();
         services.AddSingleton<OutboxSignal>();
 
         services

@@ -1,9 +1,10 @@
 # Quizware Postman collection
 
 `Quizware.postman_collection.json` covers every implemented endpoint through
-**Phase 12 (live push and display API)**. Endpoints that are still `501`
-stubs — admin lookups, match preflight, live snapshot/restore, Buzzer,
-Reports — are intentionally not included; there's nothing real to test yet.
+**Phase 13 (reporting and exports)** — 188 requests, 257 assertions. Endpoints
+that are still `501` stubs — admin lookups, match preflight, live
+snapshot/restore, Buzzer — are intentionally not included; there's nothing
+real to test yet.
 The SignalR hubs (`/hubs/match`, `/hubs/display`) are not HTTP requests, so
 newman cannot exercise them; they are covered by the integration tests
 (`LiveHubTests`, `LiveDispatchTests`, `LiveTimerTests`, `LivePerformanceTests`).
@@ -104,6 +105,12 @@ variable.
     `{{displayToken}}`), then reads the display state, scores, standings and
     branding with it, and checks that an operator token gets **403** from the
     display API.
+17. **16 Reports** — the match report for `{{matchId}}` (saving its stage and
+    top team as `{{reportStageId}}` and `{{reportTeamId}}`), the stage
+    summary, team performance, question usage (all, then flagged only), a
+    filtered audit-log page, then exports: the match as xlsx, the stage as
+    csv, the team as pdf and the audit log as csv, plus an unknown report
+    type that **expects a 400**.
 
 ## Notes
 

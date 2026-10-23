@@ -10,11 +10,12 @@ competition in production for years. The rebuild is an ASP.NET Core Web API on
 .NET 10 with SQL Server. An Angular 22 front end will follow as a separate
 track.
 
-> **Status:** back end in active development. Phases 0–12 of the
+> **Status:** back end in active development. Phases 0–13 of the
 > [implementation plan](docs/Implementation-Plan.md) are done. That covers
 > configuration, the question bank, the live match engine, scoring and
-> standings, qualification and tie-breaking, and live push to consoles and
-> projector screens. **Phase 13 (reporting and exports) is next.**
+> standings, qualification and tie-breaking, live push to consoles and
+> projector screens, and reports with Excel/CSV/PDF export. **Phase 14 (the
+> QuickBuzz buzzer module) is next.**
 
 ---
 
@@ -76,6 +77,7 @@ recording answers manually.
 | **Qualification and tie-breaks** | Preview who advances from a stage (match winners, best remaining, manual wildcards), each with a reason. Ties on a qualifying place are settled first by the ordered criteria, then by a **tie-break match on the same engine** (extra rounds up to a limit), then by an audited ProgramAdmin decision. Commit creates the next stage's qualifiers and matches; rollback works until that stage starts. |
 | **Live push** | Every live action writes an event to a **transactional outbox**. A dispatcher pushes it within milliseconds to operator consoles (`/hubs/match`) and projector screens (`/hubs/display`) over SignalR, together with a fresh state snapshot. **Displays never see an answer before it is revealed.** Failed pushes are retried in order, a server-side countdown ticks every second, and a reconnecting screen re-syncs with one call. |
 | **Display API** | Read-only screen payloads for a display token: match state, scoreboard, standings and branding. |
+| **Reports and exports** | Match report (with the full event timeline), stage summary (with how each tie-break placed a qualifier), team performance, question usage and quality (it flags questions every team got right, or none did), and a filterable audit log. Each one exports to Excel, CSV or PDF. |
 
 **Question formats:** MCQ, Buzzer, Passing, Card, Choice, Rapid Fire, Visual
 Rapid Fire, Sequence, Audio-Visual and Tie-Breaker. Each has its own handler
@@ -258,7 +260,8 @@ dependencies) and end-to-end API behaviour. The integration tests use SQLite
 in-memory, so they need no database.
 
 The **Postman collection** exercises the API against a running instance with a
-real database, from login through a complete live match to standings:
+real database, from login through a complete live match to standings,
+qualification, the display API, reports and exports:
 
 ```bash
 cd Quizware
@@ -302,11 +305,12 @@ generated `Quizware/docs/openapi.v1.json`.
 | Standings | `/programs/{id}/standings/overall`, `…/stages/{stageId}`, `…/teams/{teamId}` |
 | Qualification | `/programs/{id}/qualification/stages/{stageId}/…` (preview, wildcards, ties, detect, commit, rollback) and `…/ties/{tieId}/…` (tie-break match, resolve manually, abandon) |
 | Display | `/display/matches/{id}/state`, `…/scores`, `/display/programs/{id}/standings`, `…/branding` (display token only) |
+| Reports | `/programs/{id}/reports/matches/{matchId}`, `…/stages/{stageId}`, `…/teams/{teamId}`, `…/questions/usage`, `…/audit` (filter by entity, actor, date) and `…/export/{type}?format=xlsx\|csv\|pdf` |
 | SignalR hubs | `/hubs/match` (operators) and `/hubs/display` (screens): `JoinMatch`, `LeaveMatch`, `RequestFullState`. Every event carries the event details plus a state snapshot; `TimerTick` carries the server countdown |
 
 Endpoints for later phases already exist as `501 Not Implemented` stubs so the
-contract is fixed up front: buzzer, reports, admin lookups, match preflight,
-and live snapshot/restore.
+contract is fixed up front: buzzer, admin lookups, match preflight, and live
+snapshot/restore.
 
 ## Roles and permissions
 
@@ -318,7 +322,7 @@ and live snapshot/restore.
 | **Operator** | Run live matches: segments, questions, answers and passes. |
 | **Scorer** | Record answers. |
 | **Display** | Read-only live view, using a display token that cannot write. |
-| **Auditor** | Read-only access to timelines, score ledgers and reports. |
+| **Auditor** | Read-only access to timelines, score ledgers, every report and the audit log. |
 
 ## Roadmap and status
 
@@ -335,8 +339,8 @@ and live snapshot/restore.
 | 10 | Scoring and standings | ✅ Done |
 | 11 | Qualification and tie-breaking | ✅ Done |
 | 12 | Live push (SignalR) and display API | ✅ Done |
-| 13 | Reporting and exports | ⏭️ Next |
-| 14 | QuickBuzz integration module | Planned (deliberately last) |
+| 13 | Reporting and exports | ✅ Done |
+| 14 | QuickBuzz integration module | ⏭️ Next (deliberately last) |
 | 15 | Hardening | Planned |
 | 16 | Data migration from QuizApp-9AMM | Optional |
 | 17 | Angular 22 front end | Separate track |

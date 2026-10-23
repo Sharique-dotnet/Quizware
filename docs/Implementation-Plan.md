@@ -27,23 +27,24 @@ decisions, known gaps — see [`context/CURRENT.md`](../context/CURRENT.md).*
 | 10 | Scoring and standings | ✅ Done — merged to `master` (PR #2) |
 | 11 | Qualification and tie-breaking | ✅ Done — see its status note |
 | 12 | Live push (SignalR) and display API | ✅ Done — see its status note |
-| **13** | **Reporting and exports** | ⏭️ **Next** |
-| 14 | QuickBuzz integration module | ⬜ Not started (deliberately last) |
+| 13 | Reporting and exports | ✅ Done — see its status note |
+| **14** | **QuickBuzz integration module** | ⏭️ **Next** (deliberately last) |
 | 15 | Hardening | ⬜ Not started |
 | 16 | Data migration *(optional)* | ⬜ Not started |
 | 17 | Angular 22 *(separate track)* | ⬜ Not started — the generated TypeScript client is ready for it |
 
-**Where the code stands:** the solution builds with 0 warnings; **482 tests
-pass** (17 Application, 140 Domain, 4 Architecture, 321 API integration). CI
+**Where the code stands:** the solution builds with 0 warnings; **492 tests
+pass** (17 Application, 140 Domain, 4 Architecture, 331 API integration). CI
 runs on every push and pull request to `master`. All migrations apply cleanly
 to a real SQL Server 2022. The Postman collection plays a complete match, a
-stage qualification and the display API end to end against it, and the outbox
+stage qualification, the display API and every report and export end to end
+against it, and the outbox
 dispatcher delivers every live event there. The Phase 9–11 required tests also
 pass when pointed at SQL Server. Endpoints for later phases already exist as
-`501 Not Implemented` stubs so the contract stays fixed: reports (P13), buzzer
-(P14), admin lookups, match preflight and live snapshot/restore.
+`501 Not Implemented` stubs so the contract stays fixed: buzzer (P14), admin
+lookups, match preflight and live snapshot/restore.
 
-**Carried forward from finished phases** (not blocking Phase 13):
+**Carried forward from finished phases** (not blocking Phase 14):
 
 | Item | From | Status |
 |---|---|---|
@@ -58,6 +59,7 @@ pass when pointed at SQL Server. Endpoints for later phases already exist as
 | A tie-break rule's difficulty range is not passed to the question selector | `P11-04` | The selector has no difficulty-range input yet |
 | The TypeScript client is stale and cannot simply be regenerated: question responses are `oneOf` subtypes in the OpenAPI document (since commit `f6b7c61`), which NSwag reduces to `McqQuestionResponse` | `P5-07`, `P12-07` | `docs/openapi.v1.json` was refreshed in P12. Fix the Swagger polymorphism shape (discriminator on the base type) before regenerating the client for the Angular track |
 | `BuzzResultsReady` hub event | `P12-01` | Waits for the buzzer module (`P14`) |
+| PDF exports print non-Latin text (e.g. Urdu) as `?` — the built-in writer uses the standard PDF fonts | `P13-06` | Excel and CSV exports carry the full text. Embedding a Unicode font needs a font file and a PDF library choice |
 
 ---
 
@@ -766,22 +768,40 @@ WebSockets).
 
 ---
 
-# Phase 13 — Reporting and exports — **NEXT**
+# Phase 13 — Reporting and exports — **DONE**
 
 **Duration:** 1 week · **Depends on:** P10, P11
 
-| Task | What | Acceptance |
-|---|---|---|
-| `P13-01` | Match report | Includes the `MatchEvent` timeline |
-| `P13-02` | Stage summary + qualification record | Shows tie-break provenance where relevant |
-| `P13-03` | Team performance report | |
-| `P13-04` | Question usage / quality report | Flags questions everyone got right |
-| `P13-05` | Audit log query endpoint | Filterable by entity, actor, date |
-| `P13-06` | Export to Excel / CSV / PDF | |
+**Status:** all 6 tasks done, on the `claude/workflows-project-status-bsgu4d`
+branch. Every report reads the read models (`TeamMatchScore`,
+`TeamStageScore`), the `MatchEvent` timeline and the qualification records. A
+report never writes and never recounts scores. Reports are open to
+SuperAdmin, ProgramAdmin and **Auditor**: the PRD gives the Auditor read-only
+access to everything, including the audit log. The stub's class-level admin
+policy had locked the Auditor out of `/audit`, so that is now fixed with a
+`CanViewReports` policy. Contracts were extended additively: each stub
+response keeps its original fields first, with the detail added after them.
+The one exception is `AuditLogEntryDto.Id`, which became a `long` to match the
+`AuditLog` table's bigint key; it had been declared a Guid while the endpoint
+was a stub.
+
+Verified on SQLite (the normal suite) and against SQL Server 2022 with the
+real API: Postman folder 16 Reports passes, including the exports.
+
+| Task | What | Acceptance | Status |
+|---|---|---|---|
+| `P13-01` | Match report | Includes the `MatchEvent` timeline | Done — each team's line (score, rank, correct/incorrect/no answer/passed), every served question with its answers (reversed ones marked), and the full timeline, as structured `events` plus one `timeline` line per event |
+| `P13-02` | Stage summary + qualification record | Shows tie-break provenance where relevant | Done — matches, standings with the criteria notes, qualifiers, and every tie-break with its participants. A qualifier placed by a tie-break carries `tieBreakProvenance`, e.g. "Tie for rank 3 (1 slot(s), StageQualification) resolved by criteria (FewerIncorrect)" |
+| `P13-03` | Team performance report | | Done — totals over completed matches (score, average, wins, accuracy), every match played, a per-format breakdown (attempts, correct, points from the score ledger), and the team's qualification history |
+| `P13-04` | Question usage / quality report | Flags questions everyone got right | Done — `EveryoneCorrect` when every attempt was correct, plus `NobodyCorrect` (often a wrong answer key) and `NeverAnswered`. Attempts use the same outcomes as the scoring engine; reversed and voided answers do not count. Filters: `stageId`, `flaggedOnly` |
+| `P13-05` | Audit log query endpoint | Filterable by entity, actor, date | Done — `entityName`, `entityId`, `action`, `actor` (a user id, or part of a user name), `from`/`to` (UTC, inclusive), and paging (`page`, `pageSize` ≤ 500), newest first. Read through the `IAuditLogReader` port, because `AuditLog` is an Infrastructure table |
+| `P13-06` | Export to Excel / CSV / PDF | | Done — `GET export/{match\|stage\|team\|question-usage\|audit}?format=xlsx\|csv\|pdf&id=…`. Reports are flattened into titled tables and rendered by Infrastructure. Excel: a sheet per section, using the ClosedXML package already in the solution. CSV: UTF-8 with a BOM, protected against formula injection. PDF: a small built-in writer, so no new dependency; it is A4 landscape with wrapped cells and repeated headers. The audit export takes the audit filters, up to 10,000 rows |
+
+**Tests:** `ReportsEndpointTests`, `AuditReportTests`, `ReportExportTests`.
 
 ---
 
-# Phase 14 — QuickBuzz integration module — *not started*
+# Phase 14 — QuickBuzz integration module — **NEXT**
 
 **Duration:** 2 weeks · **Depends on:** P9 · **Deliberately last**
 
@@ -944,9 +964,12 @@ status.)*
    **Done** — 466 tests pass; verified against SQL Server 2022.
 5. ~~**Phase 12** — live push and display API (`P12-01`–`P12-07`).~~ **Done** —
    SignalR hubs fed by the outbox, display API; 482 tests pass.
-6. **Phase 13 — Reporting and exports.** **Next.** It can be built in
-   parallel with Phase 14; both depend only on finished phases.
-7. Alongside it, clear the small carried-forward items in
+6. ~~**Phase 13** — reporting and exports (`P13-01`–`P13-06`).~~ **Done** —
+   match, stage, team, question-usage and audit reports, exported to Excel,
+   CSV and PDF; 492 tests pass.
+7. **Phase 14 — QuickBuzz integration module.** **Next**, and deliberately
+   last before hardening.
+8. Alongside it, clear the small carried-forward items in
    [Progress at a glance](#progress-at-a-glance). The owner needs to decide on
    the pass target field, the settings endpoints, the qualification-rule
    fields and the default scoring rules.
