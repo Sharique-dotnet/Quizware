@@ -1,7 +1,7 @@
 {
   "info": {
     "name": "Quizware API",
-    "description": "Covers every implemented endpoint through Phase 10 (match engine, scoring and standings). Run top-to-bottom, folder by folder — each request saves the ids/tokens the next one needs into collection variables. See postman/README.md for the full run order and prerequisites.",
+    "description": "Covers every implemented endpoint through Phase 11 (qualification and tie-breaking). Run top-to-bottom, folder by folder — each request saves the ids/tokens the next one needs into collection variables. See postman/README.md for the full run order and prerequisites.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
@@ -49,7 +49,8 @@
     { "key": "matchQuestionId", "value": "" },
     { "key": "correctOptionId", "value": "" },
     { "key": "activeParticipantId", "value": "" },
-    { "key": "answerRecordId", "value": "" }
+    { "key": "answerRecordId", "value": "" },
+    { "key": "semiStageId", "value": "" }
   ],
   "item": [
     {
@@ -2095,6 +2096,201 @@
           "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
             "pm.test('200 OK', () => pm.response.to.have.status(200));",
             "pm.test('one match on record', () => pm.expect(pm.response.json().matches.length).to.eql(1));"
+          ] } }]
+        }
+      ]
+    },
+    {
+      "name": "14 Qualification",
+      "item": [
+        {
+          "name": "Setup — Create Stage (Semi-Final)",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/v1/programs/{{programId}}/stages",
+            "header": [{ "key": "Authorization", "value": "Bearer {{scopedAccessToken}}" }, { "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"name\": \"Semi-Final\",\n  \"orderIndex\": 5,\n  \"stageType\": \"Knockout\"\n}" }
+          },
+          "description": "League's qualifiers need a next stage to go to; the Final created in 08 Stages was deleted there.",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('201 Created', () => pm.response.to.have.status(201));",
+            "const body = pm.response.json();",
+            "pm.collectionVariables.set('semiStageId', body.id);"
+          ] } }]
+        },
+        {
+          "name": "Setup — Add Segment to Semi-Final (MCQ)",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/v1/programs/{{programId}}/stages/{{semiStageId}}/segments",
+            "header": [{ "key": "Authorization", "value": "Bearer {{scopedAccessToken}}" }, { "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"formatCode\": \"Mcq\",\n  \"questionCount\": 2,\n  \"isOrderLocked\": false\n}" }
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('200 OK', () => pm.response.to.have.status(200));"
+          ] } }]
+        },
+        {
+          "name": "Qualification Preview",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/v1/programs/{{programId}}/qualification/stages/{{stageId}}/preview",
+            "header": [{ "key": "Authorization", "value": "Bearer {{scopedAccessToken}}" }]
+          },
+          "description": "Who advances and why. The abandoned auto-seeded match is ignored; the rule comes from 09 Rules (1 winner + 2 best remaining).",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('200 OK', () => pm.response.to.have.status(200));",
+            "const body = pm.response.json();",
+            "pm.test('League → Semi-Final', () => pm.expect(body.toStage.id).to.eql(pm.collectionVariables.get('semiStageId')));",
+            "pm.test('one match winner + two best remaining', () => { pm.expect(body.qualifiers.filter(q => q.reason === 'MatchWinner').length).to.eql(1); pm.expect(body.qualifiers.filter(q => q.reason === 'BestRemaining').length).to.eql(2); });",
+            "pm.test('committable', () => pm.expect(body.canCommit, body.blockedReason).to.eql(true));"
+          ] } }]
+        },
+        {
+          "name": "Set Wildcards",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/v1/programs/{{programId}}/qualification/stages/{{stageId}}/wildcards",
+            "header": [{ "key": "Authorization", "value": "Bearer {{scopedAccessToken}}" }, { "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"teamIds\": []\n}" }
+          },
+          "description": "The 09 Rules qualification rule has no manual wildcard slots, so the only valid pick list here is empty.",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('200 OK', () => pm.response.to.have.status(200));"
+          ] } }]
+        },
+        {
+          "name": "Detect Ties",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/v1/programs/{{programId}}/qualification/stages/{{stageId}}/ties/detect",
+            "header": [{ "key": "Authorization", "value": "Bearer {{scopedAccessToken}}" }]
+          },
+          "description": "Re-runs tie detection and the criteria phase, saving what it finds.",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('200 OK', () => pm.response.to.have.status(200));",
+            "pm.test('nothing blocks the commit', () => pm.expect(pm.response.json().blocksCommit).to.eql(false));"
+          ] } }]
+        },
+        {
+          "name": "Get Ties",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/v1/programs/{{programId}}/qualification/stages/{{stageId}}/ties",
+            "header": [{ "key": "Authorization", "value": "Bearer {{scopedAccessToken}}" }]
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('200 OK', () => pm.response.to.have.status(200));"
+          ] } }]
+        },
+        {
+          "name": "Get Tie (unknown id — expect 404)",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/v1/programs/{{programId}}/qualification/ties/00000000-0000-0000-0000-000000000001",
+            "header": [{ "key": "Authorization", "value": "Bearer {{scopedAccessToken}}" }]
+          },
+          "description": "This flow produces no tie; tie-break play and manual resolution are covered by the integration tests.",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('404 Not Found', () => pm.response.to.have.status(404));"
+          ] } }]
+        },
+        {
+          "name": "Create Tie-Break Match (unknown tie — expect 404)",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/v1/programs/{{programId}}/qualification/ties/00000000-0000-0000-0000-000000000001/tie-break-match",
+            "header": [{ "key": "Authorization", "value": "Bearer {{scopedAccessToken}}" }, { "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"formatCodeOverride\": null,\n  \"questionCountOverride\": null,\n  \"suddenDeathOverride\": null,\n  \"reason\": null\n}" }
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('404 Not Found', () => pm.response.to.have.status(404));"
+          ] } }]
+        },
+        {
+          "name": "Resolve Tie Manually (unknown tie — expect 404)",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/v1/programs/{{programId}}/qualification/ties/00000000-0000-0000-0000-000000000001/resolve-manually",
+            "header": [{ "key": "Authorization", "value": "Bearer {{scopedAccessToken}}" }, { "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"rankedTeamIds\": [\n    \"{{teamId}}\"\n  ],\n  \"method\": \"ManualDecision\",\n  \"reason\": \"Example\",\n  \"approvedByUserId\": \"{{adminUserId}}\"\n}" }
+          },
+          "description": "ProgramAdmin/SuperAdmin only (CanResolveTie); a reason is always required.",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('404 Not Found', () => pm.response.to.have.status(404));"
+          ] } }]
+        },
+        {
+          "name": "Abandon Tie (unknown tie — expect 404)",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/v1/programs/{{programId}}/qualification/ties/00000000-0000-0000-0000-000000000001/abandon",
+            "header": [{ "key": "Authorization", "value": "Bearer {{scopedAccessToken}}" }, { "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"reason\": \"Example\"\n}" }
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('404 Not Found', () => pm.response.to.have.status(404));"
+          ] } }]
+        },
+        {
+          "name": "Commit Qualification",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/v1/programs/{{programId}}/qualification/stages/{{stageId}}/commit",
+            "header": [{ "key": "Authorization", "value": "Bearer {{scopedAccessToken}}" }]
+          },
+          "description": "Records the qualifiers. The rule's SeedingMode is Manual (the rules API cannot set it), so the Semi-Final's matches come from auto-seed, which uses the committed teams.",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('200 OK', () => pm.response.to.have.status(200));",
+            "pm.test('Manual seeding creates no matches', () => pm.expect(pm.response.json().matchesCreated).to.eql(0));"
+          ] } }]
+        },
+        {
+          "name": "Qualification Preview (after commit)",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/v1/programs/{{programId}}/qualification/stages/{{stageId}}/preview",
+            "header": [{ "key": "Authorization", "value": "Bearer {{scopedAccessToken}}" }]
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('200 OK', () => pm.response.to.have.status(200));",
+            "pm.test('already committed', () => pm.expect(pm.response.json().blockedReason).to.include('already committed'));"
+          ] } }]
+        },
+        {
+          "name": "Rollback Qualification",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/v1/programs/{{programId}}/qualification/stages/{{stageId}}/rollback",
+            "header": [{ "key": "Authorization", "value": "Bearer {{scopedAccessToken}}" }]
+          },
+          "description": "Allowed until the next stage starts.",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('204 No Content', () => pm.response.to.have.status(204));"
+          ] } }]
+        },
+        {
+          "name": "Commit Qualification (again)",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/v1/programs/{{programId}}/qualification/stages/{{stageId}}/commit",
+            "header": [{ "key": "Authorization", "value": "Bearer {{scopedAccessToken}}" }]
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('200 OK', () => pm.response.to.have.status(200));"
+          ] } }]
+        },
+        {
+          "name": "Auto-Seed Semi-Final (from the committed teams)",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/v1/programs/{{programId}}/matches/auto-seed",
+            "header": [{ "key": "Authorization", "value": "Bearer {{scopedAccessToken}}" }, { "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"stageId\": \"{{semiStageId}}\",\n  \"seedingMode\": \"ByRank\"\n}" }
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('200 OK', () => pm.response.to.have.status(200));",
+            "pm.test('one Semi-Final match for the three qualifiers', () => pm.expect(pm.response.json().matchesCreated).to.eql(1));"
           ] } }]
         }
       ]
