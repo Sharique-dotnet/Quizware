@@ -28,10 +28,15 @@ public sealed class ReportsController : ControllerBase
         Ok(ReportMapper.ToResponse(await _sender.Send(new GetStageSummaryReportQuery(programId, stageId), cancellationToken)));
 
     [HttpGet("teams/{teamId:guid}")]
-    public ActionResult<TeamPerformanceReportResponse> TeamPerformance(Guid programId, Guid teamId) => StatusCode(StatusCodes.Status501NotImplemented);
+    public async Task<ActionResult<TeamPerformanceReportResponse>> TeamPerformance(Guid programId, Guid teamId, CancellationToken cancellationToken) =>
+        Ok(ReportMapper.ToResponse(await _sender.Send(new GetTeamPerformanceReportQuery(programId, teamId), cancellationToken)));
 
+    /// <summary>Optionally narrowed to one stage; <paramref name="flaggedOnly"/>
+    /// returns only questions carrying a quality flag.</summary>
     [HttpGet("questions/usage")]
-    public ActionResult<QuestionUsageReportResponse> QuestionUsage(Guid programId) => StatusCode(StatusCodes.Status501NotImplemented);
+    public async Task<ActionResult<QuestionUsageReportResponse>> QuestionUsage(
+        Guid programId, [FromQuery] Guid? stageId, [FromQuery] bool flaggedOnly, CancellationToken cancellationToken) =>
+        Ok(ReportMapper.ToResponse(await _sender.Send(new GetQuestionUsageReportQuery(programId, stageId, flaggedOnly), cancellationToken)));
 
     [HttpGet("audit")]
     [Authorize(Roles = $"{Roles.SuperAdmin},{Roles.ProgramAdmin},{Roles.Auditor}")]

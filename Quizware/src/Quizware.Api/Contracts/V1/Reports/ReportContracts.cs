@@ -104,11 +104,64 @@ public sealed record StageReportTieBreak(
 public sealed record StageReportTieParticipant(
     Guid TeamId, string TeamName, int EnteringScore, int TieBreakPoints, int? ResultRank, bool Qualified);
 
-public sealed record TeamPerformanceReportResponse(Guid TeamId, int MatchesPlayed, int TotalScore, double AverageScore);
+/// <summary>P13-03. The totals count completed matches only; <see cref="Matches"/>
+/// lists every match past setup. Fields after <see cref="AverageScore"/> were
+/// added in Phase 13.</summary>
+public sealed record TeamPerformanceReportResponse(
+    Guid TeamId,
+    int MatchesPlayed,
+    int TotalScore,
+    double AverageScore,
+    string TeamName,
+    string Status,
+    int Wins,
+    int CorrectCount,
+    int IncorrectCount,
+    int NoAnswerCount,
+    int PassedCount,
+    double Accuracy,
+    int OverallRank,
+    IReadOnlyList<TeamPerformanceMatch> Matches,
+    IReadOnlyList<TeamFormatPerformance> Formats,
+    IReadOnlyList<TeamQualificationEntry> Qualifications);
 
-public sealed record QuestionUsageReportEntry(Guid QuestionId, int TimesUsed, double CorrectRate);
+public sealed record TeamPerformanceMatch(
+    Guid MatchId,
+    string MatchName,
+    Guid StageId,
+    string StageName,
+    string MatchKind,
+    string State,
+    int Score,
+    int? Rank,
+    bool Won,
+    int CorrectCount,
+    int IncorrectCount);
 
-public sealed record QuestionUsageReportResponse(IReadOnlyList<QuestionUsageReportEntry> Entries);
+public sealed record TeamFormatPerformance(string Format, int Attempts, int CorrectCount, int Points);
+
+public sealed record TeamQualificationEntry(
+    Guid FromStageId, string FromStageName, string Reason, int StageScore, int StageRank, bool IsCommitted, string? TieBreakProvenance);
+
+/// <summary>P13-04. <see cref="EveryoneCorrect"/> marks a question every
+/// judged answer got right. Fields after <see cref="CorrectRate"/> were added in Phase 13.</summary>
+public sealed record QuestionUsageReportEntry(
+    Guid QuestionId,
+    int TimesUsed,
+    double CorrectRate,
+    string? QuestionText,
+    string Format,
+    string Difficulty,
+    int MatchesUsed,
+    int Attempts,
+    int CorrectCount,
+    int IncorrectCount,
+    bool EveryoneCorrect,
+    bool NobodyCorrect,
+    IReadOnlyList<string> Flags,
+    DateTime LastUsedAtUtc);
+
+public sealed record QuestionUsageReportResponse(IReadOnlyList<QuestionUsageReportEntry> Entries, int TotalQuestions, int FlaggedCount);
 
 public sealed record AuditLogEntryDto(Guid Id, string EntityName, string EntityId, string Action, string ActorUserId, DateTime OccurredAtUtc);
 

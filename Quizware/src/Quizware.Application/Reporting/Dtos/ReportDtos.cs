@@ -94,3 +94,57 @@ public sealed record StageSummaryReportDto(
     StageStandingsDto Standings,
     IReadOnlyList<StageReportQualifierDto> Qualifiers,
     IReadOnlyList<StageReportTieBreakDto> TieBreaks);
+
+public sealed record TeamPerformanceMatchDto(
+    Guid MatchId,
+    string MatchName,
+    Guid StageId,
+    string StageName,
+    string MatchKind,
+    string State,
+    int Score,
+    int? Rank,
+    bool Won,
+    int CorrectCount,
+    int IncorrectCount);
+
+public sealed record TeamFormatPerformanceDto(string Format, int Attempts, int CorrectCount, int Points);
+
+public sealed record TeamQualificationDto(
+    Guid FromStageId, string FromStageName, string Reason, int StageScore, int StageRank, bool IsCommitted, string? TieBreakProvenance);
+
+public sealed record TeamPerformanceReportDto(
+    Guid TeamId,
+    string TeamName,
+    string Status,
+    int MatchesPlayed,
+    int TotalScore,
+    double AverageScore,
+    int Wins,
+    int CorrectCount,
+    int IncorrectCount,
+    int NoAnswerCount,
+    int PassedCount,
+    double Accuracy,
+    int OverallRank,
+    IReadOnlyList<TeamPerformanceMatchDto> Matches,
+    IReadOnlyList<TeamFormatPerformanceDto> Formats,
+    IReadOnlyList<TeamQualificationDto> Qualifications);
+
+public sealed record QuestionUsageEntryDto(
+    Guid QuestionId,
+    string? QuestionText,
+    string Format,
+    string Difficulty,
+    int TimesUsed,
+    int MatchesUsed,
+    int Attempts,
+    int CorrectCount,
+    int IncorrectCount,
+    double CorrectRate,
+    bool EveryoneCorrect,
+    bool NobodyCorrect,
+    IReadOnlyList<string> Flags,
+    DateTime LastUsedAtUtc);
+
+public sealed record QuestionUsageReportDto(int TotalQuestions, int FlaggedCount, IReadOnlyList<QuestionUsageEntryDto> Entries);

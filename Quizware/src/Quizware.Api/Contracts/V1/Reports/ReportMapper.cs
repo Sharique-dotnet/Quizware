@@ -69,6 +69,41 @@ public static class ReportMapper
                         .ToList()))
                 .ToList());
 
+    public static TeamPerformanceReportResponse ToResponse(TeamPerformanceReportDto dto) =>
+        new(
+            dto.TeamId,
+            dto.MatchesPlayed,
+            dto.TotalScore,
+            dto.AverageScore,
+            dto.TeamName,
+            dto.Status,
+            dto.Wins,
+            dto.CorrectCount,
+            dto.IncorrectCount,
+            dto.NoAnswerCount,
+            dto.PassedCount,
+            dto.Accuracy,
+            dto.OverallRank,
+            dto.Matches
+                .Select(m => new TeamPerformanceMatch(
+                    m.MatchId, m.MatchName, m.StageId, m.StageName, m.MatchKind, m.State, m.Score, m.Rank, m.Won, m.CorrectCount, m.IncorrectCount))
+                .ToList(),
+            dto.Formats.Select(f => new TeamFormatPerformance(f.Format, f.Attempts, f.CorrectCount, f.Points)).ToList(),
+            dto.Qualifications
+                .Select(q => new TeamQualificationEntry(
+                    q.FromStageId, q.FromStageName, q.Reason, q.StageScore, q.StageRank, q.IsCommitted, q.TieBreakProvenance))
+                .ToList());
+
+    public static QuestionUsageReportResponse ToResponse(QuestionUsageReportDto dto) =>
+        new(
+            dto.Entries
+                .Select(e => new QuestionUsageReportEntry(
+                    e.QuestionId, e.TimesUsed, e.CorrectRate, e.QuestionText, e.Format, e.Difficulty, e.MatchesUsed, e.Attempts,
+                    e.CorrectCount, e.IncorrectCount, e.EveryoneCorrect, e.NobodyCorrect, e.Flags, e.LastUsedAtUtc))
+                .ToList(),
+            dto.TotalQuestions,
+            dto.FlaggedCount);
+
     internal static string DescribeQualifier(StageReportQualifierDto q) =>
         $"{q.StageRank}. {q.TeamName} — {q.Reason}"
         + (q.SourceMatchName is { } source ? $" ({source})" : string.Empty)
