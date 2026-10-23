@@ -1,10 +1,12 @@
 # Quizware Postman collection
 
 `Quizware.postman_collection.json` covers every implemented endpoint through
-**Phase 11 (qualification and tie-breaking)**. Endpoints that are still
-`501` stubs — admin lookups, match preflight, live snapshot/restore, Buzzer,
-Display, Reports — are intentionally not included; there's nothing real to
-test yet.
+**Phase 12 (live push and display API)**. Endpoints that are still `501`
+stubs — admin lookups, match preflight, live snapshot/restore, Buzzer,
+Reports — are intentionally not included; there's nothing real to test yet.
+The SignalR hubs (`/hubs/match`, `/hubs/display`) are not HTTP requests, so
+newman cannot exercise them; they are covered by the integration tests
+(`LiveHubTests`, `LiveDispatchTests`, `LiveTimerTests`, `LivePerformanceTests`).
 
 All variables (`baseUrl`, tokens, ids) are **collection variables**, saved by
 each request's test script for the next request to use — no separate
@@ -98,6 +100,10 @@ variable.
     abandon) use an unknown id and **expect a 404**. Tie-break play and
     manual resolution are covered by the integration tests
     (`QualificationTieBreakTests`, `Phase11RequiredTests`).
+16. **15 Display** — mints a read-only display token (saved as
+    `{{displayToken}}`), then reads the display state, scores, standings and
+    branding with it, and checks that an operator token gets **403** from the
+    display API.
 
 ## Notes
 
