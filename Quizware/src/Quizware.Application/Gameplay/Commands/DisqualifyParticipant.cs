@@ -95,7 +95,7 @@ public sealed class DisqualifyParticipantCommandHandler : IRequestHandler<Disqua
             segmentAdjustment = adjustment,
         }, cancellationToken);
 
-        _notifications.Publish("ParticipantRemoved", match.ProgramId, match.Id, new
+        _notifications.Publish(LiveEvents.ParticipantRemoved, match.ProgramId, match.Id, new
         {
             participantId = participant.Id,
             turnOrder = remaining.OrderBy(p => p.TurnOrder).Select(p => new { participantId = p.Id, p.TurnOrder }),
