@@ -13,4 +13,8 @@ public static class Policies
     public const string CanResolveTie = nameof(CanResolveTie);
     public const string CanViewLive = nameof(CanViewLive);
     public const string DisplayOnly = nameof(DisplayOnly);
+
+    /// <summary>Reports and the audit log: the admins plus the Auditor, who has
+    /// read-only access to everything (03-PRD-API.md §3.2).</summary>
+    public const string CanViewReports = nameof(CanViewReports);
 }

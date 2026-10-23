@@ -2,6 +2,7 @@ using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Quizware.Api.Contracts.V1.Reports;
+using Quizware.Application.Abstractions;
 using Quizware.Application.Authorization;
 using Quizware.Application.Reporting;
 
@@ -9,7 +10,7 @@ namespace Quizware.Api.Controllers.v1;
 
 [ApiController]
 [Route("api/v1/programs/{programId:guid}/reports")]
-[Authorize(Policy = Policies.CanManageProgram)]
+[Authorize(Policy = Policies.CanViewReports)]
 public sealed class ReportsController : ControllerBase
 {
     private readonly ISender _sender;
@@ -38,10 +39,32 @@ public sealed class ReportsController : ControllerBase
         Guid programId, [FromQuery] Guid? stageId, [FromQuery] bool flaggedOnly, CancellationToken cancellationToken) =>
         Ok(ReportMapper.ToResponse(await _sender.Send(new GetQuestionUsageReportQuery(programId, stageId, flaggedOnly), cancellationToken)));
 
+    /// <summary>Newest first. <paramref name="entityName"/> is the entity type
+    /// (e.g. "Team"); <paramref name="actor"/> is a user id or part of a user
+    /// name; <paramref name="from"/>/<paramref name="to"/> are inclusive UTC bounds.</summary>
     [HttpGet("audit")]
-    [Authorize(Roles = $"{Roles.SuperAdmin},{Roles.ProgramAdmin},{Roles.Auditor}")]
-    public ActionResult<AuditReportResponse> Audit(Guid programId) => StatusCode(StatusCodes.Status501NotImplemented);
+    public async Task<ActionResult<AuditReportResponse>> Audit(
+        Guid programId,
+        [FromQuery] string? entityName,
+        [FromQuery] string? entityId,
+        [FromQuery] string? action,
+        [FromQuery] string? actor,
+        [FromQuery] DateTime? from,
+        [FromQuery] DateTime? to,
+        CancellationToken cancellationToken,
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 100) =>
+        Ok(ReportMapper.ToResponse(await _sender.Send(
+            new GetAuditLogQuery(new AuditLogFilter(programId, entityName, entityId, action, actor, ToUtc(from), ToUtc(to), page, pageSize)),
+            cancellationToken)));
 
     [HttpGet("export/{reportType}")]
     public IActionResult Export(Guid programId, string reportType, [FromQuery] string format = "xlsx") => StatusCode(StatusCodes.Status501NotImplemented);
+
+    private static DateTime? ToUtc(DateTime? value) => value?.Kind switch
+    {
+        DateTimeKind.Local => value.Value.ToUniversalTime(),
+        DateTimeKind.Unspecified => DateTime.SpecifyKind(value.Value, DateTimeKind.Utc),
+        _ => value,
+    };
 }

@@ -163,6 +163,21 @@ public sealed record QuestionUsageReportEntry(
 
 public sealed record QuestionUsageReportResponse(IReadOnlyList<QuestionUsageReportEntry> Entries, int TotalQuestions, int FlaggedCount);
 
-public sealed record AuditLogEntryDto(Guid Id, string EntityName, string EntityId, string Action, string ActorUserId, DateTime OccurredAtUtc);
+/// <summary>P13-05. <see cref="Id"/> is the AuditLog row's bigint key (it was
+/// declared a Guid while the endpoint was a stub, which the table never was).
+/// <see cref="ActorUserId"/> is empty for writes made without a signed-in user.
+/// Fields after <see cref="OccurredAtUtc"/> were added in Phase 13.</summary>
+public sealed record AuditLogEntryDto(
+    long Id,
+    string EntityName,
+    string EntityId,
+    string Action,
+    string ActorUserId,
+    DateTime OccurredAtUtc,
+    string? ActorName,
+    string? ChangedColumns,
+    string? OldValuesJson,
+    string? NewValuesJson,
+    string? CorrelationId);
 
-public sealed record AuditReportResponse(IReadOnlyList<AuditLogEntryDto> Entries);
+public sealed record AuditReportResponse(IReadOnlyList<AuditLogEntryDto> Entries, int TotalCount, int Page, int PageSize);

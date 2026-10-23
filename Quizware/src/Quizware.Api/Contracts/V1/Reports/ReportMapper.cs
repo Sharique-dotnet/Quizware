@@ -1,6 +1,7 @@
 using System.Globalization;
 using Quizware.Api.Contracts.V1.LiveMatch;
 using Quizware.Api.Contracts.V1.Standings;
+using Quizware.Application.Abstractions;
 using Quizware.Application.Reporting.Dtos;
 
 namespace Quizware.Api.Contracts.V1.Reports;
@@ -103,6 +104,17 @@ public static class ReportMapper
                 .ToList(),
             dto.TotalQuestions,
             dto.FlaggedCount);
+
+    public static AuditReportResponse ToResponse(AuditLogPage page) =>
+        new(
+            page.Entries
+                .Select(e => new AuditLogEntryDto(
+                    e.Id, e.EntityName, e.EntityId, e.Action, e.UserId?.ToString() ?? string.Empty, e.OccurredAtUtc,
+                    e.UserName, e.ChangedColumns, e.OldValuesJson, e.NewValuesJson, e.CorrelationId))
+                .ToList(),
+            page.TotalCount,
+            page.Page,
+            page.PageSize);
 
     internal static string DescribeQualifier(StageReportQualifierDto q) =>
         $"{q.StageRank}. {q.TeamName} — {q.Reason}"
