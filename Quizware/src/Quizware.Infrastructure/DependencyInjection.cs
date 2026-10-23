@@ -32,6 +32,7 @@ public static class DependencyInjection
 
         services.AddScoped<IAppDbContext>(sp => sp.GetRequiredService<AppDbContext>());
         services.AddScoped<IMatchNotifications, OutboxMatchNotifications>();
+        services.AddSingleton<OutboxSignal>();
 
         services
             .AddIdentityCore<AppUser>(options =>

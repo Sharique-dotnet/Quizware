@@ -25,6 +25,10 @@ public static class DependencyInjection
         services.AddValidatorsFromAssembly(typeof(DependencyInjection).Assembly);
 
         services.AddSignalR();
+        services.Configure<Live.LiveOptions>(configuration.GetSection(Live.LiveOptions.SectionName));
+        services.AddScoped<Live.ILivePusher, Live.SignalRLivePusher>();
+        services.AddSingleton<Live.OutboxDispatcher>();
+        services.AddHostedService(sp => sp.GetRequiredService<Live.OutboxDispatcher>());
 
         services.AddHealthChecks()
             .AddDbContextCheck<AppDbContext>("database");
