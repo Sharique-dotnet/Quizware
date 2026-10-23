@@ -26,24 +26,24 @@ decisions, known gaps — see [`context/CURRENT.md`](../context/CURRENT.md).*
 | 9 | Match engine | ✅ Done — merged to `master` (PRs #1 and #2) |
 | 10 | Scoring and standings | ✅ Done — merged to `master` (PR #2) |
 | 11 | Qualification and tie-breaking | ✅ Done — see its status note |
-| **12** | **Live push (SignalR) and display API** | ⏭️ **Next** |
-| 13 | Reporting and exports | ⬜ Not started |
+| 12 | Live push (SignalR) and display API | ✅ Done — see its status note |
+| **13** | **Reporting and exports** | ⏭️ **Next** |
 | 14 | QuickBuzz integration module | ⬜ Not started (deliberately last) |
 | 15 | Hardening | ⬜ Not started |
 | 16 | Data migration *(optional)* | ⬜ Not started |
 | 17 | Angular 22 *(separate track)* | ⬜ Not started — the generated TypeScript client is ready for it |
 
-**Where the code stands:** the solution builds with 0 warnings; **466 tests
-pass** (17 Application, 140 Domain, 4 Architecture, 305 API integration). CI
+**Where the code stands:** the solution builds with 0 warnings; **482 tests
+pass** (17 Application, 140 Domain, 4 Architecture, 321 API integration). CI
 runs on every push and pull request to `master`. All migrations apply cleanly
-to a real SQL Server 2022; the Postman collection plays a complete match and a
-stage qualification end to end against it, and the Phase 9–11 required tests
-also pass when pointed at SQL Server. Endpoints for later phases already exist
-as `501 Not Implemented` stubs so the contract stays fixed: display (P12),
-reports (P13), buzzer (P14), admin lookups, match preflight and live
-snapshot/restore.
+to a real SQL Server 2022. The Postman collection plays a complete match, a
+stage qualification and the display API end to end against it, and the outbox
+dispatcher delivers every live event there. The Phase 9–11 required tests also
+pass when pointed at SQL Server. Endpoints for later phases already exist as
+`501 Not Implemented` stubs so the contract stays fixed: reports (P13), buzzer
+(P14), admin lookups, match preflight and live snapshot/restore.
 
-**Carried forward from finished phases** (not blocking Phase 12):
+**Carried forward from finished phases** (not blocking Phase 13):
 
 | Item | From | Status |
 |---|---|---|
@@ -56,6 +56,8 @@ snapshot/restore.
 | `<150 ms` live-state and `≤3 round trips` answer targets | `P9-16`, `P9-06` | Not yet measured — belongs with P15 load testing |
 | Qualification rule fields the API cannot set: `SeedingMode` (so it is Manual — commit records the qualifiers and auto-seed builds the matches), `ToStageId`, `MinScoreThreshold`, `TieBreakRuleId` | `P7-08`, `P11-07` | Settable in the domain only; contract change needed |
 | A tie-break rule's difficulty range is not passed to the question selector | `P11-04` | The selector has no difficulty-range input yet |
+| The TypeScript client is stale and cannot simply be regenerated: question responses are `oneOf` subtypes in the OpenAPI document (since commit `f6b7c61`), which NSwag reduces to `McqQuestionResponse` | `P5-07`, `P12-07` | `docs/openapi.v1.json` was refreshed in P12. Fix the Swagger polymorphism shape (discriminator on the base type) before regenerating the client for the Angular track |
+| `BuzzResultsReady` hub event | `P12-01` | Waits for the buzzer module (`P14`) |
 
 ---
 
@@ -724,30 +726,47 @@ All five are in `Phase11RequiredTests.cs` and pass:
 
 ---
 
-# Phase 12 — Live push and display API — **NEXT**
+# Phase 12 — Live push and display API — **DONE**
 
 **Duration:** 1–2 weeks · **Depends on:** P9, P10
 
-**Status:** not started. Groundwork done in P9: match events are already written
-to the transactional outbox (`MatchStateChanged`, `AnswerRecorded`,
-`ParticipantRemoved`, `MatchCompleted`, and from P11 `TieBreakResolved`);
-nothing delivers them yet.
+**Status:** all 7 tasks and the performance test done, on the
+`claude/workflows-project-status-bsgu4d` branch. How it fits together:
 
-| Task | What to build | Acceptance criteria |
-|---|---|---|
-| `P12-01` | `MatchHub` (operators) with the documented server→client events | Includes `SegmentOrderChanged`, `TieBreakStarted`, `TieBreakResolved` |
-| `P12-02` | `DisplayHub` (projectors, read-only token) | Cannot invoke anything that writes |
-| `P12-03` | Outbox processor dispatching domain events to SignalR | Survives a failed push; retries |
-| `P12-04` | **Correct-answer stripping** until reveal | A display client cannot read the answer early — test it |
-| `P12-05` | Server-authoritative timer ticks | All screens agree within tolerance |
-| `P12-06` | Full state re-sync on reconnect | `RequestFullState()` |
-| `P12-07` | Display projections (`IDisplayProjectionService`) + branding endpoint | |
+- **Every live action writes an outbox event** in the same transaction as the
+  change. Most come straight from the match timeline (`MatchEventLog` maps
+  each entry to its hub event); start, answers, disqualification, completion
+  and tie-break results carry richer payloads of their own.
+- **The `OutboxDispatcher`** is woken the moment such a transaction commits,
+  and otherwise polls every second. It pushes each event to the match's group
+  on both hubs, with a fresh state snapshot built for each audience.
+- **Failures:** a failed push holds that match's later events back, so no
+  screen sees them out of order. It is retried with a doubling delay and left
+  undelivered (error kept) after `Live:MaxRetries`.
+- **Timer ticks** are pushed straight to the hubs every second. They don't go
+  through the outbox, because a lost tick is replaced by the next.
+
+Verified on SQLite (the normal suite) and against SQL Server 2022 with the real
+API: every outbox message was delivered, with no retries.
+
+| Task | What to build | Acceptance criteria | Status |
+|---|---|---|---|
+| `P12-01` | `MatchHub` (operators) with the documented server→client events | Includes `SegmentOrderChanged`, `TieBreakStarted`, `TieBreakResolved` | Done — `/hubs/match`. All documented events except `BuzzResultsReady` (P14), plus `QuestionRevealed`, `QuestionSkipped`, `QuestionPassed`, `TopicSelected` and `ParticipantReinstated`. Each message carries the event details and a state snapshot |
+| `P12-02` | `DisplayHub` (projectors, read-only token) | Cannot invoke anything that writes | Done — `/hubs/display`. Both hubs expose only `JoinMatch`, `LeaveMatch` and `RequestFullState`; live actions stay on the REST API |
+| `P12-03` | Outbox processor dispatching domain events to SignalR | Survives a failed push; retries | Done — in-order delivery per match, doubling retry delay, dead-letter after `Live:MaxRetries` |
+| `P12-04` | **Correct-answer stripping** until reveal | A display client cannot read the answer early — test it | Done — the display hub always builds the Display view (whoever connects), and event details pass a sanitiser. Tested over REST, `RequestFullState` and pushed events |
+| `P12-05` | Server-authoritative timer ticks | All screens agree within tolerance | Done — one server computation per tick is sent to every screen, so they agree exactly |
+| `P12-06` | Full state re-sync on reconnect | `RequestFullState()` | Done |
+| `P12-07` | Display projections (`IDisplayProjectionService`) + branding endpoint | | Done — display state, scores, standings and branding. `DisplayMatchStateResponse` was extended additively with the question, the team on turn, scores and progress |
 
 **Test:** 100 simulated display clients receive an update within **500 ms**.
+✅ `LivePerformanceTests`: after a warm-up, all 100 display connections receive
+the `AnswerRecorded` push 36–41 ms after the request is sent (in-process
+WebSockets).
 
 ---
 
-# Phase 13 — Reporting and exports — *not started*
+# Phase 13 — Reporting and exports — **NEXT**
 
 **Duration:** 1 week · **Depends on:** P10, P11
 
@@ -850,7 +869,7 @@ data** — do not try to make old matches replayable.
 | M4 | **Config-driven tournament** | P7 | The 18-team tournament exists as data only | ✅ Reached |
 | M5 | **First live match** | P9 | A complete match, including a mid-match disqualification | ✅ Reached |
 | M6 | **Full tournament** | P11 | 18 → 9 → 3 → 1, including a real tie-break | ✅ Reached |
-| M7 | **Show-ready** | P12 | Live screens, server timers | Next (P12) |
+| M7 | **Show-ready** | P12 | Live screens, server timers | ✅ Reached |
 | M8 | **Buzzer integrated** | P14 | Works with hardware, and works without it | Pending |
 | M9 | **Production ready** | P15 | Dress rehearsal passed | Pending |
 
@@ -923,10 +942,11 @@ status.)*
    PRs #1 and #2.
 4. ~~**Phase 11** — qualification and tie-breaking (`P11-01`–`P11-08`).~~
    **Done** — 466 tests pass; verified against SQL Server 2022.
-5. **Phase 12 — Live push and display API.** **Next.** The outbox already
-   carries `MatchStateChanged`, `AnswerRecorded`, `ParticipantRemoved`,
-   `MatchCompleted` and `TieBreakResolved`; Phase 12 delivers them over SignalR.
-6. Alongside it, clear the small carried-forward items in
+5. ~~**Phase 12** — live push and display API (`P12-01`–`P12-07`).~~ **Done** —
+   SignalR hubs fed by the outbox, display API; 482 tests pass.
+6. **Phase 13 — Reporting and exports.** **Next.** It can be built in
+   parallel with Phase 14; both depend only on finished phases.
+7. Alongside it, clear the small carried-forward items in
    [Progress at a glance](#progress-at-a-glance). The owner needs to decide on
    the pass target field, the settings endpoints, the qualification-rule
    fields and the default scoring rules.

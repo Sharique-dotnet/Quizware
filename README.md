@@ -10,10 +10,11 @@ competition in production for years. The rebuild is an ASP.NET Core Web API on
 .NET 10 with SQL Server. An Angular 22 front end will follow as a separate
 track.
 
-> **Status:** back end in active development. Phases 0–10 of the
-> [implementation plan](docs/Implementation-Plan.md) are done, which covers
-> configuration, the question bank, the live match engine, and scoring and
-> standings. **Phase 11 (qualification and tie-breaking) is next.**
+> **Status:** back end in active development. Phases 0–12 of the
+> [implementation plan](docs/Implementation-Plan.md) are done. That covers
+> configuration, the question bank, the live match engine, scoring and
+> standings, qualification and tie-breaking, and live push to consoles and
+> projector screens. **Phase 13 (reporting and exports) is next.**
 
 ---
 
@@ -72,7 +73,9 @@ recording answers manually.
 | **Live match engine** | Start, pause, resume, end or abandon a match. Open, close or skip segments, serve, reveal or skip questions, record answers (safe to retry via an `Idempotency-Key`), pass questions, run the Choice round's topic picks, handle sudden death, and disqualify or reinstate a team. A full event timeline is kept. The live state is read from the database every time, so a restarted console or API resumes exactly where it stopped. |
 | **Scoring** | Every point comes from a scoring rule and is written to an **append-only score ledger**. Match and stage totals update in the same transaction. Reversals and manual adjustments are audited ledger entries, and totals can be rebuilt from the ledger at any time. |
 | **Standings** | Overall, per-stage and per-team standings, plus a tie-break criteria service (total score, fewer incorrect, more correct at high difficulty, faster average buzz time, head-to-head). |
-| **Notifications** | Match start, answers, disqualifications and match end are written to a **transactional outbox**. They will be delivered live over SignalR in Phase 12. |
+| **Qualification and tie-breaks** | Preview who advances from a stage (match winners, best remaining, manual wildcards), each with a reason. Ties on a qualifying place are settled first by the ordered criteria, then by a **tie-break match on the same engine** (extra rounds up to a limit), then by an audited ProgramAdmin decision. Commit creates the next stage's qualifiers and matches; rollback works until that stage starts. |
+| **Live push** | Every live action writes an event to a **transactional outbox**. A dispatcher pushes it within milliseconds to operator consoles (`/hubs/match`) and projector screens (`/hubs/display`) over SignalR, together with a fresh state snapshot. **Displays never see an answer before it is revealed.** Failed pushes are retried in order, a server-side countdown ticks every second, and a reconnecting screen re-syncs with one call. |
+| **Display API** | Read-only screen payloads for a display token: match state, scoreboard, standings and branding. |
 
 **Question formats:** MCQ, Buzzer, Passing, Card, Choice, Rapid Fire, Visual
 Rapid Fire, Sequence, Audio-Visual and Tie-Breaker. Each has its own handler
@@ -134,7 +137,7 @@ are recorded as ADRs in [`docs/adr/`](docs/adr):
 | `Quizware.Domain` | Entities, value objects and business rules. No framework dependencies. |
 | `Quizware.Application` | Use cases as MediatR commands and queries, FluentValidation, the match engine, scoring, question selection, and ports such as `IMatchNotifications`. Cannot reference Infrastructure. |
 | `Quizware.Infrastructure` | EF Core `AppDbContext`, migrations, ASP.NET Identity, JWT, the outbox, seeders and file storage. |
-| `Quizware.Api` | Controllers, versioned request/response contracts (`/api/v1`), middleware for correlation ids, program scope and errors, and the OpenAPI document. |
+| `Quizware.Api` | Controllers, versioned request/response contracts (`/api/v1`), the SignalR hubs with the outbox dispatcher and timer ticks, middleware for correlation ids, program scope and errors, and the OpenAPI document. |
 | `Quizware.Modules.Buzzer` | The optional QuickBuzz integration module. |
 | `tools/Quizware.BuzzerAgent` | An on-site agent that bridges the buzzer hardware to the API (Phase 14). |
 
@@ -145,6 +148,7 @@ are recorded as ADRs in [`docs/adr/`](docs/adr):
 - **ASP.NET Core Identity** with JWT bearer tokens
 - **MediatR**, **FluentValidation**
 - **Serilog** structured logging, health checks at `/health/live` and `/health/ready`
+- **SignalR** for live push, fed by a transactional outbox
 - **Swashbuckle** for the OpenAPI document, **Scalar** for the interactive API reference
 - **ClosedXML** for Excel import
 - **NSwag**-generated TypeScript client for the future Angular app
@@ -296,10 +300,13 @@ generated `Quizware/docs/openapi.v1.json`.
 | Live match | `/matches/{id}/live/…` (state, start, pause, segments, questions, answers, pass, topics, disqualify, end, abandon, timeline) |
 | Scores | `/matches/{id}/scores` (events, adjust, recalculate) |
 | Standings | `/programs/{id}/standings/overall`, `…/stages/{stageId}`, `…/teams/{teamId}` |
+| Qualification | `/programs/{id}/qualification/stages/{stageId}/…` (preview, wildcards, ties, detect, commit, rollback) and `…/ties/{tieId}/…` (tie-break match, resolve manually, abandon) |
+| Display | `/display/matches/{id}/state`, `…/scores`, `/display/programs/{id}/standings`, `…/branding` (display token only) |
+| SignalR hubs | `/hubs/match` (operators) and `/hubs/display` (screens): `JoinMatch`, `LeaveMatch`, `RequestFullState`. Every event carries the event details plus a state snapshot; `TimerTick` carries the server countdown |
 
 Endpoints for later phases already exist as `501 Not Implemented` stubs so the
-contract is fixed up front: qualification, buzzer, display, reports, match
-preflight, and live snapshot/restore.
+contract is fixed up front: buzzer, reports, admin lookups, match preflight,
+and live snapshot/restore.
 
 ## Roles and permissions
 
@@ -326,9 +333,9 @@ preflight, and live snapshot/restore.
 | 8 | Question selection engine | ✅ Done |
 | 9 | Match engine | ✅ Done |
 | 10 | Scoring and standings | ✅ Done |
-| 11 | Qualification and tie-breaking | ⏭️ Next |
-| 12 | Live push (SignalR) and display API | Planned |
-| 13 | Reporting and exports | Planned |
+| 11 | Qualification and tie-breaking | ✅ Done |
+| 12 | Live push (SignalR) and display API | ✅ Done |
+| 13 | Reporting and exports | ⏭️ Next |
 | 14 | QuickBuzz integration module | Planned (deliberately last) |
 | 15 | Hardening | Planned |
 | 16 | Data migration from QuizApp-9AMM | Optional |
