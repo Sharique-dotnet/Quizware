@@ -8,7 +8,9 @@ using Quizware.Application;
 using Quizware.Infrastructure;
 using Quizware.Infrastructure.Identity;
 using Quizware.Infrastructure.Persistence;
+#if BUZZER_MODULE
 using Quizware.Modules.Buzzer;
+#endif
 using Scalar.AspNetCore;
 using Serilog;
 
@@ -21,7 +23,10 @@ builder.Host.UseSerilog((context, configuration) => configuration
 builder.Services.AddApplication();
 builder.Services.AddInfrastructure(builder.Configuration);
 builder.Services.AddApi(builder.Configuration);
-builder.Services.AddBuzzerModule();
+#if BUZZER_MODULE
+// ADR-005: compiled only while src/Quizware.Modules.Buzzer exists (see Directory.Build.props).
+builder.Services.AddBuzzerModule(builder.Configuration);
+#endif
 
 builder.Services.AddScoped<IdempotencyFilter>();
 builder.Services.AddControllers(options => options.Filters.AddService<IdempotencyFilter>());

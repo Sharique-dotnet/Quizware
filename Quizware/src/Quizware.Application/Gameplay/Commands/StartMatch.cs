@@ -1,10 +1,11 @@
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Quizware.Application.Abstractions;
+using Quizware.Application.Buzzer;
 using Quizware.Application.Gameplay.Dtos;
+using Quizware.Application.Scoring;
 using Quizware.Application.Selection;
 using Quizware.Domain.Enums;
-using Quizware.Application.Scoring;
 
 namespace Quizware.Application.Gameplay.Commands;
 
@@ -23,11 +24,13 @@ public sealed class StartMatchCommandHandler : IRequestHandler<StartMatchCommand
     private readonly MatchEventLog _eventLog;
     private readonly IScoringEngine _scoring;
     private readonly IMatchNotifications _notifications;
+    private readonly IBuzzerProvider _buzzer;
 
     public StartMatchCommandHandler(
         IAppDbContext db, ICurrentUser currentUser, IQuestionSelector selector, MatchEventLog eventLog, IScoringEngine scoring,
-        IMatchNotifications notifications)
+        IMatchNotifications notifications, IBuzzerProvider buzzer)
     {
+        _buzzer = buzzer;
         _db = db;
         _currentUser = currentUser;
         _selector = selector;
@@ -102,6 +105,6 @@ public sealed class StartMatchCommandHandler : IRequestHandler<StartMatchCommand
                 .Select(s => new LiveSegmentDto(s.Id, s.FormatCode.ToString(), s.OrderIndex, s.PlannedQuestionCount, s.State.ToString()))
                 .ToList(),
             reserved,
-            LiveStateBuilder.BuzzerStatus.Available);
+            _buzzer.IsAvailable);
     }
 }

@@ -24,7 +24,7 @@
     <ProjectReference Include="..\..\src\Quizware.Domain\Quizware.Domain.csproj" />
     <ProjectReference Include="..\..\src\Quizware.Application\Quizware.Application.csproj" />
     <ProjectReference Include="..\..\src\Quizware.Infrastructure\Quizware.Infrastructure.csproj" />
-    <ProjectReference Include="..\..\src\Quizware.Modules.Buzzer\Quizware.Modules.Buzzer.csproj" />
+    <ProjectReference Include="$(BuzzerModuleProject)" Condition="'$(BuzzerModuleInstalled)' == 'true'" />
     <ProjectReference Include="..\..\src\Quizware.Api\Quizware.Api.csproj" />
   </ItemGroup>
 

@@ -1,5 +1,7 @@
 using FluentValidation;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
+using Quizware.Application.Buzzer;
 using Quizware.Application.Common.Behaviors;
 using Quizware.Application.Gameplay;
 using Quizware.Application.Gameplay.Formats;
@@ -42,6 +44,11 @@ public static class DependencyInjection
         services.AddScoped<StageSeeder>();
         services.AddScoped<Display.IDisplayProjectionService, Display.DisplayProjectionService>();
         services.AddScoped<Reporting.IReportingService, Reporting.ReportingService>();
+
+        // ADR-005: the buzzer defaults to "none". The buzzer module, when it
+        // is installed, replaces both registrations.
+        services.TryAddSingleton<IBuzzerProvider, NullBuzzerAdapter>();
+        services.TryAddScoped<IBuzzerSessionService, UnavailableBuzzerSessionService>();
 
         // P9-07: every IQuestionFormatHandler in this assembly is picked up, so
         // a new format is one new class.

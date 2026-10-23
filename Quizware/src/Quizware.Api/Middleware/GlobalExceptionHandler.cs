@@ -38,7 +38,7 @@ public sealed class GlobalExceptionHandler : IExceptionHandler
             Type = $"https://quizapp/errors/{errorCode.ToLowerInvariant().Replace('_', '-')}",
             Title = title,
             Status = statusCode,
-            Detail = statusCode >= 500 ? "An unexpected error occurred." : exception.Message,
+            Detail = statusCode >= 500 && exception is not BuzzerUnavailableException ? "An unexpected error occurred." : exception.Message,
             Instance = httpContext.Request.Path,
         };
 
@@ -75,6 +75,7 @@ public sealed class GlobalExceptionHandler : IExceptionHandler
         TieBreakNotApplicableException => (409, "TIE_BREAK_NOT_APPLICABLE", "The tie was already resolved, or does not affect qualification"),
         SegmentNotReorderableException => (409, "SEGMENT_NOT_REORDERABLE", "Segment cannot be reordered"),
         FormatInUseException => (409, "FORMAT_IN_USE", "Format is still in use"),
+        BuzzerUnavailableException => (503, "BUZZER_UNAVAILABLE", "The buzzer is not available; record the answer manually"),
         UnauthorizedAccessException => (403, "FORBIDDEN", "Role or program scope does not allow this"),
         KeyNotFoundException => (404, "NOT_FOUND", "Entity does not exist in this program"),
         _ => (500, "INTERNAL_ERROR", "An unexpected error occurred"),
