@@ -45,3 +45,21 @@ public sealed record TieEntryDto(
     IReadOnlyList<string> AvailableActions);
 
 public sealed record StageTiesDto(Guid StageId, IReadOnlyList<TieEntryDto> Ties, bool BlocksCommit);
+
+public sealed record TieBreakParticipantEntryDto(Guid TeamId, string TeamName, int SeatNumber, int TurnOrder);
+
+public sealed record TieBreakSegmentEntryDto(Guid SegmentId, string Format, int OrderIndex, int PlannedQuestionCount, bool IsSuddenDeath);
+
+public sealed record TieBreakMatchCreatedDto(
+    Guid TieBreakEventId,
+    Guid MatchId,
+    string MatchKind,
+    Guid StageId,
+    int MatchNumber,
+    string Name,
+    string State,
+    IReadOnlyList<TieBreakParticipantEntryDto> Participants,
+    IReadOnlyList<TieBreakSegmentEntryDto> Segments,
+    int QuestionsReserved,
+    bool ScoreCountsTowardStage,
+    string NextStep);

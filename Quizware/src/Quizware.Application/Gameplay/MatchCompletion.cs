@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Quizware.Application.Abstractions;
+using Quizware.Application.Qualification;
 using Quizware.Application.Scoring;
 using Quizware.Application.Selection;
 using Quizware.Domain.Common.Exceptions;
@@ -20,15 +21,18 @@ public sealed class MatchCompletion
     private readonly MatchEventLog _eventLog;
     private readonly IScoringEngine _scoring;
     private readonly IMatchNotifications _notifications;
+    private readonly TieBreakMatches _tieBreaks;
 
     public MatchCompletion(
-        IAppDbContext db, IQuestionSelector selector, MatchEventLog eventLog, IScoringEngine scoring, IMatchNotifications notifications)
+        IAppDbContext db, IQuestionSelector selector, MatchEventLog eventLog, IScoringEngine scoring, IMatchNotifications notifications,
+        TieBreakMatches tieBreaks)
     {
         _db = db;
         _selector = selector;
         _eventLog = eventLog;
         _scoring = scoring;
         _notifications = notifications;
+        _tieBreaks = tieBreaks;
     }
 
     /// <summary>Does not call SaveChangesAsync — the caller owns the unit of work.</summary>
@@ -46,6 +50,7 @@ public sealed class MatchCompletion
 
         match.Complete(result.WinnerTeamId, result.IsTied);
         await _scoring.RecordMatchCompletedAsync(match, participants, cancellationToken);
+        await _tieBreaks.RecordResultAsync(match, participants, cancellationToken);
         await _eventLog.AppendAsync(match, MatchEventTypes.MatchCompleted, new
         {
             reason,

@@ -40,6 +40,21 @@ public static class QualificationMapper
                 dto.Rule.ScoreCountsTowardStage, dto.Rule.OnStillTied),
             dto.AvailableActions);
 
+    public static CreateTieBreakMatchResponse ToResponse(TieBreakMatchCreatedDto dto) =>
+        new(
+            dto.TieBreakEventId,
+            dto.MatchId,
+            dto.MatchKind,
+            dto.StageId,
+            dto.MatchNumber,
+            dto.Name,
+            dto.State,
+            dto.Participants.Select(p => new TieBreakParticipantDto(p.TeamId, p.TeamName, p.SeatNumber, p.TurnOrder)).ToList(),
+            dto.Segments.Select(s => new TieBreakSegmentDto(s.SegmentId, s.Format, s.OrderIndex, s.PlannedQuestionCount, s.IsSuddenDeath)).ToList(),
+            dto.QuestionsReserved,
+            dto.ScoreCountsTowardStage,
+            dto.NextStep);
+
     private static Contracts.V1.Qualification.StageRefDto ToRef(Application.Qualification.Dtos.StageRefDto stage) =>
         new(stage.Id, stage.Name, stage.OrderIndex);
 }

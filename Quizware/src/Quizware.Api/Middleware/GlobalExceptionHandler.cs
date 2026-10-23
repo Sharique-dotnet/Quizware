@@ -72,6 +72,7 @@ public sealed class GlobalExceptionHandler : IExceptionHandler
         QuestionPoolExhaustedException => (409, "QUESTION_POOL_EXHAUSTED", "Not enough questions available"),
         ScoringRuleNotFoundException => (409, "SCORING_RULE_MISSING", "No scoring rule for this format and outcome"),
         UnresolvedTieException => (409, "UNRESOLVED_TIE", "A tie affecting a qualifying place is still open"),
+        TieBreakNotApplicableException => (409, "TIE_BREAK_NOT_APPLICABLE", "The tie was already resolved, or does not affect qualification"),
         SegmentNotReorderableException => (409, "SEGMENT_NOT_REORDERABLE", "Segment cannot be reordered"),
         FormatInUseException => (409, "FORMAT_IN_USE", "Format is still in use"),
         UnauthorizedAccessException => (403, "FORBIDDEN", "Role or program scope does not allow this"),

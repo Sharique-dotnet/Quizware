@@ -48,12 +48,28 @@ public sealed class QualificationController : ControllerBase
         Ok(QualificationMapper.ToResponse(await _sender.Send(new GetTieQuery(programId, tieId), cancellationToken)));
 
     [HttpPost("ties/{tieId:guid}/tie-break-match")]
-    public ActionResult<CreateTieBreakMatchResponse> CreateTieBreakMatch(Guid programId, Guid tieId, [FromBody] CreateTieBreakMatchRequest? request) => StatusCode(StatusCodes.Status501NotImplemented);
+    public async Task<ActionResult<CreateTieBreakMatchResponse>> CreateTieBreakMatch(
+        Guid programId, Guid tieId, [FromBody] CreateTieBreakMatchRequest? request, CancellationToken cancellationToken)
+    {
+        var created = await _sender.Send(
+            new CreateTieBreakMatchCommand(
+                programId, tieId, request?.FormatCodeOverride, request?.QuestionCountOverride, request?.SuddenDeathOverride, request?.Reason),
+            cancellationToken);
+        return Created($"/api/v1/programs/{programId}/matches/{created.MatchId}", QualificationMapper.ToResponse(created));
+    }
 
     [HttpPost("ties/{tieId:guid}/resolve-manually")]
     [Authorize(Policy = Policies.CanResolveTie)]
-    public ActionResult<TieDto> ResolveManually(Guid programId, Guid tieId, [FromBody] ResolveTieManuallyRequest request) => StatusCode(StatusCodes.Status501NotImplemented);
+    public async Task<ActionResult<TieDto>> ResolveManually(
+        Guid programId, Guid tieId, [FromBody] ResolveTieManuallyRequest request, CancellationToken cancellationToken) =>
+        Ok(QualificationMapper.ToResponse(await _sender.Send(
+            new ResolveTieManuallyCommand(programId, tieId, request.RankedTeamIds, request.Method, request.Reason, request.ApprovedByUserId),
+            cancellationToken)));
 
     [HttpPost("ties/{tieId:guid}/abandon")]
-    public IActionResult AbandonTie(Guid programId, Guid tieId, [FromBody] AbandonTieRequest request) => StatusCode(StatusCodes.Status501NotImplemented);
+    public async Task<IActionResult> AbandonTie(Guid programId, Guid tieId, [FromBody] AbandonTieRequest request, CancellationToken cancellationToken)
+    {
+        await _sender.Send(new AbandonTieCommand(programId, tieId, request.Reason), cancellationToken);
+        return NoContent();
+    }
 }
