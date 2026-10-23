@@ -58,8 +58,31 @@ public sealed class ReportsController : ControllerBase
             new GetAuditLogQuery(new AuditLogFilter(programId, entityName, entityId, action, actor, ToUtc(from), ToUtc(to), page, pageSize)),
             cancellationToken)));
 
+    /// <summary>Downloads a report as xlsx, csv or pdf. <paramref name="reportType"/>
+    /// is match, stage or team (each needs <paramref name="id"/>), question-usage
+    /// (<paramref name="id"/> optionally narrows it to a stage) or audit (with the
+    /// audit query's filters, up to 10,000 rows, newest first).</summary>
     [HttpGet("export/{reportType}")]
-    public IActionResult Export(Guid programId, string reportType, [FromQuery] string format = "xlsx") => StatusCode(StatusCodes.Status501NotImplemented);
+    [ProducesResponseType(typeof(FileContentResult), StatusCodes.Status200OK)]
+    public async Task<IActionResult> Export(
+        Guid programId,
+        string reportType,
+        CancellationToken cancellationToken,
+        [FromQuery] string format = "xlsx",
+        [FromQuery] Guid? id = null,
+        [FromQuery] bool flaggedOnly = false,
+        [FromQuery] string? entityName = null,
+        [FromQuery] string? entityId = null,
+        [FromQuery] string? action = null,
+        [FromQuery] string? actor = null,
+        [FromQuery] DateTime? from = null,
+        [FromQuery] DateTime? to = null)
+    {
+        var auditFilter = new AuditLogFilter(programId, entityName, entityId, action, actor, ToUtc(from), ToUtc(to), 1, 1);
+        var file = await _sender.Send(
+            new ExportReportQuery(programId, reportType.ToLowerInvariant(), format, id, flaggedOnly, auditFilter), cancellationToken);
+        return File(file.Content, file.ContentType, file.FileName);
+    }
 
     private static DateTime? ToUtc(DateTime? value) => value?.Kind switch
     {

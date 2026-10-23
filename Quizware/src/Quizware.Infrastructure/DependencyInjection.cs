@@ -12,6 +12,7 @@ using Quizware.Infrastructure.Media;
 using Quizware.Infrastructure.Outbox;
 using Quizware.Infrastructure.Persistence;
 using Quizware.Infrastructure.Persistence.Interceptors;
+using Quizware.Infrastructure.Reporting;
 
 namespace Quizware.Infrastructure;
 
@@ -34,6 +35,7 @@ public static class DependencyInjection
         services.AddScoped<IAppDbContext>(sp => sp.GetRequiredService<AppDbContext>());
         services.AddScoped<IMatchNotifications, OutboxMatchNotifications>();
         services.AddScoped<IAuditLogReader, AuditLogReader>();
+        services.AddSingleton<IReportExporter, ReportExporter>();
         services.AddSingleton<OutboxSignal>();
 
         services
