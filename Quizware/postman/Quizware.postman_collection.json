@@ -1,7 +1,7 @@
 {
   "info": {
     "name": "Quizware API",
-    "description": "Covers every implemented endpoint through Phase 12 (live push and display API). Run top-to-bottom, folder by folder — each request saves the ids/tokens the next one needs into collection variables. See postman/README.md for the full run order and prerequisites.",
+    "description": "Covers every implemented endpoint through Phase 13 (reporting and exports). Run top-to-bottom, folder by folder — each request saves the ids/tokens the next one needs into collection variables. See postman/README.md for the full run order and prerequisites.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
@@ -51,7 +51,9 @@
     { "key": "activeParticipantId", "value": "" },
     { "key": "answerRecordId", "value": "" },
     { "key": "semiStageId", "value": "" },
-    { "key": "displayToken", "value": "" }
+    { "key": "displayToken", "value": "" },
+    { "key": "reportStageId", "value": "" },
+    { "key": "reportTeamId", "value": "" }
   ],
   "item": [
     {
@@ -2373,6 +2375,162 @@
           "description": "The display API is for display tokens only.",
           "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
             "pm.test('403 Forbidden', () => pm.response.to.have.status(403));"
+          ] } }]
+        }
+      ]
+    },
+    {
+      "name": "16 Reports",
+      "item": [
+        {
+          "name": "Match Report",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/v1/programs/{{programId}}/reports/matches/{{matchId}}",
+            "header": [{ "key": "Authorization", "value": "Bearer {{scopedAccessToken}}" }]
+          },
+          "description": "P13-01: teams, every served question with its answers, and the full MatchEvent timeline. Saves the match's stage and top team for the next requests.",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('200 OK', () => pm.response.to.have.status(200));",
+            "const body = pm.response.json();",
+            "pm.test('includes the MatchEvent timeline', () => pm.expect(body.events.length).to.be.above(0));",
+            "pm.test('one timeline line per event', () => pm.expect(body.timeline.length).to.eql(body.events.length));",
+            "pm.test('a line per team', () => pm.expect(body.teams.length).to.be.above(1));",
+            "pm.collectionVariables.set('reportStageId', body.stageId);",
+            "pm.collectionVariables.set('reportTeamId', body.teams[0].teamId);"
+          ] } }]
+        },
+        {
+          "name": "Stage Summary",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/v1/programs/{{programId}}/reports/stages/{{reportStageId}}",
+            "header": [{ "key": "Authorization", "value": "Bearer {{scopedAccessToken}}" }]
+          },
+          "description": "P13-02: matches, standings, the qualification record with tie-break provenance, and every tie-break.",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('200 OK', () => pm.response.to.have.status(200));",
+            "const body = pm.response.json();",
+            "pm.test('lists the stage matches', () => pm.expect(body.matches.length).to.be.above(0));",
+            "pm.test('has standings', () => pm.expect(body.standings).to.be.an('array'));",
+            "pm.test('one record line per qualifier', () => pm.expect(body.qualificationRecord.length).to.eql(body.qualifiers.length));"
+          ] } }]
+        },
+        {
+          "name": "Team Performance",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/v1/programs/{{programId}}/reports/teams/{{reportTeamId}}",
+            "header": [{ "key": "Authorization", "value": "Bearer {{scopedAccessToken}}" }]
+          },
+          "description": "P13-03: totals over completed matches, accuracy, per-format breakdown and qualification history.",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('200 OK', () => pm.response.to.have.status(200));",
+            "const body = pm.response.json();",
+            "pm.test('the requested team', () => pm.expect(body.teamId).to.eql(pm.collectionVariables.get('reportTeamId')));",
+            "pm.test('played at least one match', () => pm.expect(body.matches.length).to.be.above(0));"
+          ] } }]
+        },
+        {
+          "name": "Question Usage",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/v1/programs/{{programId}}/reports/questions/usage",
+            "header": [{ "key": "Authorization", "value": "Bearer {{scopedAccessToken}}" }]
+          },
+          "description": "P13-04: how often each question was used and how it was answered. EveryoneCorrect flags a question every attempt got right.",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('200 OK', () => pm.response.to.have.status(200));",
+            "const body = pm.response.json();",
+            "pm.test('questions were used', () => pm.expect(body.totalQuestions).to.be.above(0));"
+          ] } }]
+        },
+        {
+          "name": "Question Usage (flagged only)",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/v1/programs/{{programId}}/reports/questions/usage?flaggedOnly=true",
+            "header": [{ "key": "Authorization", "value": "Bearer {{scopedAccessToken}}" }]
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('200 OK', () => pm.response.to.have.status(200));",
+            "const body = pm.response.json();",
+            "pm.test('only flagged questions', () => pm.expect(body.entries.length).to.eql(body.flaggedCount));"
+          ] } }]
+        },
+        {
+          "name": "Audit Log (team inserts)",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/v1/programs/{{programId}}/reports/audit?entityName=Team&action=Insert&pageSize=5",
+            "header": [{ "key": "Authorization", "value": "Bearer {{scopedAccessToken}}" }]
+          },
+          "description": "P13-05: filter by entityName/entityId, action, actor (user id or part of a user name) and from/to (UTC); paged with page/pageSize.",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('200 OK', () => pm.response.to.have.status(200));",
+            "const body = pm.response.json();",
+            "pm.test('at most one page', () => pm.expect(body.entries.length).to.be.at.most(5));",
+            "pm.test('only team inserts', () => body.entries.forEach(e => { pm.expect(e.entityName).to.eql('Team'); pm.expect(e.action).to.eql('Insert'); }));"
+          ] } }]
+        },
+        {
+          "name": "Export Match Report (xlsx)",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/v1/programs/{{programId}}/reports/export/match?id={{matchId}}&format=xlsx",
+            "header": [{ "key": "Authorization", "value": "Bearer {{scopedAccessToken}}" }]
+          },
+          "description": "P13-06: report types match, stage, team (each needs id), question-usage and audit; formats xlsx, csv, pdf.",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('200 OK', () => pm.response.to.have.status(200));",
+            "pm.test('an Excel workbook', () => pm.expect(pm.response.headers.get('Content-Type')).to.include('spreadsheetml'));"
+          ] } }]
+        },
+        {
+          "name": "Export Stage Summary (csv)",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/v1/programs/{{programId}}/reports/export/stage?id={{reportStageId}}&format=csv",
+            "header": [{ "key": "Authorization", "value": "Bearer {{scopedAccessToken}}" }]
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('200 OK', () => pm.response.to.have.status(200));",
+            "pm.test('CSV with the standings section', () => { pm.expect(pm.response.headers.get('Content-Type')).to.include('text/csv'); pm.expect(pm.response.text()).to.include('Standings'); });"
+          ] } }]
+        },
+        {
+          "name": "Export Team Performance (pdf)",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/v1/programs/{{programId}}/reports/export/team?id={{reportTeamId}}&format=pdf",
+            "header": [{ "key": "Authorization", "value": "Bearer {{scopedAccessToken}}" }]
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('200 OK', () => pm.response.to.have.status(200));",
+            "pm.test('a PDF', () => { pm.expect(pm.response.headers.get('Content-Type')).to.include('application/pdf'); pm.expect(pm.response.text().startsWith('%PDF')).to.be.true; });"
+          ] } }]
+        },
+        {
+          "name": "Export Audit Log (csv)",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/v1/programs/{{programId}}/reports/export/audit?format=csv&entityName=Team",
+            "header": [{ "key": "Authorization", "value": "Bearer {{scopedAccessToken}}" }]
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('200 OK', () => pm.response.to.have.status(200));",
+            "pm.test('the audit log', () => pm.expect(pm.response.text()).to.include('Audit log'));"
+          ] } }]
+        },
+        {
+          "name": "Export Unknown Report (expect 400)",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/v1/programs/{{programId}}/reports/export/scores?format=csv",
+            "header": [{ "key": "Authorization", "value": "Bearer {{scopedAccessToken}}" }]
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('400 Bad Request', () => pm.response.to.have.status(400));"
           ] } }]
         }
       ]

@@ -6319,13 +6319,13 @@
         "requestBody": {
           "content": {
             "application/json": {
-              "schema": {}
+              "schema": { }
             },
             "text/json": {
-              "schema": {}
+              "schema": { }
             },
             "application/*+json": {
-              "schema": {}
+              "schema": { }
             }
           }
         },
@@ -7242,6 +7242,7 @@
         "tags": [
           "Reports"
         ],
+        "summary": "Optionally narrowed to one stage; flaggedOnly\n            returns only questions carrying a quality flag.",
         "parameters": [
           {
             "name": "programId",
@@ -7250,6 +7251,21 @@
             "schema": {
               "type": "string",
               "format": "uuid"
+            }
+          },
+          {
+            "name": "stageId",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "flaggedOnly",
+            "in": "query",
+            "schema": {
+              "type": "boolean"
             }
           }
         ],
@@ -7282,6 +7298,7 @@
         "tags": [
           "Reports"
         ],
+        "summary": "Newest first. entityName is the entity type\n            (e.g. \"Team\"); actor is a user id or part of a user\n            name; from/to are inclusive UTC bounds.",
         "parameters": [
           {
             "name": "programId",
@@ -7290,6 +7307,68 @@
             "schema": {
               "type": "string",
               "format": "uuid"
+            }
+          },
+          {
+            "name": "entityName",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "entityId",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "action",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "actor",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "from",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 1
+            }
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 100
             }
           }
         ],
@@ -7322,6 +7401,7 @@
         "tags": [
           "Reports"
         ],
+        "summary": "Downloads a report as xlsx, csv or pdf. reportType\n            is match, stage or team (each needs id), question-usage\n            (id optionally narrows it to a stage) or audit (with the\n            audit query's filters, up to 10,000 rows, newest first).",
         "parameters": [
           {
             "name": "programId",
@@ -7347,11 +7427,91 @@
               "type": "string",
               "default": "xlsx"
             }
+          },
+          {
+            "name": "id",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "flaggedOnly",
+            "in": "query",
+            "schema": {
+              "type": "boolean",
+              "default": false
+            }
+          },
+          {
+            "name": "entityName",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "entityId",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "action",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "actor",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "from",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
           }
         ],
         "responses": {
           "200": {
-            "description": "OK"
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
           }
         }
       }
@@ -10413,8 +10573,8 @@
         "type": "object",
         "properties": {
           "id": {
-            "type": "string",
-            "format": "uuid"
+            "type": "integer",
+            "format": "int64"
           },
           "entityName": {
             "type": "string",
@@ -10435,9 +10595,30 @@
           "occurredAtUtc": {
             "type": "string",
             "format": "date-time"
+          },
+          "actorName": {
+            "type": "string",
+            "nullable": true
+          },
+          "changedColumns": {
+            "type": "string",
+            "nullable": true
+          },
+          "oldValuesJson": {
+            "type": "string",
+            "nullable": true
+          },
+          "newValuesJson": {
+            "type": "string",
+            "nullable": true
+          },
+          "correlationId": {
+            "type": "string",
+            "nullable": true
           }
         },
-        "additionalProperties": false
+        "additionalProperties": false,
+        "description": "P13-05. Quizware.Api.Contracts.V1.Reports.AuditLogEntryDto.Id is the AuditLog row's bigint key (it was\n            declared a Guid while the endpoint was a stub, which the table never was).\n            Quizware.Api.Contracts.V1.Reports.AuditLogEntryDto.ActorUserId is empty for writes made without a signed-in user.\n            Fields after Quizware.Api.Contracts.V1.Reports.AuditLogEntryDto.OccurredAtUtc were added in Phase 13."
       },
       "AuditReportResponse": {
         "type": "object",
@@ -10448,6 +10629,18 @@
               "$ref": "#/components/schemas/AuditLogEntryDto"
             },
             "nullable": true
+          },
+          "totalCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "page": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "pageSize": {
+            "type": "integer",
+            "format": "int32"
           }
         },
         "additionalProperties": false
@@ -12553,6 +12746,85 @@
         },
         "additionalProperties": false
       },
+      "MatchReportAnswer": {
+        "type": "object",
+        "properties": {
+          "teamId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "teamName": {
+            "type": "string",
+            "nullable": true
+          },
+          "outcome": {
+            "type": "string",
+            "nullable": true
+          },
+          "isCorrect": {
+            "type": "boolean",
+            "nullable": true
+          },
+          "passNumber": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "isReversed": {
+            "type": "boolean"
+          },
+          "answeredAtUtc": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "additionalProperties": false
+      },
+      "MatchReportQuestion": {
+        "type": "object",
+        "properties": {
+          "matchQuestionId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "questionId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "format": {
+            "type": "string",
+            "nullable": true
+          },
+          "segmentOrder": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "orderIndex": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "questionText": {
+            "type": "string",
+            "nullable": true
+          },
+          "state": {
+            "type": "string",
+            "nullable": true
+          },
+          "servedAtUtc": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "answers": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MatchReportAnswer"
+            },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
       "MatchReportResponse": {
         "type": "object",
         "properties": {
@@ -12570,6 +12842,124 @@
               "type": "string"
             },
             "nullable": true
+          },
+          "matchNumber": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "matchKind": {
+            "type": "string",
+            "nullable": true
+          },
+          "stageId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "stageName": {
+            "type": "string",
+            "nullable": true
+          },
+          "state": {
+            "type": "string",
+            "nullable": true
+          },
+          "startedAtUtc": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "completedAtUtc": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "winnerTeamId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "winnerTeamName": {
+            "type": "string",
+            "nullable": true
+          },
+          "isTied": {
+            "type": "boolean"
+          },
+          "abandonReason": {
+            "type": "string",
+            "nullable": true
+          },
+          "teams": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MatchReportTeam"
+            },
+            "nullable": true
+          },
+          "questions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MatchReportQuestion"
+            },
+            "nullable": true
+          },
+          "events": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MatchEventDto"
+            },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false,
+        "description": "P13-01. Quizware.Api.Contracts.V1.Reports.MatchReportResponse.Timeline is the original one-line-per-event\n            rendering; Quizware.Api.Contracts.V1.Reports.MatchReportResponse.Events carries the same MatchEvent rows in full.\n            Fields after Quizware.Api.Contracts.V1.Reports.MatchReportResponse.Timeline were added in Phase 13."
+      },
+      "MatchReportTeam": {
+        "type": "object",
+        "properties": {
+          "teamId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "teamName": {
+            "type": "string",
+            "nullable": true
+          },
+          "seatNumber": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "status": {
+            "type": "string",
+            "nullable": true
+          },
+          "score": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "rank": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "correctCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "incorrectCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "noAnswerCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "passedCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "excludedFromStandings": {
+            "type": "boolean"
           }
         },
         "additionalProperties": false
@@ -13539,9 +13929,55 @@
           "correctRate": {
             "type": "number",
             "format": "double"
+          },
+          "questionText": {
+            "type": "string",
+            "nullable": true
+          },
+          "format": {
+            "type": "string",
+            "nullable": true
+          },
+          "difficulty": {
+            "type": "string",
+            "nullable": true
+          },
+          "matchesUsed": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "attempts": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "correctCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "incorrectCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "everyoneCorrect": {
+            "type": "boolean"
+          },
+          "nobodyCorrect": {
+            "type": "boolean"
+          },
+          "flags": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "nullable": true
+          },
+          "lastUsedAtUtc": {
+            "type": "string",
+            "format": "date-time"
           }
         },
-        "additionalProperties": false
+        "additionalProperties": false,
+        "description": "P13-04. Quizware.Api.Contracts.V1.Reports.QuestionUsageReportEntry.EveryoneCorrect marks a question every\n            judged answer got right. Fields after Quizware.Api.Contracts.V1.Reports.QuestionUsageReportEntry.CorrectRate were added in Phase 13."
       },
       "QuestionUsageReportResponse": {
         "type": "object",
@@ -13552,6 +13988,14 @@
               "$ref": "#/components/schemas/QuestionUsageReportEntry"
             },
             "nullable": true
+          },
+          "totalQuestions": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "flaggedCount": {
+            "type": "integer",
+            "format": "int32"
           }
         },
         "additionalProperties": false
@@ -14256,6 +14700,185 @@
         },
         "additionalProperties": false
       },
+      "StageReportMatch": {
+        "type": "object",
+        "properties": {
+          "matchId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "matchName": {
+            "type": "string",
+            "nullable": true
+          },
+          "matchKind": {
+            "type": "string",
+            "nullable": true
+          },
+          "state": {
+            "type": "string",
+            "nullable": true
+          },
+          "winnerTeamId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "winnerTeamName": {
+            "type": "string",
+            "nullable": true
+          },
+          "isTied": {
+            "type": "boolean"
+          }
+        },
+        "additionalProperties": false
+      },
+      "StageReportQualifier": {
+        "type": "object",
+        "properties": {
+          "teamId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "teamName": {
+            "type": "string",
+            "nullable": true
+          },
+          "reason": {
+            "type": "string",
+            "nullable": true
+          },
+          "stageScore": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "stageRank": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "isCommitted": {
+            "type": "boolean"
+          },
+          "toStageId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "sourceMatchId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "sourceMatchName": {
+            "type": "string",
+            "nullable": true
+          },
+          "tieBreakEventId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "tieBreakProvenance": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "StageReportTieBreak": {
+        "type": "object",
+        "properties": {
+          "tieBreakEventId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "scope": {
+            "type": "string",
+            "nullable": true
+          },
+          "state": {
+            "type": "string",
+            "nullable": true
+          },
+          "contestedRank": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "contestedSlots": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "resolutionMethod": {
+            "type": "string",
+            "nullable": true
+          },
+          "resolvedByCriterion": {
+            "type": "string",
+            "nullable": true
+          },
+          "tieBreakMatchId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "roundsPlayed": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "detectedAtUtc": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "resolvedAtUtc": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "notes": {
+            "type": "string",
+            "nullable": true
+          },
+          "participants": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StageReportTieParticipant"
+            },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "StageReportTieParticipant": {
+        "type": "object",
+        "properties": {
+          "teamId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "teamName": {
+            "type": "string",
+            "nullable": true
+          },
+          "enteringScore": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "tieBreakPoints": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "resultRank": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "qualified": {
+            "type": "boolean"
+          }
+        },
+        "additionalProperties": false
+      },
       "StageSegmentTemplateDto": {
         "type": "object",
         "properties": {
@@ -14322,9 +14945,67 @@
               "type": "string"
             },
             "nullable": true
+          },
+          "stageType": {
+            "type": "string",
+            "nullable": true
+          },
+          "state": {
+            "type": "string",
+            "nullable": true
+          },
+          "orderIndex": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "startedAtUtc": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "completedAtUtc": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "matches": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StageReportMatch"
+            },
+            "nullable": true
+          },
+          "standings": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StandingEntry"
+            },
+            "nullable": true
+          },
+          "tieBreakNotes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "nullable": true
+          },
+          "qualifiers": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StageReportQualifier"
+            },
+            "nullable": true
+          },
+          "tieBreaks": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StageReportTieBreak"
+            },
+            "nullable": true
           }
         },
-        "additionalProperties": false
+        "additionalProperties": false,
+        "description": "P13-02. Quizware.Api.Contracts.V1.Reports.StageSummaryReportResponse.QualificationRecord is the original\n            one-line-per-qualifier rendering; Quizware.Api.Contracts.V1.Reports.StageSummaryReportResponse.Qualifiers and\n            Quizware.Api.Contracts.V1.Reports.StageSummaryReportResponse.TieBreaks carry the detail, including tie-break provenance."
       },
       "StageSummaryResponse": {
         "type": "object",
@@ -14532,6 +15213,28 @@
         },
         "additionalProperties": false
       },
+      "TeamFormatPerformance": {
+        "type": "object",
+        "properties": {
+          "format": {
+            "type": "string",
+            "nullable": true
+          },
+          "attempts": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "correctCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "points": {
+            "type": "integer",
+            "format": "int32"
+          }
+        },
+        "additionalProperties": false
+      },
       "TeamHistoryEntry": {
         "type": "object",
         "properties": {
@@ -14655,6 +15358,56 @@
         },
         "additionalProperties": false
       },
+      "TeamPerformanceMatch": {
+        "type": "object",
+        "properties": {
+          "matchId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "matchName": {
+            "type": "string",
+            "nullable": true
+          },
+          "stageId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "stageName": {
+            "type": "string",
+            "nullable": true
+          },
+          "matchKind": {
+            "type": "string",
+            "nullable": true
+          },
+          "state": {
+            "type": "string",
+            "nullable": true
+          },
+          "score": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "rank": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "won": {
+            "type": "boolean"
+          },
+          "correctCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "incorrectCount": {
+            "type": "integer",
+            "format": "int32"
+          }
+        },
+        "additionalProperties": false
+      },
       "TeamPerformanceReportResponse": {
         "type": "object",
         "properties": {
@@ -14673,6 +15426,97 @@
           "averageScore": {
             "type": "number",
             "format": "double"
+          },
+          "teamName": {
+            "type": "string",
+            "nullable": true
+          },
+          "status": {
+            "type": "string",
+            "nullable": true
+          },
+          "wins": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "correctCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "incorrectCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "noAnswerCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "passedCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "accuracy": {
+            "type": "number",
+            "format": "double"
+          },
+          "overallRank": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "matches": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TeamPerformanceMatch"
+            },
+            "nullable": true
+          },
+          "formats": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TeamFormatPerformance"
+            },
+            "nullable": true
+          },
+          "qualifications": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TeamQualificationEntry"
+            },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false,
+        "description": "P13-03. The totals count completed matches only; Quizware.Api.Contracts.V1.Reports.TeamPerformanceReportResponse.Matches\n            lists every match past setup. Fields after Quizware.Api.Contracts.V1.Reports.TeamPerformanceReportResponse.AverageScore were\n            added in Phase 13."
+      },
+      "TeamQualificationEntry": {
+        "type": "object",
+        "properties": {
+          "fromStageId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "fromStageName": {
+            "type": "string",
+            "nullable": true
+          },
+          "reason": {
+            "type": "string",
+            "nullable": true
+          },
+          "stageScore": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "stageRank": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "isCommitted": {
+            "type": "boolean"
+          },
+          "tieBreakProvenance": {
+            "type": "string",
+            "nullable": true
           }
         },
         "additionalProperties": false
