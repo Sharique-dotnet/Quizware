@@ -1,4 +1,5 @@
 using System.Net.Http.Json;
+using Microsoft.AspNetCore.Mvc.Testing;
 using Quizware.Api.Contracts.V1.Matches;
 using Quizware.Api.Contracts.V1.Qualification;
 using Quizware.Api.Contracts.V1.Rules;
@@ -26,7 +27,7 @@ public sealed class QualificationTestHarness
 
     public string QualificationUrl => $"/api/v1/programs/{Match.ProgramId}/qualification";
 
-    public static async Task<QualificationTestHarness> CreateAsync(CustomWebApplicationFactory factory)
+    public static async Task<QualificationTestHarness> CreateAsync(WebApplicationFactory<Program> factory)
     {
         var match = await MatchTestHarness.CreateAsync(factory);
         await match.ResetScoringDefaultsAsync();

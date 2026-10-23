@@ -2,6 +2,7 @@ using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using FluentAssertions;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.DependencyInjection;
 using Quizware.Api.Contracts.V1.Matches;
 using Quizware.Api.Contracts.V1.Programs;
@@ -21,9 +22,9 @@ namespace Quizware.Api.IntegrationTests;
 /// matches — shared by every match setup and live-engine test.</summary>
 public sealed class MatchTestHarness
 {
-    private readonly CustomWebApplicationFactory _factory;
+    private readonly WebApplicationFactory<Program> _factory;
 
-    private MatchTestHarness(CustomWebApplicationFactory factory, HttpClient client, Guid programId)
+    private MatchTestHarness(WebApplicationFactory<Program> factory, HttpClient client, Guid programId)
     {
         _factory = factory;
         Client = client;
@@ -38,7 +39,7 @@ public sealed class MatchTestHarness
 
     public static string LiveUrl(Guid matchId) => $"/api/v1/matches/{matchId}/live";
 
-    public static async Task<MatchTestHarness> CreateAsync(CustomWebApplicationFactory factory)
+    public static async Task<MatchTestHarness> CreateAsync(WebApplicationFactory<Program> factory)
     {
         var superAdmin = await CreateSuperAdminClientAsync(factory);
         var response = await superAdmin.PostAsJsonAsync(
@@ -289,7 +290,7 @@ public sealed class MatchTestHarness
 
     private int NextOrderIndex() => _nextOrderIndex++;
 
-    private static async Task<HttpClient> CreateSuperAdminClientAsync(CustomWebApplicationFactory factory)
+    private static async Task<HttpClient> CreateSuperAdminClientAsync(WebApplicationFactory<Program> factory)
     {
         var email = $"match-admin-{Guid.NewGuid():N}@quizapp.test";
         const string password = "P@ssw0rd123!";
@@ -310,7 +311,7 @@ public sealed class MatchTestHarness
     }
 
     private static async Task<HttpClient> CreateScopedClientAsync(
-        CustomWebApplicationFactory factory, Guid programId, params string[] roles)
+        WebApplicationFactory<Program> factory, Guid programId, params string[] roles)
     {
         var email = $"match-user-{Guid.NewGuid():N}@quizapp.test";
 

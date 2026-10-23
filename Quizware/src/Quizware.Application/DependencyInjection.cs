@@ -40,6 +40,7 @@ public static class DependencyInjection
         services.AddScoped<TieViews>();
         services.AddScoped<TieBreakMatches>();
         services.AddScoped<StageSeeder>();
+        services.AddScoped<Display.IDisplayProjectionService, Display.DisplayProjectionService>();
 
         // P9-07: every IQuestionFormatHandler in this assembly is picked up, so
         // a new format is one new class.

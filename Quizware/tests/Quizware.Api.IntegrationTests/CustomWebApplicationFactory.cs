@@ -35,6 +35,11 @@ public sealed class CustomWebApplicationFactory : WebApplicationFactory<Program>
 
         builder.ConfigureServices(services =>
         {
+            // The live-push background services poll the database; the shared
+            // in-memory SQLite connection here is not safe to use from two
+            // threads, so they stay off. LiveWebApplicationFactory runs them.
+            services.Configure<Quizware.Api.Live.LiveOptions>(o => o.BackgroundServicesEnabled = false);
+
             // AddDbContext's provider configuration is additive
             // (IDbContextOptionsConfiguration<T> registrations stack), so
             // removing only the DbContextOptions<T> descriptor leaves the

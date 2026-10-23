@@ -1,7 +1,7 @@
 {
   "info": {
     "name": "Quizware API",
-    "description": "Covers every implemented endpoint through Phase 11 (qualification and tie-breaking). Run top-to-bottom, folder by folder — each request saves the ids/tokens the next one needs into collection variables. See postman/README.md for the full run order and prerequisites.",
+    "description": "Covers every implemented endpoint through Phase 12 (live push and display API). Run top-to-bottom, folder by folder — each request saves the ids/tokens the next one needs into collection variables. See postman/README.md for the full run order and prerequisites.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
@@ -50,7 +50,8 @@
     { "key": "correctOptionId", "value": "" },
     { "key": "activeParticipantId", "value": "" },
     { "key": "answerRecordId", "value": "" },
-    { "key": "semiStageId", "value": "" }
+    { "key": "semiStageId", "value": "" },
+    { "key": "displayToken", "value": "" }
   ],
   "item": [
     {
@@ -2291,6 +2292,87 @@
           "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
             "pm.test('200 OK', () => pm.response.to.have.status(200));",
             "pm.test('one Semi-Final match for the three qualifiers', () => pm.expect(pm.response.json().matchesCreated).to.eql(1));"
+          ] } }]
+        }
+      ]
+    },
+    {
+      "name": "15 Display",
+      "item": [
+        {
+          "name": "Setup — Mint Display Token",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/v1/auth/display-token",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }, { "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"programId\": \"{{programId}}\",\n  \"expiresInMinutes\": 60\n}" }
+          },
+          "description": "A read-only token for projector screens; every request below uses it.",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('200 OK', () => pm.response.to.have.status(200));",
+            "const body = pm.response.json();",
+            "pm.collectionVariables.set('displayToken', body.displayToken);"
+          ] } }]
+        },
+        {
+          "name": "Display Match State",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/v1/display/matches/{{matchId}}/state",
+            "header": [{ "key": "Authorization", "value": "Bearer {{displayToken}}" }]
+          },
+          "description": "Screen state. While a question is live, currentQuestion.correctOptionId stays null until the operator reveals it.",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('200 OK', () => pm.response.to.have.status(200));",
+            "const body = pm.response.json();",
+            "pm.test('the completed match', () => pm.expect(body.state).to.eql('Completed'));",
+            "pm.test('three teams on the scoreboard', () => pm.expect(body.participants.length).to.eql(3));"
+          ] } }]
+        },
+        {
+          "name": "Display Match Scores",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/v1/display/matches/{{matchId}}/scores",
+            "header": [{ "key": "Authorization", "value": "Bearer {{displayToken}}" }]
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('200 OK', () => pm.response.to.have.status(200));",
+            "pm.test('three teams', () => pm.expect(pm.response.json().scores.length).to.eql(3));"
+          ] } }]
+        },
+        {
+          "name": "Display Standings",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/v1/display/programs/{{programId}}/standings",
+            "header": [{ "key": "Authorization", "value": "Bearer {{displayToken}}" }]
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('200 OK', () => pm.response.to.have.status(200));"
+          ] } }]
+        },
+        {
+          "name": "Display Branding",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/v1/display/programs/{{programId}}/branding",
+            "header": [{ "key": "Authorization", "value": "Bearer {{displayToken}}" }]
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('200 OK', () => pm.response.to.have.status(200));"
+          ] } }]
+        },
+        {
+          "name": "Display Match State (operator token — expect 403)",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/v1/display/matches/{{matchId}}/state",
+            "header": [{ "key": "Authorization", "value": "Bearer {{scopedAccessToken}}" }]
+          },
+          "description": "The display API is for display tokens only.",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('403 Forbidden', () => pm.response.to.have.status(403));"
           ] } }]
         }
       ]

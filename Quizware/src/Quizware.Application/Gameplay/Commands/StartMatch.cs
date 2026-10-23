@@ -71,7 +71,16 @@ public sealed class StartMatchCommandHandler : IRequestHandler<StartMatchCommand
             segmentIds = segments.Select(s => s.Id),
             questionsReserved = reserved,
         }, cancellationToken);
-        _notifications.Publish("MatchStateChanged", match.ProgramId, match.Id, new { state = match.State.ToString(), questionsReserved = reserved });
+        _notifications.Publish(LiveEvents.MatchStateChanged, match.ProgramId, match.Id, new { cause = MatchEventTypes.MatchStarted, state = match.State.ToString(), questionsReserved = reserved });
+        if (match.MatchKind == MatchKind.TieBreak)
+        {
+            _notifications.Publish(LiveEvents.TieBreakStarted, match.ProgramId, match.Id, new
+            {
+                tieBreakEventId = match.TieBreakEventId,
+                teamIds = active.Select(p => p.TeamId),
+                name = match.Name,
+            });
+        }
 
         await _db.SaveChangesAsync(cancellationToken);
 

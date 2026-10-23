@@ -90,6 +90,8 @@ app.UseMiddleware<ProgramScopeMiddleware>();
 app.UseAuthorization();
 
 app.MapControllers();
+app.MapHub<Quizware.Api.Hubs.MatchHub>(Quizware.Api.Hubs.MatchHub.Path);
+app.MapHub<Quizware.Api.Hubs.DisplayHub>(Quizware.Api.Hubs.DisplayHub.Path);
 
 app.MapHealthChecks("/health/live", new HealthCheckOptions { Predicate = _ => false });
 app.MapHealthChecks("/health/ready", new HealthCheckOptions { Predicate = _ => true });

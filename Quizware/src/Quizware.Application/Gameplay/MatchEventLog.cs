@@ -33,19 +33,22 @@ public static class MatchEventTypes
 /// <summary>Appends to the append-only MatchEvent timeline. Scoped per
 /// request: it remembers the last sequence number it handed out, so several
 /// events added before one SaveChangesAsync still get distinct, increasing
-/// numbers.</summary>
+/// numbers. An entry that maps to a live event (<see cref="LiveEvents.ForTimelineEvent"/>)
+/// is also written to the outbox, in the same transaction.</summary>
 public sealed class MatchEventLog
 {
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
 
     private readonly IAppDbContext _db;
     private readonly ICurrentUser _currentUser;
+    private readonly IMatchNotifications _notifications;
     private readonly Dictionary<Guid, long> _lastSequenceByMatch = new();
 
-    public MatchEventLog(IAppDbContext db, ICurrentUser currentUser)
+    public MatchEventLog(IAppDbContext db, ICurrentUser currentUser, IMatchNotifications notifications)
     {
         _db = db;
         _currentUser = currentUser;
+        _notifications = notifications;
     }
 
     public async Task AppendAsync(Match match, string eventType, object payload, CancellationToken cancellationToken)
@@ -63,5 +66,10 @@ public sealed class MatchEventLog
 
         _db.MatchEvents.Add(MatchEvent.Create(
             match.ProgramId, match.Id, next, eventType, JsonSerializer.Serialize(payload, JsonOptions), _currentUser.UserId));
+
+        if (LiveEvents.ForTimelineEvent(eventType) is { } liveEvent)
+        {
+            _notifications.Publish(liveEvent, match.ProgramId, match.Id, new { cause = eventType, sequenceNumber = next, detail = payload });
+        }
     }
 }

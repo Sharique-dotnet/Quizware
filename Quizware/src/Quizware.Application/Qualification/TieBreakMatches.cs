@@ -20,7 +20,7 @@ namespace Quizware.Application.Qualification;
 /// match sends its tie back to waiting for one. Callers own the unit of work.</summary>
 public sealed class TieBreakMatches
 {
-    public const string TieBreakResolved = "TieBreakResolved";
+    public const string TieBreakResolved = LiveEvents.TieBreakResolved;
 
     private readonly IAppDbContext _db;
     private readonly ICurrentUser _currentUser;

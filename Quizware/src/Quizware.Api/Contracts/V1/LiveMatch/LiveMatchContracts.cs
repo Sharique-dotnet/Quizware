@@ -140,3 +140,16 @@ public sealed record MatchEventDto(long SequenceNumber, string EventType, string
 public sealed record MatchTimelineResponse(IReadOnlyList<MatchEventDto> Events);
 
 public sealed record MatchSnapshotResponse(Guid SnapshotId, DateTime CreatedAtUtc);
+
+/// <summary>P12-01: what both hubs push for every live event — the event's own
+/// details plus a fresh snapshot of the match for the receiving audience, so a
+/// client never has to piece the state together from increments.</summary>
+public sealed record LiveEventMessage(
+    string Type,
+    Guid MatchId,
+    DateTime OccurredAtUtc,
+    System.Text.Json.JsonElement Data,
+    LiveMatchStateResponse? State);
+
+/// <summary>P12-05: the server's own countdown for the question on screen.</summary>
+public sealed record TimerTickMessage(Guid MatchId, Guid MatchQuestionId, double RemainingSeconds, int TimeLimitSeconds, DateTime ServerNowUtc);

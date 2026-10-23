@@ -9,6 +9,14 @@ using Quizware.Domain.Tournament;
 
 namespace Quizware.Application.Gameplay;
 
+/// <summary>Who a live view is for: an operator console sees the answer as
+/// soon as the question is served; a display screen only once it is revealed.</summary>
+public enum LiveAudience
+{
+    Console = 1,
+    Display = 2,
+}
+
 /// <summary>Builds the live console/display view of a match — the response
 /// every live action returns, so the caller never has to re-fetch state.</summary>
 public sealed class LiveStateBuilder
@@ -32,7 +40,15 @@ public sealed class LiveStateBuilder
         _currentUser.IsInRole(Roles.SuperAdmin) || _currentUser.IsInRole(Roles.ProgramAdmin)
         || _currentUser.IsInRole(Roles.Operator) || _currentUser.IsInRole(Roles.Scorer);
 
-    public async Task<LiveMatchStateDto> BuildAsync(Match match, CancellationToken cancellationToken)
+    /// <summary>The audience the calling user belongs to.</summary>
+    public LiveAudience CallerAudience => CallerMaySeeAnswers ? LiveAudience.Console : LiveAudience.Display;
+
+    public Task<LiveMatchStateDto> BuildAsync(Match match, CancellationToken cancellationToken) =>
+        BuildAsync(match, CallerAudience, cancellationToken);
+
+    /// <summary>For a given audience rather than the calling user — the live
+    /// push builds both views itself, with no user behind it.</summary>
+    public async Task<LiveMatchStateDto> BuildAsync(Match match, LiveAudience audience, CancellationToken cancellationToken)
     {
         var stage = await _db.Stages.SingleAsync(s => s.Id == match.StageId, cancellationToken);
         var participants = await MatchSetup.LoadParticipantsAsync(_db, match.Id, cancellationToken);
@@ -62,7 +78,7 @@ public sealed class LiveStateBuilder
                 (template?.TopicSelectionMode ?? TopicSelectionMode.None).ToString());
         }
 
-        var currentQuestion = activeQuestion is null ? null : await PresentAsync(activeQuestion, cancellationToken);
+        var currentQuestion = activeQuestion is null ? null : await PresentAsync(activeQuestion, audience, cancellationToken);
 
         ActiveParticipantDto? activeParticipant = null;
         var activeParticipantId = activeQuestion?.TargetParticipantId
@@ -110,7 +126,10 @@ public sealed class LiveStateBuilder
     /// so the honest answer is always "unavailable".</summary>
     public static LiveBuzzerStatusDto BuzzerStatus => new(false, null, "Unavailable");
 
-    public async Task<CurrentQuestionDto> PresentAsync(MatchQuestion matchQuestion, CancellationToken cancellationToken)
+    public Task<CurrentQuestionDto> PresentAsync(MatchQuestion matchQuestion, CancellationToken cancellationToken) =>
+        PresentAsync(matchQuestion, CallerAudience, cancellationToken);
+
+    public async Task<CurrentQuestionDto> PresentAsync(MatchQuestion matchQuestion, LiveAudience audience, CancellationToken cancellationToken)
     {
         var question = await _db.Questions.IgnoreQueryFilters()
             .SingleAsync(q => q.Id == matchQuestion.QuestionId, cancellationToken);
@@ -127,7 +146,7 @@ public sealed class LiveStateBuilder
                 .SingleOrDefaultAsync(cancellationToken);
         }
 
-        var mayRevealAnswer = CallerMaySeeAnswers || matchQuestion.RevealedAtUtc is not null;
+        var mayRevealAnswer = audience == LiveAudience.Console || matchQuestion.RevealedAtUtc is not null;
 
         var now = _clock.UtcNow;
         double? remaining = null;
