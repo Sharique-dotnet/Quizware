@@ -38,10 +38,20 @@ public sealed class TieBreakParticipant : BaseEntity, IAuditable, ISoftDeletable
     public bool IsDeleted { get; private set; }
     public DateTime? DeletedAtUtc { get; private set; }
 
+    /// <summary>Still contested: no place has been decided for this team yet.</summary>
+    public bool IsContested => ResultRank is null;
+
     public void RecordResult(int tieBreakPoints, int resultRank, bool qualified)
     {
         TieBreakPoints = tieBreakPoints;
         ResultRank = resultRank;
         Qualified = qualified;
+    }
+
+    /// <summary>A tie-break round ended level for this team: its points are
+    /// kept, but its place is still contested.</summary>
+    public void RecordPoints(int tieBreakPoints)
+    {
+        TieBreakPoints = tieBreakPoints;
     }
 }

@@ -55,4 +55,21 @@ public sealed class StageQualification : BaseEntity, ITenantScoped, IAuditable, 
     {
         IsCommitted = true;
     }
+
+    /// <summary>A rollback keeps a manual wildcard pick, uncommitted, so it
+    /// survives into the next commit.</summary>
+    public void Uncommit(string updatedBy)
+    {
+        IsCommitted = false;
+        UpdatedAtUtc = DateTime.UtcNow;
+        UpdatedBy = updatedBy;
+    }
+
+    public void Delete(string deletedBy)
+    {
+        IsDeleted = true;
+        DeletedAtUtc = DateTime.UtcNow;
+        UpdatedAtUtc = DateTime.UtcNow;
+        UpdatedBy = deletedBy;
+    }
 }
