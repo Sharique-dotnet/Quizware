@@ -54,4 +54,27 @@ public class StageTests
         stage.TeamCountChangePolicy.Should().Be(TeamCountChangePolicy.Rebalance);
         stage.AllowSegmentReorderDuringMatch.Should().BeTrue();
     }
+
+    [Fact]
+    public void ReturnToDraft_FromReady_GoesBackToDraft()
+    {
+        var stage = Create();
+        stage.MarkReady(segmentCount: 1);
+
+        stage.ReturnToDraft();
+
+        stage.State.Should().Be(StageState.Draft);
+    }
+
+    [Fact]
+    public void ReturnToDraft_OnceStarted_Throws()
+    {
+        var stage = Create();
+        stage.MarkReady(segmentCount: 1);
+        stage.Start();
+
+        var act = () => stage.ReturnToDraft();
+
+        act.Should().Throw<Quizware.Domain.Common.Exceptions.InvalidStateTransitionException>();
+    }
 }

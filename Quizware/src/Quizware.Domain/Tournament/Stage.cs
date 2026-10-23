@@ -81,6 +81,18 @@ public sealed class Stage : BaseEntity, ITenantScoped, IAuditable, ISoftDeletabl
         State = StageState.Ready;
     }
 
+    /// <summary>A qualification rollback undoes the Ready a commit set — only
+    /// possible while the stage has not started.</summary>
+    public void ReturnToDraft()
+    {
+        if (State != StageState.Ready)
+        {
+            throw new InvalidStateTransitionException($"Stage '{Name}' must be Ready to return to Draft; it is {State}.");
+        }
+
+        State = StageState.Draft;
+    }
+
     public void Rename(string name, string updatedBy)
     {
         if (string.IsNullOrWhiteSpace(name))

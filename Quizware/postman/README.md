@@ -1,10 +1,10 @@
 # Quizware Postman collection
 
 `Quizware.postman_collection.json` covers every implemented endpoint through
-**Phase 10 (match engine, scoring and standings)**. Endpoints that are still
-`501` stubs — admin lookups, match preflight, live snapshot/restore, Qualification,
-Buzzer, Display, Reports — are intentionally not included; there's nothing
-real to test yet.
+**Phase 11 (qualification and tie-breaking)**. Endpoints that are still
+`501` stubs — admin lookups, match preflight, live snapshot/restore, Buzzer,
+Display, Reports — are intentionally not included; there's nothing real to
+test yet.
 
 All variables (`baseUrl`, tokens, ids) are **collection variables**, saved by
 each request's test script for the next request to use — no separate
@@ -90,6 +90,14 @@ variable.
     recalculation that must leave the totals unchanged.
 14. **13 Standings** — overall, stage (both routes) and team standings for
     the completed match.
+15. **14 Qualification** — adds a Semi-Final stage for League's qualifiers,
+    then runs preview, wildcards, tie detection and the tie list, commit, the
+    "already committed" preview, rollback, a second commit, and an auto-seed
+    of the Semi-Final from the committed teams. This flow produces no tie, so
+    the four per-tie requests (get, tie-break match, resolve manually,
+    abandon) use an unknown id and **expect a 404**. Tie-break play and
+    manual resolution are covered by the integration tests
+    (`QualificationTieBreakTests`, `Phase11RequiredTests`).
 
 ## Notes
 

@@ -54,4 +54,55 @@ public class TieBreakEventTests
 
         act.Should().Throw<Quizware.Domain.Common.Exceptions.InvalidStateTransitionException>();
     }
+
+    [Fact]
+    public void StartPlaying_ThenCancel_GoesBackToAwaitingPlay()
+    {
+        var tie = Detect();
+        tie.AwaitPlay();
+        var matchId = Guid.NewGuid();
+
+        tie.StartPlaying(matchId);
+        tie.TieBreakMatchId.Should().Be(matchId);
+        tie.CancelTieBreakMatch();
+
+        tie.State.Should().Be(TieBreakEventState.AwaitingPlay);
+        tie.TieBreakMatchId.Should().BeNull();
+    }
+
+    [Fact]
+    public void StartPlaying_WhileAlreadyPlaying_Throws()
+    {
+        var tie = Detect();
+        tie.StartPlaying(Guid.NewGuid());
+
+        var act = () => tie.StartPlaying(Guid.NewGuid());
+
+        act.Should().Throw<Quizware.Domain.Common.Exceptions.InvalidStateTransitionException>();
+    }
+
+    [Fact]
+    public void Resolve_Twice_Throws()
+    {
+        var tie = Detect();
+        tie.Resolve(TieBreakResolutionMethod.Criteria, Guid.NewGuid(), resolvedByCriterion: "FewerIncorrect");
+
+        var act = () => tie.Resolve(TieBreakResolutionMethod.PlayedTieBreak, Guid.NewGuid());
+
+        act.Should().Throw<Quizware.Domain.Common.Exceptions.InvalidStateTransitionException>();
+        tie.IsOpen.Should().BeFalse();
+    }
+
+    [Fact]
+    public void Abandon_KeepsTheReason()
+    {
+        var tie = Detect();
+
+        tie.Abandon("No longer on the qualification boundary.");
+
+        tie.State.Should().Be(TieBreakEventState.Abandoned);
+        tie.Notes.Should().Be("No longer on the qualification boundary.");
+        var act = () => tie.AwaitPlay();
+        act.Should().Throw<Quizware.Domain.Common.Exceptions.InvalidStateTransitionException>();
+    }
 }

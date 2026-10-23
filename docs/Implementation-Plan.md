@@ -9,7 +9,7 @@ a separate track that starts after Phase 5.
 
 ## Progress at a glance
 
-*Last updated 2026-09-28. For the live working state — open questions,
+*Last updated 2026-10-23. For the live working state — open questions,
 decisions, known gaps — see [`context/CURRENT.md`](../context/CURRENT.md).*
 
 | Phase | Scope | Status |
@@ -25,24 +25,25 @@ decisions, known gaps — see [`context/CURRENT.md`](../context/CURRENT.md).*
 | 8 | Question selection engine | ✅ Done — tag filter deferred (see status note) |
 | 9 | Match engine | ✅ Done — merged to `master` (PRs #1 and #2) |
 | 10 | Scoring and standings | ✅ Done — merged to `master` (PR #2) |
-| **11** | **Qualification and tie-breaking** | ⏭️ **Next** |
-| 12 | Live push (SignalR) and display API | ⬜ Not started |
+| 11 | Qualification and tie-breaking | ✅ Done — see its status note |
+| **12** | **Live push (SignalR) and display API** | ⏭️ **Next** |
 | 13 | Reporting and exports | ⬜ Not started |
 | 14 | QuickBuzz integration module | ⬜ Not started (deliberately last) |
 | 15 | Hardening | ⬜ Not started |
 | 16 | Data migration *(optional)* | ⬜ Not started |
 | 17 | Angular 22 *(separate track)* | ⬜ Not started — the generated TypeScript client is ready for it |
 
-**Where the code stands:** the solution builds with 0 warnings; **421 tests
-pass** (17 Application, 131 Domain, 4 Architecture, 269 API integration). CI
+**Where the code stands:** the solution builds with 0 warnings; **466 tests
+pass** (17 Application, 140 Domain, 4 Architecture, 305 API integration). CI
 runs on every push and pull request to `master`. All migrations apply cleanly
-to a real SQL Server 2022, and the Postman collection plays a complete match
-end to end against it. Endpoints for later phases already exist as
-`501 Not Implemented` stubs so the contract stays fixed: qualification (P11),
-display (P12), reports (P13), buzzer (P14), admin lookups, match preflight and
-live snapshot/restore.
+to a real SQL Server 2022; the Postman collection plays a complete match and a
+stage qualification end to end against it, and the Phase 9–11 required tests
+also pass when pointed at SQL Server. Endpoints for later phases already exist
+as `501 Not Implemented` stubs so the contract stays fixed: display (P12),
+reports (P13), buzzer (P14), admin lookups, match preflight and live
+snapshot/restore.
 
-**Carried forward from finished phases** (not blocking Phase 11):
+**Carried forward from finished phases** (not blocking Phase 12):
 
 | Item | From | Status |
 |---|---|---|
@@ -53,6 +54,8 @@ live snapshot/restore.
 | API endpoints for segment-template play settings and stage match-play settings (e.g. allowing live segment reordering) | `P9-08`, `P9-14` | Settable in the domain only |
 | Default *Incorrect* scoring rules for AudioVisual and Sequence | `P7-06` | Missing — the ready check blocks those segments until rules are added |
 | `<150 ms` live-state and `≤3 round trips` answer targets | `P9-16`, `P9-06` | Not yet measured — belongs with P15 load testing |
+| Qualification rule fields the API cannot set: `SeedingMode` (so it is Manual — commit records the qualifiers and auto-seed builds the matches), `ToStageId`, `MinScoreThreshold`, `TieBreakRuleId` | `P7-08`, `P11-07` | Settable in the domain only; contract change needed |
+| A tie-break rule's difficulty range is not passed to the question selector | `P11-04` | The selector has no difficulty-range input yet |
 
 ---
 
@@ -654,48 +657,81 @@ the tests and in the Postman run.
 
 ---
 
-# Phase 11 — Qualification and tie-breaking — **NEXT**
+# Phase 11 — Qualification and tie-breaking — **DONE**
 
 **Duration:** 2 weeks · **Depends on:** P9, P10
 
-**Status:** not started. `QualificationController` exists as `501` stubs with
-the contract fixed. Already in place to build on: `ITieBreakCriteriaService`
-(`P10-07`) for `P11-03`, the match engine's `MatchKind`, sudden death
-(`P9-15`) and auto-seeding modes (`P9-01`) for `P11-04`/`P11-07`, and the
-`ScoreCountsTowardStage` rule honoured by the scoring engine.
+**Status:** all 8 tasks and all 5 required tests done, on the
+`claude/workflows-project-status-bsgu4d` branch. Every qualification endpoint is
+live; `QualificationController` has no stubs left. Verified on SQLite (the
+normal suite) and against a real SQL Server 2022, through both the integration
+tests and the Postman collection. How it works, briefly:
 
-| Task | What to build | Acceptance criteria |
-|---|---|---|
-| `P11-01` | Qualification preview: winners per match + best remaining + wildcards, each with a reason | Blocked until every match in the stage is `Completed` |
-| `P11-02` | **Tie detection** on/across the qualification boundary | Separates ties that block a commit from ties merely recorded |
-| `P11-03` | **Phase 1 — criteria evaluation**, ordered and configurable | Records `ResolvedByCriterion` |
-| `P11-04` | **Phase 2 — tie-break match creation**: `Match` with `MatchKind = TieBreak`, only the tied teams, segments from the rule (MCQ default) | Hands off to the **existing** match engine — no new gameplay code |
-| `P11-05` | Tie-break result capture: `TieBreakEvent` + `TieBreakParticipant` ranks | Written automatically on match completion |
-| `P11-06` | Extra rounds up to `MaxExtraRounds`, then `OnStillTied` fallback | Manual decision requires reason + **`ProgramAdmin`** approval |
-| `P11-07` | Commit: creates next stage's matches + participants per `SeedingMode` | Blocked while a qualifying-place tie is unresolved (`UNRESOLVED_TIE`) |
-| `P11-08` | Rollback before the next stage starts | |
+- **Preview** (`GET …/preview`) is read-only: winners per match, best remaining
+  by stage points, then manual wildcards (stored as uncommitted
+  `StageQualification` rows). Ties are worked out in memory.
+- **Detect** (`POST …/ties/detect`) saves each tie as a `TieBreakEvent` with one
+  `TieBreakParticipant` per team. Ties the criteria settle are resolved on the
+  spot with `ResolvedByCriterion`. Ties wholly below the cut are recorded with
+  `ContestedSlots = 0` and never block. A saved tie that no longer matches the
+  standings is abandoned on the next detection.
+- **A tie-break match** is an ordinary `MatchKind = TieBreak` match in the same
+  stage, holding only the still-contested teams; its result is written back on
+  completion. Abandoning or deleting it sends the tie back to `AwaitingPlay`.
+- **Commit** detects again in the same transaction, then refuses with
+  `UNRESOLVED_TIE` or records the qualifiers and seeds the next stage.
+
+Deliberate choices and gaps:
+
+- **Questions are reserved when the tie-break match starts, not when it is
+  created**, like every match (`P9-02`). So the create response reports
+  `questionsReserved: 0`; the ready check runs at creation instead.
+- **Rounds:** the first tie-break round plus up to `MaxExtraRounds` more may be
+  played. After that `OnStillTied` applies: `ShareTheSlot` is applied at once,
+  while `ManualDecision` and `CoinToss` wait for `resolve-manually`.
+- **Fix to Phase 10:** tie-break criteria now come from the stage's own rule
+  whatever its scope. Rules saved through the API are stored as `MatchRanking`,
+  so before this the criteria service ignored them.
+- **Gaps** (listed in Progress at a glance): `SeedingMode`, `ToStageId` and
+  `MinScoreThreshold` cannot be set through the rules API, and the rule's
+  difficulty range is not yet passed to the selector.
+
+| Task | What to build | Acceptance criteria | Status |
+|---|---|---|---|
+| `P11-01` | Qualification preview: winners per match + best remaining + wildcards, each with a reason | Blocked until every match in the stage is `Completed` | Done — partial preview while matches remain, with `canCommit: false` |
+| `P11-02` | **Tie detection** on/across the qualification boundary | Separates ties that block a commit from ties merely recorded | Done — match-winner and best-remaining boundaries; below-cut ties recorded, never blocking |
+| `P11-03` | **Phase 1 — criteria evaluation**, ordered and configurable | Records `ResolvedByCriterion` | Done |
+| `P11-04` | **Phase 2 — tie-break match creation**: `Match` with `MatchKind = TieBreak`, only the tied teams, segments from the rule (MCQ default) | Hands off to the **existing** match engine — no new gameplay code | Done. Questions are reserved at start; difficulty range not yet applied |
+| `P11-05` | Tie-break result capture: `TieBreakEvent` + `TieBreakParticipant` ranks | Written automatically on match completion | Done, plus a `TieBreakResolved` outbox message |
+| `P11-06` | Extra rounds up to `MaxExtraRounds`, then `OnStillTied` fallback | Manual decision requires reason + **`ProgramAdmin`** approval | Done — `resolve-manually` (ManualDecision / CoinToss / ShareTheSlot) and `abandon` |
+| `P11-07` | Commit: creates next stage's matches + participants per `SeedingMode` | Blocked while a qualifying-place tie is unresolved (`UNRESOLVED_TIE`) | Done. With Manual seeding (the API default) it records the qualifiers and auto-seed builds the matches |
+| `P11-08` | Rollback before the next stage starts | | Done — keeps manual wildcard picks |
 
 ### Tests
 
-- Reproduce the exact **18 → 9 → 3 → 1** progression from configuration alone
-- **Force a 9th/10th wildcard tie**: criteria run in order, deciding criterion
+All five are in `Phase11RequiredTests.cs` and pass:
+
+- ✅ Reproduce the exact **18 → 9 → 3 → 1** progression from configuration alone
+  (MCQ-only segments; every match played through the live API)
+- ✅ **Force a 9th/10th wildcard tie**: criteria run in order, deciding criterion
   recorded, and where criteria fail a tie-break match is created with only the
   two tied teams
-- Tie-break points do **not** move the stage leaderboard when
-  `ScoreCountsTowardStage = 0`
-- A tie **below** the cut does not block the commit
-- `POST /ties/{tieId}/resolve-manually` → **403** for every role except
+- ✅ Tie-break points do **not** move the stage leaderboard when
+  `ScoreCountsTowardStage = 0` (and do when it is 1)
+- ✅ A tie **below** the cut does not block the commit
+- ✅ `POST /ties/{tieId}/resolve-manually` → **403** for every role except
   `ProgramAdmin` and `SuperAdmin`
 
 ---
 
-# Phase 12 — Live push and display API — *not started*
+# Phase 12 — Live push and display API — **NEXT**
 
 **Duration:** 1–2 weeks · **Depends on:** P9, P10
 
 **Status:** not started. Groundwork done in P9: match events are already written
 to the transactional outbox (`MatchStateChanged`, `AnswerRecorded`,
-`ParticipantRemoved`, `MatchCompleted`); nothing delivers them yet.
+`ParticipantRemoved`, `MatchCompleted`, and from P11 `TieBreakResolved`);
+nothing delivers them yet.
 
 | Task | What to build | Acceptance criteria |
 |---|---|---|
@@ -813,8 +849,8 @@ data** — do not try to make old matches replayable.
 | M3 | **Contract frozen** | P5 | Angular unblocked | ✅ Reached |
 | M4 | **Config-driven tournament** | P7 | The 18-team tournament exists as data only | ✅ Reached |
 | M5 | **First live match** | P9 | A complete match, including a mid-match disqualification | ✅ Reached |
-| M6 | **Full tournament** | P11 | 18 → 9 → 3 → 1, including a real tie-break | Next (P11) |
-| M7 | **Show-ready** | P12 | Live screens, server timers | Pending |
+| M6 | **Full tournament** | P11 | 18 → 9 → 3 → 1, including a real tie-break | ✅ Reached |
+| M7 | **Show-ready** | P12 | Live screens, server timers | Next (P12) |
 | M8 | **Buzzer integrated** | P14 | Works with hardware, and works without it | Pending |
 | M9 | **Production ready** | P15 | Dress rehearsal passed | Pending |
 
@@ -884,13 +920,16 @@ status.)*
    selection.~~ **Done** — see each phase's status note for the deferred items
    (non-MCQ Excel import, tag filter).
 3. ~~**P9–P10** — match engine, scoring and standings.~~ **Done**, merged via
-   PRs #1 and #2. 421 tests pass; the Postman collection plays a complete match.
-4. **Phase 11 — Qualification and tie-breaking** (`P11-01`–`P11-08`). **Next.**
-   Replace the `QualificationController` stubs. Tie-break matches must go
-   through the existing match engine (ADR-007): no new gameplay code.
-5. Before or alongside Phase 11, clear the small carried-forward items in
+   PRs #1 and #2.
+4. ~~**Phase 11** — qualification and tie-breaking (`P11-01`–`P11-08`).~~
+   **Done** — 466 tests pass; verified against SQL Server 2022.
+5. **Phase 12 — Live push and display API.** **Next.** The outbox already
+   carries `MatchStateChanged`, `AnswerRecorded`, `ParticipantRemoved`,
+   `MatchCompleted` and `TieBreakResolved`; Phase 12 delivers them over SignalR.
+6. Alongside it, clear the small carried-forward items in
    [Progress at a glance](#progress-at-a-glance). The owner needs to decide on
-   the pass target field, the settings endpoints and the default scoring rules.
+   the pass target field, the settings endpoints, the qualification-rule
+   fields and the default scoring rules.
 
 Everything after that follows the dependency map: P12 and P13 can run in
 parallel once P11 is stable, P14 is deliberately last before P15.

@@ -50,7 +50,8 @@ public class ControllerStubReachabilityTests : IClassFixture<CustomWebApplicatio
         // (Phase 10b) — covered by ScoresEndpointTests.cs instead.
         // GET /api/v1/programs/{programId}/standings/overall is no longer a
         // stub (Phase 10d) — covered by StandingsEndpointTests.cs instead.
-        [HttpMethod.Get, "/api/v1/programs/{programId}/qualification/stages/{stageId}/preview"],
+        // GET /api/v1/programs/{programId}/qualification/stages/{stageId}/preview
+        // is no longer a stub (Phase 11b) — covered by QualificationPreviewTests.cs.
         [HttpMethod.Get, "/api/v1/buzzer/capability"],
         [HttpMethod.Get, "/api/v1/programs/{programId}/reports/questions/usage"],
         [HttpMethod.Get, "/api/v1/admin/lookups"],

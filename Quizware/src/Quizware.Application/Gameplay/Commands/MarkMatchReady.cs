@@ -46,13 +46,15 @@ public sealed class MarkMatchReadyCommandHandler : IRequestHandler<MarkMatchRead
         var blockers = new List<string>();
 
         var activeCount = participants.Count(p => p.Status == ParticipantStatus.Active);
-        var minimum = Math.Max(2, stage.MinTeamsPerMatch);
+        // A tie-break match is only the tied teams, whatever the stage's usual match size.
+        var isTieBreak = match.MatchKind == MatchKind.TieBreak;
+        var minimum = isTieBreak ? 2 : Math.Max(2, stage.MinTeamsPerMatch);
         if (activeCount < minimum)
         {
             blockers.Add($"INSUFFICIENT_PARTICIPANTS: needs at least {minimum} teams; has {activeCount}.");
         }
 
-        if (activeCount > stage.MaxTeamsPerMatch)
+        if (!isTieBreak && activeCount > stage.MaxTeamsPerMatch)
         {
             blockers.Add($"TOO_MANY_PARTICIPANTS: stage allows at most {stage.MaxTeamsPerMatch} teams; has {activeCount}.");
         }

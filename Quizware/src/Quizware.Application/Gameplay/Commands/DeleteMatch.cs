@@ -1,5 +1,6 @@
 using MediatR;
 using Quizware.Application.Abstractions;
+using Quizware.Application.Qualification;
 
 namespace Quizware.Application.Gameplay.Commands;
 
@@ -11,11 +12,13 @@ public sealed class DeleteMatchCommandHandler : IRequestHandler<DeleteMatchComma
 {
     private readonly IAppDbContext _db;
     private readonly ICurrentUser _currentUser;
+    private readonly TieBreakMatches _tieBreaks;
 
-    public DeleteMatchCommandHandler(IAppDbContext db, ICurrentUser currentUser)
+    public DeleteMatchCommandHandler(IAppDbContext db, ICurrentUser currentUser, TieBreakMatches tieBreaks)
     {
         _db = db;
         _currentUser = currentUser;
+        _tieBreaks = tieBreaks;
     }
 
     public async Task Handle(DeleteMatchCommand request, CancellationToken cancellationToken)
@@ -24,6 +27,7 @@ public sealed class DeleteMatchCommandHandler : IRequestHandler<DeleteMatchComma
         var actor = _currentUser.Email ?? "unknown";
 
         match.Delete(actor);
+        await _tieBreaks.ReleaseAsync(match, cancellationToken);
 
         foreach (var participant in await MatchSetup.LoadParticipantsAsync(_db, match.Id, cancellationToken))
         {
