@@ -73,12 +73,15 @@ public sealed class BuzzerController : ControllerBase
     public async Task<ActionResult<BuzzSessionResponse>> GetSession(Guid id, CancellationToken cancellationToken) =>
         Ok(ToResponse(await _sender.Send(new GetBuzzSessionQuery(id), cancellationToken)));
 
-    /// <summary>Pushed by the on-premises buzzer agent (ADR-005), not by a
-    /// browser client. The first press per device counts; a repeat is ignored.</summary>
+    /// <summary>Pushed by the on-premises buzzer agent (ADR-005), never by a
+    /// browser: it authenticates with the agent key in <c>X-Buzzer-Agent-Key</c>,
+    /// not a user token (Q-005). The first press per device counts; a repeat is
+    /// ignored. Each accepted press is broadcast as <c>BuzzResultsReady</c>.</summary>
     [HttpPost("sessions/{id:guid}/presses")]
-    [AllowAnonymous]
+    [Authorize(Policy = Policies.BuzzerAgent)]
     public async Task<ActionResult<BuzzSessionResponse>> SubmitPress(Guid id, [FromBody] SubmitBuzzPressRequest request, CancellationToken cancellationToken) =>
-        Ok(ToResponse(await _sender.Send(new SubmitBuzzPressCommand(id, request.DeviceId, request.ElapsedMs, request.RawFrameHex), cancellationToken)));
+        Ok(ToResponse(await _sender.Send(
+            new SubmitBuzzPressCommand(id, request.DeviceId, request.ElapsedMs, request.RawFrameHex, request.ButtonKey), cancellationToken)));
 
     [HttpPost("sessions/{id:guid}/collect")]
     [Authorize(Policy = Policies.CanOperateMatch)]

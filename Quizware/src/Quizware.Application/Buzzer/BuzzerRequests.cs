@@ -20,7 +20,8 @@ public sealed record ArmBuzzSessionCommand(Guid MatchId, Guid SegmentId, Guid Ma
 
 public sealed record GetBuzzSessionQuery(Guid SessionId) : IRequest<BuzzSessionDto>;
 
-public sealed record SubmitBuzzPressCommand(Guid SessionId, int DeviceId, long ElapsedMs, string? RawFrameHex) : IRequest<BuzzSessionDto>;
+public sealed record SubmitBuzzPressCommand(Guid SessionId, int DeviceId, long ElapsedMs, string? RawFrameHex, string? ButtonKey = null)
+    : IRequest<BuzzSessionDto>;
 
 public sealed record CollectBuzzSessionCommand(Guid SessionId) : IRequest<BuzzSessionDto>;
 
@@ -52,6 +53,7 @@ public sealed partial class SubmitBuzzPressCommandValidator : AbstractValidator<
         RuleFor(x => x.RawFrameHex)
             .Must(h => h is null || (h.Length <= 128 && h.Length % 2 == 0 && HexPattern().IsMatch(h)))
             .WithMessage("RawFrameHex must be an even-length hex string of at most 64 bytes.");
+        RuleFor(x => x.ButtonKey).MaximumLength(8);
     }
 
     [GeneratedRegex("^[0-9A-Fa-f]*$")]
@@ -115,7 +117,7 @@ public sealed class BuzzerRequestsHandler :
         _sessions.GetAsync(request.SessionId, cancellationToken);
 
     public Task<BuzzSessionDto> Handle(SubmitBuzzPressCommand request, CancellationToken cancellationToken) =>
-        _sessions.SubmitPressAsync(request.SessionId, request.DeviceId, request.ElapsedMs, request.RawFrameHex, cancellationToken);
+        _sessions.SubmitPressAsync(request.SessionId, request.DeviceId, request.ElapsedMs, request.RawFrameHex, request.ButtonKey, cancellationToken);
 
     public Task<BuzzSessionDto> Handle(CollectBuzzSessionCommand request, CancellationToken cancellationToken) =>
         _sessions.CollectAsync(request.SessionId, cancellationToken);

@@ -49,9 +49,22 @@ public class DependencyRuleTests
         result.IsSuccessful.Should().BeTrue(FailureSummary(result));
     }
 
-    // Quizware.Modules.Buzzer has no types yet (P14 is deliberately last) —
-    // once it does, add a test here asserting it depends on Application's
-    // ports only, never on Infrastructure or Api directly (ADR-005).
+#if BUZZER_MODULE
+    /// <summary>ADR-005: the buzzer module plugs into Application's ports
+    /// only — never Infrastructure or the Api — and it never touches scoring:
+    /// a buzz says who pressed first, the answer endpoint does the rest.</summary>
+    [Fact]
+    public void BuzzerModule_Should_DependOn_ApplicationPortsOnly_AndNeverOnScoring()
+    {
+        var result = Types.InAssembly(typeof(Quizware.Modules.Buzzer.BuzzerModuleExtensions).Assembly)
+            .Should()
+            .NotHaveDependencyOnAny(
+                InfrastructureNamespace, ApiNamespace, "Quizware.Application.Scoring", "Quizware.Domain.Scoring")
+            .GetResult();
+
+        result.IsSuccessful.Should().BeTrue(FailureSummary(result));
+    }
+#endif
 
     [Fact]
     public void Nothing_Should_DependOn_Api()

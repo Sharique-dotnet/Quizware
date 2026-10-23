@@ -20,7 +20,7 @@ public sealed class UnavailableBuzzerSessionService : IBuzzerSessionService
         throw new BuzzerUnavailableException(Reason);
 
     public Task<BuzzSessionDto> SubmitPressAsync(
-        Guid sessionId, int deviceId, long elapsedMs, string? rawFrameHex, CancellationToken cancellationToken) =>
+        Guid sessionId, int deviceId, long elapsedMs, string? rawFrameHex, string? buttonKey, CancellationToken cancellationToken) =>
         throw new BuzzerUnavailableException(Reason);
 
     public Task<BuzzSessionDto> CollectAsync(Guid sessionId, CancellationToken cancellationToken) =>

@@ -46,7 +46,8 @@ public interface IBuzzerSessionService
 
     /// <summary>Records a device's press, pushed by the agent. The first press
     /// per device wins; a repeat is ignored. Returns the session as it now stands.</summary>
-    Task<BuzzSessionDto> SubmitPressAsync(Guid sessionId, int deviceId, long elapsedMs, string? rawFrameHex, CancellationToken cancellationToken);
+    Task<BuzzSessionDto> SubmitPressAsync(
+        Guid sessionId, int deviceId, long elapsedMs, string? rawFrameHex, string? buttonKey, CancellationToken cancellationToken);
 
     Task<BuzzSessionDto> CollectAsync(Guid sessionId, CancellationToken cancellationToken);
 

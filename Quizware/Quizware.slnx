@@ -11,6 +11,7 @@
     <Project Path="tests/Quizware.Application.Tests/Quizware.Application.Tests.csproj" />
     <Project Path="tests/Quizware.Architecture.Tests/Quizware.Architecture.Tests.csproj" />
     <Project Path="tests/Quizware.Domain.Tests/Quizware.Domain.Tests.csproj" />
+    <Project Path="tests/Quizware.Modules.Buzzer.Tests/Quizware.Modules.Buzzer.Tests.csproj" />
   </Folder>
   <Folder Name="/tools/">
     <Project Path="tools/Quizware.BuzzerAgent/Quizware.BuzzerAgent.csproj" />

@@ -49,7 +49,9 @@ public sealed record BuzzSessionResponse(
     DateTime? ArmedAtUtc,
     DateTime? CollectedAtUtc);
 
-public sealed record SubmitBuzzPressRequest(int DeviceId, long ElapsedMs, string RawFrameHex);
+/// <summary><see cref="ButtonKey"/> (which button on the device, e.g. "A")
+/// was added in Phase 14 and is optional.</summary>
+public sealed record SubmitBuzzPressRequest(int DeviceId, long ElapsedMs, string RawFrameHex, string? ButtonKey = null);
 
 public sealed record ResetBuzzSessionRequest(string? Reason);
 

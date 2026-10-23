@@ -113,4 +113,19 @@ public class MatchParticipantTests
 
         act.Should().Throw<InvalidStateTransitionException>();
     }
+
+    [Fact]
+    public void AssignBuzzDevice_SetsAndClearsTheDevice_AndRejectsIdsBelowOne()
+    {
+        var mp = MatchParticipant.Create(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), seatNumber: 1, turnOrder: 1, createdBy: "owner");
+
+        mp.AssignBuzzDevice(4);
+        var assigned = mp.BuzzDeviceId;
+        mp.AssignBuzzDevice(null);
+        var invalid = () => mp.AssignBuzzDevice(0);
+
+        assigned.Should().Be(4);
+        mp.BuzzDeviceId.Should().BeNull();
+        invalid.Should().Throw<ArgumentOutOfRangeException>();
+    }
 }

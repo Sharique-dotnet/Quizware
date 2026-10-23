@@ -5,6 +5,7 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 using Quizware.Application.Abstractions;
 using Quizware.Application.Buzzer;
 using Quizware.Modules.Buzzer.Abstractions;
+using Quizware.Modules.Buzzer.Manual;
 
 namespace Quizware.Modules.Buzzer;
 
@@ -26,6 +27,9 @@ public static class BuzzerModuleExtensions
         var section = configuration.GetSection(BuzzerOptions.SectionName);
         services.Configure<BuzzerOptions>(section);
         var options = section.Get<BuzzerOptions>() ?? new BuzzerOptions();
+
+        services.RemoveAll<IBuzzerSessionService>();
+        services.AddScoped<IBuzzerSessionService, BuzzerSessionService>();
 
         services.RemoveAll<IBuzzerProvider>();
         switch (options.Provider)

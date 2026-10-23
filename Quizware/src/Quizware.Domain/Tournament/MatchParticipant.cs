@@ -115,6 +115,18 @@ public sealed class MatchParticipant : BaseEntity, ITenantScoped, IAuditable, IS
 
     /// <summary>Written once when the match completes. A participant excluded
     /// from standings keeps its score but gets no rank.</summary>
+    /// <summary>The buzzer device this participant presses (null: none). Kept
+    /// in step with the buzzer module's device mapping.</summary>
+    public void AssignBuzzDevice(int? deviceId)
+    {
+        if (deviceId is < 1)
+        {
+            throw new ArgumentOutOfRangeException(nameof(deviceId), "A buzzer device id starts at 1.");
+        }
+
+        BuzzDeviceId = deviceId;
+    }
+
     public void RecordResult(int finalScore, int? finalRank)
     {
         FinalScore = finalScore;
