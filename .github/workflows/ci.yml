@@ -49,3 +49,32 @@ jobs:
           dotnet ef migrations has-pending-model-changes \
             --project src/Quizware.Infrastructure \
             --startup-project src/Quizware.Api
+
+  build-without-buzzer:
+    # ADR-005 / Phase 14: the solution must build and every test must pass
+    # with the optional buzzer module deleted entirely. Its own tests and the
+    # BuzzerAgent go with it; nothing else may notice.
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "10.0.x"
+
+      - name: Delete the buzzer module
+        run: |
+          rm -rf src/Quizware.Modules.Buzzer tests/Quizware.Modules.Buzzer.Tests tools/Quizware.BuzzerAgent
+          sed -i '/Quizware.Modules.Buzzer\|Quizware.BuzzerAgent/d' Quizware.slnx
+
+      - name: Restore
+        run: dotnet restore Quizware.slnx
+
+      - name: Build (0 warnings treated as errors)
+        run: dotnet build Quizware.slnx --no-restore --configuration Release /warnaserror
+
+      - name: Test
+        run: dotnet test Quizware.slnx --no-build --configuration Release
