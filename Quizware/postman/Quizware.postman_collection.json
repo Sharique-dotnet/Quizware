@@ -1,7 +1,7 @@
 {
   "info": {
     "name": "Quizware API",
-    "description": "Covers every implemented endpoint through Phase 13 (reporting and exports). Run top-to-bottom, folder by folder — each request saves the ids/tokens the next one needs into collection variables. See postman/README.md for the full run order and prerequisites.",
+    "description": "Covers every implemented endpoint through Phase 14 (QuickBuzz buzzer module). Run top-to-bottom, folder by folder — each request saves the ids/tokens the next one needs into collection variables. See postman/README.md for the full run order and prerequisites.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
@@ -53,7 +53,8 @@
     { "key": "semiStageId", "value": "" },
     { "key": "displayToken", "value": "" },
     { "key": "reportStageId", "value": "" },
-    { "key": "reportTeamId", "value": "" }
+    { "key": "reportTeamId", "value": "" },
+    { "key": "buzzerAgentKey", "value": "postman-local-agent-key" }
   ],
   "item": [
     {
@@ -2531,6 +2532,140 @@
           },
           "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
             "pm.test('400 Bad Request', () => pm.response.to.have.status(400));"
+          ] } }]
+        }
+      ]
+    },
+    {
+      "name": "17 Buzzer",
+      "item": [
+        {
+          "name": "Agent Heartbeat (agent key)",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/v1/buzzer/agent/heartbeat",
+            "header": [{ "key": "X-Buzzer-Agent-Key", "value": "{{buzzerAgentKey}}" }, { "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"agentId\": \"postman-agent\",\n  \"portName\": \"COM3\",\n  \"devices\": [\n    {\n      \"deviceId\": 1,\n      \"isOnline\": true,\n      \"buttonTimesMs\": {\n        \"A\": 0,\n        \"B\": 0,\n        \"C\": 0,\n        \"D\": 0,\n        \"E\": 0\n      },\n      \"rawFrameHex\": null\n    },\n    {\n      \"deviceId\": 2,\n      \"isOnline\": true,\n      \"buttonTimesMs\": null,\n      \"rawFrameHex\": null\n    },\n    {\n      \"deviceId\": 3,\n      \"isOnline\": false,\n      \"buttonTimesMs\": null,\n      \"rawFrameHex\": null\n    }\n  ]\n}" }
+          },
+          "description": "Sent by the BuzzerAgent on the operator PC with X-Buzzer-Agent-Key (= the API's Buzzer:Agent:ApiKey). Needs the API started with Buzzer:Provider=HttpAgent — see postman/README.md.",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('200 OK', () => pm.response.to.have.status(200));",
+            "const body = pm.response.json();",
+            "pm.test('lists armed sessions', () => pm.expect(body.armedSessions).to.be.an('array'));",
+            "pm.test('tells the agent when to call back', () => pm.expect(body.pollIntervalMs).to.be.above(0));"
+          ] } }]
+        },
+        {
+          "name": "Capability",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/v1/buzzer/capability",
+            "header": [{ "key": "Authorization", "value": "Bearer {{scopedAccessToken}}" }]
+          },
+          "description": "Drives whether the console shows manual buttons (available = false) or arms the buzzer.",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('200 OK', () => pm.response.to.have.status(200));",
+            "const body = pm.response.json();",
+            "pm.test('the agent makes the buzzer available', () => { pm.expect(body.available).to.be.true; pm.expect(body.provider).to.eql('HttpAgent'); });"
+          ] } }]
+        },
+        {
+          "name": "Health",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/v1/buzzer/health",
+            "header": [{ "key": "Authorization", "value": "Bearer {{scopedAccessToken}}" }]
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('200 OK', () => pm.response.to.have.status(200));",
+            "const body = pm.response.json();",
+            "pm.test('healthy, two devices online', () => { pm.expect(body.healthy).to.be.true; pm.expect(body.devices.filter(d => d.isOnline).length).to.eql(2); });"
+          ] } }]
+        },
+        {
+          "name": "Devices",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/v1/buzzer/devices",
+            "header": [{ "key": "Authorization", "value": "Bearer {{scopedAccessToken}}" }]
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('200 OK', () => pm.response.to.have.status(200));",
+            "pm.test('three devices reported', () => pm.expect(pm.response.json().devices.length).to.eql(3));"
+          ] } }]
+        },
+        {
+          "name": "Test (rehearsal read)",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/v1/buzzer/test",
+            "header": [{ "key": "Authorization", "value": "Bearer {{scopedAccessToken}}" }]
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('200 OK', () => pm.response.to.have.status(200));",
+            "pm.test('every device with its button timers', () => pm.expect(pm.response.json().devices.length).to.eql(3));"
+          ] } }]
+        },
+        {
+          "name": "Set Device Mappings",
+          "request": {
+            "method": "PUT",
+            "url": "{{baseUrl}}/api/v1/buzzer/matches/{{matchId}}/mappings",
+            "header": [{ "key": "Authorization", "value": "Bearer {{scopedAccessToken}}" }, { "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"mappings\": [\n    {\n      \"deviceId\": 1,\n      \"matchParticipantId\": \"{{participantAId}}\"\n    },\n    {\n      \"deviceId\": 2,\n      \"matchParticipantId\": \"{{participantBId}}\"\n    }\n  ]\n}" }
+          },
+          "description": "Device 1 → participant A, device 2 → participant B. Re-sending replaces the mapping.",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('204 No Content', () => pm.response.to.have.status(204));"
+          ] } }]
+        },
+        {
+          "name": "Arm Session on a finished match (expect 409)",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/v1/buzzer/matches/{{matchId}}/sessions",
+            "header": [{ "key": "Authorization", "value": "Bearer {{scopedAccessToken}}" }, { "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"segmentId\": \"{{matchSegmentId}}\",\n  \"matchQuestionId\": \"{{matchQuestionId}}\"\n}" }
+          },
+          "description": "A session is armed for the live question of a match in progress; {{matchId}} has finished by now. The full arm → press → collect flow is covered by the integration tests (HttpAgentTests, BuzzerDegradationTests).",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('409 CONFLICT_STATE', () => { pm.response.to.have.status(409); pm.expect(pm.response.json().errorCode).to.eql('CONFLICT_STATE'); });"
+          ] } }]
+        },
+        {
+          "name": "Submit Press, unknown session (agent key — expect 404)",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/v1/buzzer/sessions/00000000-0000-0000-0000-000000000001/presses",
+            "header": [{ "key": "X-Buzzer-Agent-Key", "value": "{{buzzerAgentKey}}" }, { "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"deviceId\": 1,\n  \"elapsedMs\": 215,\n  \"rawFrameHex\": \"02010100000000D7000000000000000000000000000000FD\",\n  \"buttonKey\": \"A\"\n}" }
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('404 Not Found', () => pm.response.to.have.status(404));"
+          ] } }]
+        },
+        {
+          "name": "Submit Press without the agent key (expect 401)",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/v1/buzzer/sessions/00000000-0000-0000-0000-000000000001/presses",
+            "header": [{ "key": "Authorization", "value": "Bearer {{scopedAccessToken}}" }, { "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"deviceId\": 1,\n  \"elapsedMs\": 215,\n  \"rawFrameHex\": \"00\"\n}" }
+          },
+          "description": "A user token is not an agent credential either (Q-005).",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('401 Unauthorized', () => pm.response.to.have.status(401));"
+          ] } }]
+        },
+        {
+          "name": "Get Session, unknown (expect 404)",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/v1/buzzer/sessions/00000000-0000-0000-0000-000000000001",
+            "header": [{ "key": "Authorization", "value": "Bearer {{scopedAccessToken}}" }]
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('404 Not Found', () => pm.response.to.have.status(404));"
           ] } }]
         }
       ]

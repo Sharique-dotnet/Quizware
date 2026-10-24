@@ -14,8 +14,9 @@ track.
 > [implementation plan](docs/Implementation-Plan.md) are done. That covers
 > configuration, the question bank, the live match engine, scoring and
 > standings, qualification and tie-breaking, live push to consoles and
-> projector screens, and reports with Excel/CSV/PDF export. **Phase 14 (the
-> QuickBuzz buzzer module) is next.**
+> projector screens, reports with Excel/CSV/PDF export, and the optional
+> QuickBuzz buzzer module (verified against a simulated serial port; a
+> rehearsal on the real rig is still owed). **Phase 15 (hardening) is next.**
 
 ---
 
@@ -77,6 +78,7 @@ recording answers manually.
 | **Qualification and tie-breaks** | Preview who advances from a stage (match winners, best remaining, manual wildcards), each with a reason. Ties on a qualifying place are settled first by the ordered criteria, then by a **tie-break match on the same engine** (extra rounds up to a limit), then by an audited ProgramAdmin decision. Commit creates the next stage's qualifiers and matches; rollback works until that stage starts. |
 | **Live push** | Every live action writes an event to a **transactional outbox**. A dispatcher pushes it within milliseconds to operator consoles (`/hubs/match`) and projector screens (`/hubs/display`) over SignalR, together with a fresh state snapshot. **Displays never see an answer before it is revealed.** Failed pushes are retried in order, a server-side countdown ticks every second, and a reconnecting screen re-syncs with one call. |
 | **Display API** | Read-only screen payloads for a display token: match state, scoreboard, standings and branding. |
+| **Buzzer (optional)** | QuickBuzz's RS-485 buzzers as an optional module. It is selected by configuration: `None` (the default, with manual buttons), `Serial` (the API owns the COM port) or `HttpAgent` (the BuzzerAgent on the operator PC owns the port and pushes presses outbound). Devices map to teams, and every press is stored with its raw frame for disputes. Presses are ranked and pushed live as `BuzzResultsReady`. **A buzzer never scores and never blocks:** any fault is a `503`, and the operator records the answer by hand. Delete the module and the rest still builds and passes its tests; CI checks this on every push. |
 | **Reports and exports** | Match report (with the full event timeline), stage summary (with how each tie-break placed a qualifier), team performance, question usage and quality (it flags questions every team got right, or none did), and a filterable audit log. Each one exports to Excel, CSV or PDF. |
 
 **Question formats:** MCQ, Buzzer, Passing, Card, Choice, Rapid Fire, Visual
@@ -141,7 +143,7 @@ are recorded as ADRs in [`docs/adr/`](docs/adr):
 | `Quizware.Infrastructure` | EF Core `AppDbContext`, migrations, ASP.NET Identity, JWT, the outbox, seeders and file storage. |
 | `Quizware.Api` | Controllers, versioned request/response contracts (`/api/v1`), the SignalR hubs with the outbox dispatcher and timer ticks, middleware for correlation ids, program scope and errors, and the OpenAPI document. |
 | `Quizware.Modules.Buzzer` | The optional QuickBuzz integration module. |
-| `tools/Quizware.BuzzerAgent` | An on-site agent that bridges the buzzer hardware to the API (Phase 14). |
+| `tools/Quizware.BuzzerAgent` | The on-site agent: owns the COM port on the operator PC and pushes presses to the API (console or Windows service). |
 
 ## Tech stack
 
@@ -164,7 +166,7 @@ are recorded as ADRs in [`docs/adr/`](docs/adr):
 | [`Quizware/`](Quizware) | **The new system.** Solution `Quizware.slnx`. |
 | `Quizware/src/` | Domain, Application, Infrastructure, Api and Modules.Buzzer projects. |
 | `Quizware/tests/` | Domain, Application, Architecture and API integration tests. |
-| `Quizware/tools/Quizware.BuzzerAgent/` | On-site buzzer bridge (Phase 14). |
+| `Quizware/tools/Quizware.BuzzerAgent/` | On-site buzzer agent. |
 | `Quizware/clients/typescript/` | Generated TypeScript API client. |
 | `Quizware/docs/openapi.v1.json` | The generated OpenAPI document. |
 | [`Quizware/postman/`](Quizware/postman) | Postman collection covering every implemented endpoint, and how to run it. |
@@ -306,10 +308,11 @@ generated `Quizware/docs/openapi.v1.json`.
 | Qualification | `/programs/{id}/qualification/stages/{stageId}/…` (preview, wildcards, ties, detect, commit, rollback) and `…/ties/{tieId}/…` (tie-break match, resolve manually, abandon) |
 | Display | `/display/matches/{id}/state`, `…/scores`, `/display/programs/{id}/standings`, `…/branding` (display token only) |
 | Reports | `/programs/{id}/reports/matches/{matchId}`, `…/stages/{stageId}`, `…/teams/{teamId}`, `…/questions/usage`, `…/audit` (filter by entity, actor, date) and `…/export/{type}?format=xlsx\|csv\|pdf` |
+| Buzzer | `/buzzer/capability`, `/health`, `/devices`, `/test`, `/matches/{id}/mappings`, `/matches/{id}/sessions` (arm), `/sessions/{id}` (get, `/collect`, `/reset`), and for the agent only (`X-Buzzer-Agent-Key`): `/sessions/{id}/presses`, `/agent/heartbeat` |
 | SignalR hubs | `/hubs/match` (operators) and `/hubs/display` (screens): `JoinMatch`, `LeaveMatch`, `RequestFullState`. Every event carries the event details plus a state snapshot; `TimerTick` carries the server countdown |
 
 Endpoints for later phases already exist as `501 Not Implemented` stubs so the
-contract is fixed up front: buzzer, admin lookups, match preflight, and live
+contract is fixed up front: admin lookups, match preflight, and live
 snapshot/restore.
 
 ## Roles and permissions
@@ -340,8 +343,8 @@ snapshot/restore.
 | 11 | Qualification and tie-breaking | ✅ Done |
 | 12 | Live push (SignalR) and display API | ✅ Done |
 | 13 | Reporting and exports | ✅ Done |
-| 14 | QuickBuzz integration module | ⏭️ Next (deliberately last) |
-| 15 | Hardening | Planned |
+| 14 | QuickBuzz integration module | ✅ Done (real-rig rehearsal pending) |
+| 15 | Hardening | ⏭️ Next |
 | 16 | Data migration from QuizApp-9AMM | Optional |
 | 17 | Angular 22 front end | Separate track |
 

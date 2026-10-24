@@ -760,7 +760,7 @@
         "tags": [
           "Buzzer"
         ],
-        "summary": "Pushed by the on-premises buzzer agent (ADR-005), not by a\n            browser client — it will carry its own agent-to-API credential once\n            P14 implements the adapters, not a user JWT. Left anonymous here as a\n            deliberate Phase 5 scope decision; do not treat this as the final\n            security posture.",
+        "summary": "Pushed by the on-premises buzzer agent (ADR-005), never by a\n            browser: it authenticates with the agent key in `X-Buzzer-Agent-Key`,\n            not a user token (Q-005). The first press per device counts; a repeat is\n            ignored. Each accepted press is broadcast as `BuzzResultsReady`.",
         "parameters": [
           {
             "name": "id",
@@ -793,7 +793,73 @@
         },
         "responses": {
           "200": {
-            "description": "OK"
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/BuzzSessionResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BuzzSessionResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BuzzSessionResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/buzzer/agent/heartbeat": {
+      "post": {
+        "tags": [
+          "Buzzer"
+        ],
+        "summary": "The buzzer agent's heartbeat (added in Phase 14, agent key\n            only). The reply names the armed sessions — the agent's only way to\n            learn of one, since the API never connects to the operator PC.\n            503 unless `Buzzer:Provider` is `HttpAgent`.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AgentHeartbeatRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AgentHeartbeatRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/AgentHeartbeatRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/AgentHeartbeatResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AgentHeartbeatResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AgentHeartbeatResponse"
+                }
+              }
+            }
           }
         }
       }
@@ -10452,6 +10518,97 @@
         },
         "additionalProperties": false
       },
+      "AgentArmedSessionDto": {
+        "type": "object",
+        "properties": {
+          "sessionId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "deviceIds": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "format": "int32"
+            },
+            "nullable": true
+          },
+          "windowMs": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "armedAtUtc": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "additionalProperties": false
+      },
+      "AgentDeviceReportDto": {
+        "type": "object",
+        "properties": {
+          "deviceId": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "isOnline": {
+            "type": "boolean"
+          },
+          "buttonTimesMs": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "integer",
+              "format": "int32"
+            },
+            "nullable": true
+          },
+          "rawFrameHex": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "AgentHeartbeatRequest": {
+        "type": "object",
+        "properties": {
+          "agentId": {
+            "type": "string",
+            "nullable": true
+          },
+          "portName": {
+            "type": "string",
+            "nullable": true
+          },
+          "devices": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AgentDeviceReportDto"
+            },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false,
+        "description": "The buzzer agent's heartbeat (added in Phase 14): who it is, which\n            port it owns, and what each device last read."
+      },
+      "AgentHeartbeatResponse": {
+        "type": "object",
+        "properties": {
+          "armedSessions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AgentArmedSessionDto"
+            },
+            "nullable": true
+          },
+          "pollIntervalMs": {
+            "type": "integer",
+            "format": "int32"
+          }
+        },
+        "additionalProperties": false,
+        "description": "The sessions the agent should be polling, and when to call back."
+      },
       "ApproveQuestionRequest": {
         "type": "object",
         "properties": {
@@ -10696,7 +10853,8 @@
           },
           "matchParticipantId": {
             "type": "string",
-            "format": "uuid"
+            "format": "uuid",
+            "nullable": true
           },
           "elapsedMs": {
             "type": "integer",
@@ -10705,9 +10863,35 @@
           "rank": {
             "type": "integer",
             "format": "int32"
+          },
+          "pressId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "teamId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "teamName": {
+            "type": "string",
+            "nullable": true
+          },
+          "buttonKey": {
+            "type": "string",
+            "nullable": true
+          },
+          "rawFrameHex": {
+            "type": "string",
+            "nullable": true
+          },
+          "receivedAtUtc": {
+            "type": "string",
+            "format": "date-time"
           }
         },
-        "additionalProperties": false
+        "additionalProperties": false,
+        "description": "Quizware.Api.Contracts.V1.Buzzer.BuzzPressDto.MatchParticipantId is null for a device with no\n            mapping (it was a non-null Guid while the endpoint was a stub). Fields\n            after Quizware.Api.Contracts.V1.Buzzer.BuzzPressDto.Rank were added in Phase 14."
       },
       "BuzzSessionResponse": {
         "type": "object",
@@ -10726,9 +10910,41 @@
               "$ref": "#/components/schemas/BuzzPressDto"
             },
             "nullable": true
+          },
+          "matchId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "matchQuestionId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "provider": {
+            "type": "string",
+            "nullable": true
+          },
+          "windowMs": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "failureReason": {
+            "type": "string",
+            "nullable": true
+          },
+          "armedAtUtc": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "collectedAtUtc": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
           }
         },
-        "additionalProperties": false
+        "additionalProperties": false,
+        "description": "Fields after Quizware.Api.Contracts.V1.Buzzer.BuzzSessionResponse.RankedPresses were added in Phase 14."
       },
       "BuzzerCapabilityResponse": {
         "type": "object",
@@ -10760,9 +10976,22 @@
           },
           "isOnline": {
             "type": "boolean"
+          },
+          "buttonTimesMs": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "integer",
+              "format": "int32"
+            },
+            "nullable": true
+          },
+          "rawFrameHex": {
+            "type": "string",
+            "nullable": true
           }
         },
-        "additionalProperties": false
+        "additionalProperties": false,
+        "description": "Quizware.Api.Contracts.V1.Buzzer.BuzzerDeviceDto.ButtonTimesMs (button key → milliseconds, 0 = not\n            pressed) and Quizware.Api.Contracts.V1.Buzzer.BuzzerDeviceDto.RawFrameHex are filled by the test endpoint only;\n            both were added in Phase 14."
       },
       "BuzzerDevicesResponse": {
         "type": "object",
@@ -10786,9 +11015,21 @@
           "detail": {
             "type": "string",
             "nullable": true
+          },
+          "provider": {
+            "type": "string",
+            "nullable": true
+          },
+          "devices": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/BuzzerDeviceDto"
+            },
+            "nullable": true
           }
         },
-        "additionalProperties": false
+        "additionalProperties": false,
+        "description": "Fields after Quizware.Api.Contracts.V1.Buzzer.BuzzerHealthResponse.Detail were added in Phase 14."
       },
       "BuzzerQuestionResponse": {
         "required": [
@@ -15124,9 +15365,14 @@
           "rawFrameHex": {
             "type": "string",
             "nullable": true
+          },
+          "buttonKey": {
+            "type": "string",
+            "nullable": true
           }
         },
-        "additionalProperties": false
+        "additionalProperties": false,
+        "description": "Quizware.Api.Contracts.V1.Buzzer.SubmitBuzzPressRequest.ButtonKey (which button on the device, e.g. \"A\")\n            was added in Phase 14 and is optional."
       },
       "TagResponse": {
         "type": "object",
