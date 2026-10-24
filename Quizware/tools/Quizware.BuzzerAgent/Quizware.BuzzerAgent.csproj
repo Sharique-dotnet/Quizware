@@ -1,10 +1,29 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk.Worker">
 
+  <!--
+    P14-05: runs on the operator PC, owns the COM port, and pushes buzz
+    presses outbound to the API. Part of the optional buzzer feature: it is
+    removed together with src/Quizware.Modules.Buzzer (ADR-005).
+  -->
   <PropertyGroup>
     <OutputType>Exe</OutputType>
     <TargetFramework>net10.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
   </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.Hosting" Version="10.0.11" />
+    <PackageReference Include="Microsoft.Extensions.Hosting.WindowsServices" Version="10.0.11" />
+    <PackageReference Include="Microsoft.Extensions.Http" Version="10.0.11" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Quizware.Modules.Buzzer\Quizware.Modules.Buzzer.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Update="appsettings.json" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
 
 </Project>

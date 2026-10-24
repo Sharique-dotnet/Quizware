@@ -1,0 +1,12 @@
+<Project>
+  <!--
+    ADR-005: the buzzer module is optional. When src/Quizware.Modules.Buzzer is
+    deleted, the projects that use it drop the reference and compile without
+    BUZZER_MODULE, so the rest of the solution still builds and runs.
+  -->
+  <PropertyGroup>
+    <BuzzerModuleProject>$(MSBuildThisFileDirectory)src/Quizware.Modules.Buzzer/Quizware.Modules.Buzzer.csproj</BuzzerModuleProject>
+    <BuzzerModuleInstalled Condition="Exists('$(BuzzerModuleProject)')">true</BuzzerModuleInstalled>
+    <DefineConstants Condition="'$(BuzzerModuleInstalled)' == 'true'">$(DefineConstants);BUZZER_MODULE</DefineConstants>
+  </PropertyGroup>
+</Project>

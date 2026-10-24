@@ -2,10 +2,12 @@ using System.Reflection;
 using System.Text;
 using System.Text.Json.Serialization;
 using FluentValidation;
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi;
+using Quizware.Api.Security;
 using Quizware.Application.Authorization;
 using Quizware.Infrastructure.Persistence;
 
@@ -77,7 +79,8 @@ public static class DependencyInjection
                         return Task.CompletedTask;
                     },
                 };
-            });
+            })
+            .AddScheme<AuthenticationSchemeOptions, BuzzerAgentAuthenticationHandler>(BuzzerAgentAuthenticationHandler.SchemeName, null);
     }
 
     private static void AddAuthorizationPolicies(IServiceCollection services)
@@ -92,6 +95,9 @@ public static class DependencyInjection
             .AddPolicy(Policies.CanResolveTie, p => p.RequireRole(Roles.SuperAdmin, Roles.ProgramAdmin))
             .AddPolicy(Policies.CanViewLive, p => p.RequireAuthenticatedUser())
             .AddPolicy(Policies.DisplayOnly, p => p.RequireRole(Roles.Display))
+            .AddPolicy(Policies.BuzzerAgent, p => p
+                .AddAuthenticationSchemes(BuzzerAgentAuthenticationHandler.SchemeName)
+                .RequireClaim(BuzzerAgentAuthenticationHandler.ClaimType, "true"))
             .AddPolicy(Policies.CanViewReports, p => p.RequireRole(Roles.SuperAdmin, Roles.ProgramAdmin, Roles.Auditor));
     }
 

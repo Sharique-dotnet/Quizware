@@ -23,6 +23,10 @@ public static class LiveEvents
     public const string TimerTick = "TimerTick";
     public const string MatchCompleted = "MatchCompleted";
 
+    /// <summary>The ranked presses of a buzz session (published by the buzzer
+    /// module on every accepted press and when the session is collected).</summary>
+    public const string BuzzResultsReady = "BuzzResultsReady";
+
     /// <summary>The live event a match-timeline entry announces, if any.
     /// Start, answers, disqualification, completion and tie-break results
     /// are published by their own handlers with a richer payload.</summary>

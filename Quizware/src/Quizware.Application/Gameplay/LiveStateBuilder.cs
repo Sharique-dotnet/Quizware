@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Quizware.Application.Abstractions;
 using Quizware.Application.Authorization;
+using Quizware.Application.Buzzer;
 using Quizware.Application.Gameplay.Dtos;
 using Quizware.Application.Gameplay.Formats;
 using Quizware.Domain.Enums;
@@ -25,9 +26,12 @@ public sealed class LiveStateBuilder
     private readonly ICurrentUser _currentUser;
     private readonly IClock _clock;
     private readonly QuestionFormatHandlers _formats;
+    private readonly IBuzzerSessionService _buzzer;
 
-    public LiveStateBuilder(IAppDbContext db, ICurrentUser currentUser, IClock clock, QuestionFormatHandlers formats)
+    public LiveStateBuilder(
+        IAppDbContext db, ICurrentUser currentUser, IClock clock, QuestionFormatHandlers formats, IBuzzerSessionService buzzer)
     {
+        _buzzer = buzzer;
         _db = db;
         _currentUser = currentUser;
         _clock = clock;
@@ -117,14 +121,10 @@ public sealed class LiveStateBuilder
                 countedSegments.Sum(s => s.PlannedQuestionCount),
                 segments.Count(s => s.State is MatchSegmentState.Completed or MatchSegmentState.Skipped),
                 segments.Count),
-            BuzzerStatus,
+            await _buzzer.LiveStatusAsync(match.Id, cancellationToken),
             lastAnswer is not null && match.State is MatchState.InProgress or MatchState.Paused,
             lastAnswer?.Id);
     }
-
-    /// <summary>No buzzer provider is wired into the engine yet (Phase 14),
-    /// so the honest answer is always "unavailable".</summary>
-    public static LiveBuzzerStatusDto BuzzerStatus => new(false, null, "Unavailable");
 
     public Task<CurrentQuestionDto> PresentAsync(MatchQuestion matchQuestion, CancellationToken cancellationToken) =>
         PresentAsync(matchQuestion, CallerAudience, cancellationToken);

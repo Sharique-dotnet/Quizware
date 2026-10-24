@@ -38,4 +38,14 @@ public class BuzzRankingCalculatorTests
 
         ranking.Last().ParticipantId.Should().Be(didNotPress);
     }
+
+    [Fact]
+    public void Rank_OfAnyRecord_OrdersByPressTime_NoPressLast_TiesInIncomingOrder()
+    {
+        var presses = new[] { (Device: 1, Ms: 0), (Device: 2, Ms: 410), (Device: 3, Ms: 120), (Device: 4, Ms: 410) };
+
+        var ranking = BuzzRankingCalculator.Rank(presses, p => p.Ms);
+
+        ranking.Select(r => (r.Item.Device, r.Rank)).Should().Equal((3, 1), (2, 2), (4, 3), (1, 4));
+    }
 }

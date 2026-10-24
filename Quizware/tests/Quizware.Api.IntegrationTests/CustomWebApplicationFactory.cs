@@ -20,7 +20,7 @@ namespace Quizware.Api.IntegrationTests;
 /// Program.cs's own startup migrates the schema and seeds roles against
 /// whatever provider is registered, so no extra setup is needed here.
 /// </summary>
-public sealed class CustomWebApplicationFactory : WebApplicationFactory<Program>
+public class CustomWebApplicationFactory : WebApplicationFactory<Program>
 {
     private readonly SqliteConnection _connection = new("DataSource=:memory:");
 

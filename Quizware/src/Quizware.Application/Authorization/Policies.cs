@@ -17,4 +17,7 @@ public static class Policies
     /// <summary>Reports and the audit log: the admins plus the Auditor, who has
     /// read-only access to everything (03-PRD-API.md §3.2).</summary>
     public const string CanViewReports = nameof(CanViewReports);
+
+    /// <summary>The on-premises buzzer agent (a shared key, not a user — Q-005).</summary>
+    public const string BuzzerAgent = nameof(BuzzerAgent);
 }

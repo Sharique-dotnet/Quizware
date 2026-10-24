@@ -28,23 +28,25 @@ decisions, known gaps — see [`context/CURRENT.md`](../context/CURRENT.md).*
 | 11 | Qualification and tie-breaking | ✅ Done — see its status note |
 | 12 | Live push (SignalR) and display API | ✅ Done — see its status note |
 | 13 | Reporting and exports | ✅ Done — see its status note |
-| **14** | **QuickBuzz integration module** | ⏭️ **Next** (deliberately last) |
-| 15 | Hardening | ⬜ Not started |
+| 14 | QuickBuzz integration module | ✅ Done in software — see its status note (a rehearsal on the real rig is still needed) |
+| **15** | **Hardening** | ⏭️ **Next** |
 | 16 | Data migration *(optional)* | ⬜ Not started |
 | 17 | Angular 22 *(separate track)* | ⬜ Not started — the generated TypeScript client is ready for it |
 
-**Where the code stands:** the solution builds with 0 warnings; **492 tests
-pass** (17 Application, 140 Domain, 4 Architecture, 331 API integration). CI
+**Where the code stands:** the solution builds with 0 warnings; **515 tests
+pass** (17 Application, 142 Domain, 5 Architecture, 333 API integration, 18
+buzzer module). A second CI job deletes the buzzer module and proves the rest
+still builds and its 496 tests pass. CI
 runs on every push and pull request to `master`. All migrations apply cleanly
 to a real SQL Server 2022. The Postman collection plays a complete match, a
 stage qualification, the display API and every report and export end to end
 against it, and the outbox
 dispatcher delivers every live event there. The Phase 9–11 required tests also
 pass when pointed at SQL Server. Endpoints for later phases already exist as
-`501 Not Implemented` stubs so the contract stays fixed: buzzer (P14), admin
-lookups, match preflight and live snapshot/restore.
+`501 Not Implemented` stubs so the contract stays fixed: admin lookups, match
+preflight and live snapshot/restore.
 
-**Carried forward from finished phases** (not blocking Phase 14):
+**Carried forward from finished phases** (not blocking Phase 15):
 
 | Item | From | Status |
 |---|---|---|
@@ -58,7 +60,9 @@ lookups, match preflight and live snapshot/restore.
 | Qualification rule fields the API cannot set: `SeedingMode` (so it is Manual — commit records the qualifiers and auto-seed builds the matches), `ToStageId`, `MinScoreThreshold`, `TieBreakRuleId` | `P7-08`, `P11-07` | Settable in the domain only; contract change needed |
 | A tie-break rule's difficulty range is not passed to the question selector | `P11-04` | The selector has no difficulty-range input yet |
 | The TypeScript client is stale and cannot simply be regenerated: question responses are `oneOf` subtypes in the OpenAPI document (since commit `f6b7c61`), which NSwag reduces to `McqQuestionResponse` | `P5-07`, `P12-07` | `docs/openapi.v1.json` was refreshed in P12. Fix the Swagger polymorphism shape (discriminator on the base type) before regenerating the client for the Angular track |
-| `BuzzResultsReady` hub event | `P12-01` | Waits for the buzzer module (`P14`) |
+| **Rehearse the buzzer on the real RS-485 rig** — everything was verified against a simulated serial port | `P14-04`, `P14-05` | Needs the hardware. The serial **command bytes** (`Buzzer:Serial:Commands`: read `0x47`, arm `0x53`, reset `0x52`) are `[ASSUMED]` — the QuickBuzz source was not available, and its audit records only the reply frame. Check them against QuickBuzz's `SerialService` first |
+| The BuzzerAgent runs as a console app or Windows service, not a tray app | `P14-05` | A tray icon needs Windows-only UI; the worker covers the owning-the-port and pushing-outbound requirements |
+| An answer's `buzzPressId` is stored as given — not checked against the match's buzz sessions | `P14-03` | The answer handler cannot see the module's tables; a port method would do it |
 | PDF exports print non-Latin text (e.g. Urdu) as `?` — the built-in writer uses the standard PDF fonts | `P13-06` | Excel and CSV exports carry the full text. Embedding a Unicode font needs a font file and a PDF library choice |
 
 ---
@@ -801,34 +805,58 @@ real API: Postman folder 16 Reports passes, including the exports.
 
 ---
 
-# Phase 14 — QuickBuzz integration module — **NEXT**
+# Phase 14 — QuickBuzz integration module — **DONE** (in software)
 
 **Duration:** 2 weeks · **Depends on:** P9 · **Deliberately last**
 
 > By this point the system is proven to work without a buzzer — which is exactly
 > the requirement. Building it last proves independence by construction.
 
-| Task | What to build | Acceptance criteria |
-|---|---|---|
-| `P14-01` | `IBuzzerProvider` port implementation scaffolding | Defined in P2, implemented now |
-| `P14-02` | **`NullBuzzerAdapter`** (the default) | `IsAvailable = false`; **every existing test still passes** with it registered |
-| `P14-03` | `BuzzSession` / `BuzzPress` persistence + `BuzzDeviceMapping` device→team | Raw 24-byte frame stored as hex for disputes |
-| `P14-04` | **`SerialBuzzerAdapter`** — port `SerialService` + `DeviceParser` from QuickBuzz | Constants moved to config; `Console.WriteLine` → `ILogger`; **any device count**, `DeviceCount` defaults to 3 |
-| `P14-05` | `Quizware.BuzzerAgent` tray app for the operator PC | Owns the COM port; pushes outbound |
-| `P14-06` | `HttpAgentBuzzerAdapter` + `POST /buzzer/sessions/{id}/presses` ingestion | Outbound push — no port forwarding needed |
-| `P14-07` | `GET /buzzer/capability`, `/health`, `POST /buzzer/test` | Capability drives whether the UI shows manual buttons |
-| `P14-08` | Graceful-degradation path | Operator override always available |
+**Status:** all 8 tasks and the four required tests are done, on the
+`claude/workflows-project-status-bsgu4d` branch. They were verified against a
+simulated serial port. Rehearsing on the real rig is still owed; see the
+carried-forward table. How it fits together:
+
+- **The ports live in Application:** `IBuzzerProvider` and
+  `IBuzzerSessionService`. So do their defaults: `NullBuzzerAdapter`
+  (`IsAvailable = false`) and a session service that answers every call with
+  503. With the module deleted, those defaults answer and nothing else changes.
+- **The module is optional at build time.** `Directory.Build.props` detects
+  `src/Quizware.Modules.Buzzer`. Only when it exists does the Api reference
+  the module and compile `AddBuzzerModule` (`BUZZER_MODULE`). The CI job
+  `build-without-buzzer` deletes the module, its tests and the agent, then
+  builds and runs every remaining test.
+- **The provider is chosen by `Buzzer:Provider`:** `None` (the default),
+  `Serial` or `HttpAgent`. A buzzer only reports who pressed first. The
+  operator records the answer through the normal endpoint, with
+  `answerSource = Buzzer` and `buzzPressId`, and can always override.
+- **Q-005 is resolved.** The press-ingestion endpoint (and the new heartbeat)
+  now take the agent key `X-Buzzer-Agent-Key` (`Buzzer:Agent:ApiKey`). They
+  are no longer anonymous, and a user token is not accepted there.
+
+| Task | What to build | Acceptance criteria | Status |
+|---|---|---|---|
+| `P14-01` | `IBuzzerProvider` port implementation scaffolding | Defined in P2, implemented now | Done — arm, collect, reset, health and a rehearsal read (`TestAsync`). Any hardware or transport fault becomes `BuzzerUnavailableException` (503), never a 500 |
+| `P14-02` | **`NullBuzzerAdapter`** (the default) | `IsAvailable = false`; **every existing test still passes** with it registered | Done — it lives in Application, so it also answers when the module is gone. The live state's `buzzer` block and `StartMatch`'s `buzzerAvailable` now come from the provider |
+| `P14-03` | `BuzzSession` / `BuzzPress` persistence + `BuzzDeviceMapping` device→team | Raw 24-byte frame stored as hex for disputes | Done — the first press per device counts (repeats are ignored) and the raw frame is kept. Presses are ranked by elapsed time, with no-press last. Mappings update in place, so the filtered unique index never sees two active rows, and they keep `MatchParticipant.BuzzDeviceId` in step. A failed arm or collect leaves the session `Failed` with the reason. `BuzzResultsReady` is published on each accepted press and on collect |
+| `P14-04` | **`SerialBuzzerAdapter`** — port `SerialService` + `DeviceParser` from QuickBuzz | Constants moved to config; `Console.WriteLine` → `ILogger`; **any device count**, `DeviceCount` defaults to 3 | Done — every QuickBuzz constant is under `Buzzer:Serial`. Also fixed from the audit: a hard deadline on the frame-start search (defect #2), async I/O (#3), cable faults become a 503 (#4), and a nullable parse result (#5). A silent device is reported offline instead of failing the poll |
+| `P14-05` | `Quizware.BuzzerAgent` tray app for the operator PC | Owns the COM port; pushes outbound | Done as a worker (console or Windows service), not a tray icon. Each tick it heartbeats, follows the armed session the API names (arm, then reset when it ends), polls, and pushes new presses, retrying failed pushes on the next tick |
+| `P14-06` | `HttpAgentBuzzerAdapter` + `POST /buzzer/sessions/{id}/presses` ingestion | Outbound push — no port forwarding needed | Done — plus `POST /buzzer/agent/heartbeat`, an additive agent-only route that is the agent's only way to learn of an armed session. The provider counts as available while heartbeats keep arriving (`Agent:StaleAfterSeconds`) |
+| `P14-07` | `GET /buzzer/capability`, `/health`, `POST /buzzer/test` | Capability drives whether the UI shows manual buttons | Done — capability and health always answer, even with the module deleted (05-API-Design.md had *every* endpoint returning 503 when the module is off; a capability query that errors would help no one). `/devices` lists each device's status, and `/test` returns every button's timer |
+| `P14-08` | Graceful-degradation path | Operator override always available | Done — every buzzer failure is a 503 with a readable reason. The answer endpoint never depends on the buzzer |
 
 ### Tests
 
-- **Solution builds with `Quizware.Modules.Buzzer` deleted**
-- **Unplug the hardware mid-match → the match completes normally** via manual entry
-- Buzzer failure returns `503 BUZZER_UNAVAILABLE` and **never blocks** an answer
-- Buzz data never writes scores directly
+- ✅ **Solution builds with `Quizware.Modules.Buzzer` deleted.** The CI job `build-without-buzzer` passes 496 tests; it was also replayed locally.
+- ✅ **Unplug the hardware mid-match → the match completes normally** via manual entry (`BuzzerDegradationTests`)
+- ✅ Buzzer failure returns `503 BUZZER_UNAVAILABLE` and **never blocks** an answer (`BuzzerEndpointTests`, `BuzzerDegradationTests`)
+- ✅ Buzz data never writes scores directly. Tests count score events, and an architecture rule forbids the module from depending on scoring
+
+All 18 buzzer-module tests also pass against SQL Server 2022.
 
 ---
 
-# Phase 15 — Hardening — *not started*
+# Phase 15 — Hardening — **NEXT**
 
 **Duration:** 2 weeks · **Depends on:** everything
 
@@ -890,7 +918,7 @@ data** — do not try to make old matches replayable.
 | M5 | **First live match** | P9 | A complete match, including a mid-match disqualification | ✅ Reached |
 | M6 | **Full tournament** | P11 | 18 → 9 → 3 → 1, including a real tie-break | ✅ Reached |
 | M7 | **Show-ready** | P12 | Live screens, server timers | ✅ Reached |
-| M8 | **Buzzer integrated** | P14 | Works with hardware, and works without it | Pending |
+| M8 | **Buzzer integrated** | P14 | Works with hardware, and works without it | ⚠️ Without it: reached (proven in CI). With it: verified only against a simulated serial port — rehearse on the real rig |
 | M9 | **Production ready** | P15 | Dress rehearsal passed | Pending |
 
 ---
@@ -967,9 +995,13 @@ status.)*
 6. ~~**Phase 13** — reporting and exports (`P13-01`–`P13-06`).~~ **Done** —
    match, stage, team, question-usage and audit reports, exported to Excel,
    CSV and PDF; 492 tests pass.
-7. **Phase 14 — QuickBuzz integration module.** **Next**, and deliberately
-   last before hardening.
-8. Alongside it, clear the small carried-forward items in
+7. ~~**Phase 14** — QuickBuzz integration module (`P14-01`–`P14-08`).~~
+   **Done in software.** The ports and null default, serial and HTTP-agent
+   adapters, the BuzzerAgent worker, and a CI job that deletes the module;
+   515 tests pass. **Owed:** a rehearsal on the real RS-485 rig, after
+   confirming the serial command bytes.
+8. **Phase 15 — Hardening.** **Next.**
+9. Alongside it, clear the small carried-forward items in
    [Progress at a glance](#progress-at-a-glance). The owner needs to decide on
    the pass target field, the settings endpoints, the qualification-rule
    fields and the default scoring rules.

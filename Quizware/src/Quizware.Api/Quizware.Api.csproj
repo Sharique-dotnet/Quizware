@@ -33,7 +33,7 @@
     <ProjectReference Include="..\Quizware.Domain\Quizware.Domain.csproj" />
     <ProjectReference Include="..\Quizware.Application\Quizware.Application.csproj" />
     <ProjectReference Include="..\Quizware.Infrastructure\Quizware.Infrastructure.csproj" />
-    <ProjectReference Include="..\Quizware.Modules.Buzzer\Quizware.Modules.Buzzer.csproj" />
+    <ProjectReference Include="$(BuzzerModuleProject)" Condition="'$(BuzzerModuleInstalled)' == 'true'" />
   </ItemGroup>
 
 </Project>

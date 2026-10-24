@@ -1,61 +1,145 @@
+using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Quizware.Api.Contracts.V1.Buzzer;
 using Quizware.Application.Authorization;
+using Quizware.Application.Buzzer;
 
 namespace Quizware.Api.Controllers.v1;
 
-/// <summary>Optional module (ADR-005). Every action returns 501 in this
-/// contract-only phase; once implemented (Phase 14), an offline/absent
-/// provider returns 503 BUZZER_UNAVAILABLE instead — never a 500, and it
-/// never blocks gameplay.</summary>
+/// <summary>Optional module (ADR-005). With no provider configured, or with
+/// the buzzer module deleted, everything that needs hardware returns
+/// <c>503 BUZZER_UNAVAILABLE</c> — never a 500, and gameplay is never blocked:
+/// answers are recorded the same way, with <c>answerSource = Operator</c>.
+/// Capability and health always answer, so the console can decide to show
+/// manual buttons.</summary>
 [ApiController]
 [Route("api/v1/buzzer")]
 [Authorize]
 public sealed class BuzzerController : ControllerBase
 {
+    private readonly ISender _sender;
+
+    public BuzzerController(ISender sender)
+    {
+        _sender = sender;
+    }
+
     [HttpGet("capability")]
     [Authorize(Policy = Policies.CanViewLive)]
-    public ActionResult<BuzzerCapabilityResponse> Capability() => StatusCode(StatusCodes.Status501NotImplemented);
+    public async Task<ActionResult<BuzzerCapabilityResponse>> Capability(CancellationToken cancellationToken)
+    {
+        var capability = await _sender.Send(new GetBuzzerCapabilityQuery(), cancellationToken);
+        return Ok(new BuzzerCapabilityResponse(capability.Available, capability.Provider, capability.DeviceCount));
+    }
 
     [HttpGet("health")]
     [Authorize(Policy = Policies.CanOperateMatch)]
-    public ActionResult<BuzzerHealthResponse> Health() => StatusCode(StatusCodes.Status501NotImplemented);
+    public async Task<ActionResult<BuzzerHealthResponse>> Health(CancellationToken cancellationToken)
+    {
+        var health = await _sender.Send(new GetBuzzerHealthQuery(), cancellationToken);
+        var capability = await _sender.Send(new GetBuzzerCapabilityQuery(), cancellationToken);
+        return Ok(new BuzzerHealthResponse(health.Healthy, health.Detail, capability.Provider, health.Devices.Select(ToDto).ToList()));
+    }
 
     [HttpGet("devices")]
     [Authorize(Policy = Policies.CanOperateMatch)]
-    public ActionResult<BuzzerDevicesResponse> Devices() => StatusCode(StatusCodes.Status501NotImplemented);
+    public async Task<ActionResult<BuzzerDevicesResponse>> Devices(CancellationToken cancellationToken)
+    {
+        var health = await _sender.Send(new GetBuzzerHealthQuery(), cancellationToken);
+        return Ok(new BuzzerDevicesResponse(health.Devices.Select(ToDto).ToList()));
+    }
 
     [HttpPut("matches/{matchId:guid}/mappings")]
     [Authorize(Policy = Policies.CanManageProgram)]
-    public IActionResult SetMappings(Guid matchId, [FromBody] SetDeviceMappingsRequest request) => StatusCode(StatusCodes.Status501NotImplemented);
+    public async Task<IActionResult> SetMappings(Guid matchId, [FromBody] SetDeviceMappingsRequest request, CancellationToken cancellationToken)
+    {
+        await _sender.Send(
+            new SetDeviceMappingsCommand(matchId, request.Mappings.Select(m => new DeviceMappingInput(m.DeviceId, m.MatchParticipantId)).ToList()),
+            cancellationToken);
+        return NoContent();
+    }
 
     [HttpPost("matches/{matchId:guid}/sessions")]
     [Authorize(Policy = Policies.CanOperateMatch)]
-    public ActionResult<ArmBuzzSessionResponse> ArmSession(Guid matchId, [FromBody] ArmBuzzSessionRequest request) => StatusCode(StatusCodes.Status501NotImplemented);
+    public async Task<ActionResult<ArmBuzzSessionResponse>> ArmSession(Guid matchId, [FromBody] ArmBuzzSessionRequest request, CancellationToken cancellationToken)
+    {
+        var session = await _sender.Send(new ArmBuzzSessionCommand(matchId, request.SegmentId, request.MatchQuestionId), cancellationToken);
+        return Ok(new ArmBuzzSessionResponse(session.SessionId, session.State));
+    }
 
     [HttpGet("sessions/{id:guid}")]
     [Authorize(Policy = Policies.CanViewLive)]
-    public ActionResult<BuzzSessionResponse> GetSession(Guid id) => StatusCode(StatusCodes.Status501NotImplemented);
+    public async Task<ActionResult<BuzzSessionResponse>> GetSession(Guid id, CancellationToken cancellationToken) =>
+        Ok(ToResponse(await _sender.Send(new GetBuzzSessionQuery(id), cancellationToken)));
 
-    /// <summary>Pushed by the on-premises buzzer agent (ADR-005), not by a
-    /// browser client — it will carry its own agent-to-API credential once
-    /// P14 implements the adapters, not a user JWT. Left anonymous here as a
-    /// deliberate Phase 5 scope decision; do not treat this as the final
-    /// security posture.</summary>
+    /// <summary>Pushed by the on-premises buzzer agent (ADR-005), never by a
+    /// browser: it authenticates with the agent key in <c>X-Buzzer-Agent-Key</c>,
+    /// not a user token (Q-005). The first press per device counts; a repeat is
+    /// ignored. Each accepted press is broadcast as <c>BuzzResultsReady</c>.</summary>
     [HttpPost("sessions/{id:guid}/presses")]
-    [AllowAnonymous]
-    public IActionResult SubmitPress(Guid id, [FromBody] SubmitBuzzPressRequest request) => StatusCode(StatusCodes.Status501NotImplemented);
+    [Authorize(Policy = Policies.BuzzerAgent)]
+    public async Task<ActionResult<BuzzSessionResponse>> SubmitPress(Guid id, [FromBody] SubmitBuzzPressRequest request, CancellationToken cancellationToken) =>
+        Ok(ToResponse(await _sender.Send(
+            new SubmitBuzzPressCommand(id, request.DeviceId, request.ElapsedMs, request.RawFrameHex, request.ButtonKey), cancellationToken)));
+
+    /// <summary>The buzzer agent's heartbeat (added in Phase 14, agent key
+    /// only). The reply names the armed sessions — the agent's only way to
+    /// learn of one, since the API never connects to the operator PC.
+    /// 503 unless <c>Buzzer:Provider</c> is <c>HttpAgent</c>.</summary>
+    [HttpPost("agent/heartbeat")]
+    [Authorize(Policy = Policies.BuzzerAgent)]
+    public async Task<ActionResult<AgentHeartbeatResponse>> AgentHeartbeat([FromBody] AgentHeartbeatRequest request, CancellationToken cancellationToken)
+    {
+        var reply = await _sender.Send(
+            new RecordAgentHeartbeatCommand(new AgentHeartbeat(
+                request.AgentId,
+                request.PortName,
+                request.Devices.Select(d => new AgentDeviceReport(d.DeviceId, d.IsOnline, d.ButtonTimesMs, d.RawFrameHex)).ToList())),
+            cancellationToken);
+        return Ok(new AgentHeartbeatResponse(
+            reply.ArmedSessions.Select(s => new AgentArmedSessionDto(s.SessionId, s.DeviceIds, s.WindowMs, s.ArmedAtUtc)).ToList(),
+            reply.PollIntervalMs));
+    }
 
     [HttpPost("sessions/{id:guid}/collect")]
     [Authorize(Policy = Policies.CanOperateMatch)]
-    public ActionResult<BuzzSessionResponse> Collect(Guid id) => StatusCode(StatusCodes.Status501NotImplemented);
+    public async Task<ActionResult<BuzzSessionResponse>> Collect(Guid id, CancellationToken cancellationToken) =>
+        Ok(ToResponse(await _sender.Send(new CollectBuzzSessionCommand(id), cancellationToken)));
 
     [HttpPost("sessions/{id:guid}/reset")]
     [Authorize(Policy = Policies.CanOperateMatch)]
-    public IActionResult ResetSession(Guid id, [FromBody] ResetBuzzSessionRequest request) => StatusCode(StatusCodes.Status501NotImplemented);
+    public async Task<IActionResult> ResetSession(Guid id, [FromBody] ResetBuzzSessionRequest request, CancellationToken cancellationToken)
+    {
+        await _sender.Send(new ResetBuzzSessionCommand(id, request.Reason), cancellationToken);
+        return NoContent();
+    }
 
     [HttpPost("test")]
     [Authorize(Policy = Policies.CanOperateMatch)]
-    public ActionResult<BuzzerTestResponse> Test() => StatusCode(StatusCodes.Status501NotImplemented);
+    public async Task<ActionResult<BuzzerTestResponse>> Test(CancellationToken cancellationToken)
+    {
+        var readings = await _sender.Send(new TestBuzzersCommand(), cancellationToken);
+        return Ok(new BuzzerTestResponse(readings
+            .Select(r => new BuzzerDeviceDto(r.DeviceId, null, r.IsOnline, r.ButtonTimesMs, r.RawFrameHex))
+            .ToList()));
+    }
+
+    private static BuzzerDeviceDto ToDto(BuzzerDeviceStatus device) => new(device.DeviceId, device.Port, device.IsOnline);
+
+    private static BuzzSessionResponse ToResponse(BuzzSessionDto dto) =>
+        new(
+            dto.SessionId,
+            dto.State,
+            dto.RankedPresses
+                .Select(p => new BuzzPressDto(
+                    p.DeviceId, p.MatchParticipantId, p.ElapsedMs, p.Rank, p.PressId, p.TeamId, p.TeamName, p.ButtonKey, p.RawFrameHex, p.ReceivedAtUtc))
+                .ToList(),
+            dto.MatchId,
+            dto.MatchQuestionId,
+            dto.Provider,
+            dto.WindowMs,
+            dto.FailureReason,
+            dto.ArmedAtUtc,
+            dto.CollectedAtUtc);
 }

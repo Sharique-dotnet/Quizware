@@ -1,10 +1,17 @@
 # Quizware Postman collection
 
 `Quizware.postman_collection.json` covers every implemented endpoint through
-**Phase 13 (reporting and exports)** — 188 requests, 257 assertions. Endpoints
-that are still `501` stubs — admin lookups, match preflight, live
-snapshot/restore, Buzzer — are intentionally not included; there's nothing
-real to test yet.
+**Phase 14 (QuickBuzz buzzer module)** — 198 requests, 273 assertions.
+Endpoints that are still `501` stubs — admin lookups, match preflight, live
+snapshot/restore — are intentionally not included; there's nothing real to
+test yet.
+
+**Folder 17 Buzzer needs the API started as an HTTP-agent buzzer host:**
+`Buzzer__Provider=HttpAgent` and `Buzzer__Agent__ApiKey` equal to the
+collection's `{{buzzerAgentKey}}` variable (default `postman-local-agent-key`,
+a local placeholder — use your own key anywhere real). With the default
+`Provider=None`, its first five requests fail by design (the buzzer is
+unavailable) and everything else still passes.
 The SignalR hubs (`/hubs/match`, `/hubs/display`) are not HTTP requests, so
 newman cannot exercise them; they are covered by the integration tests
 (`LiveHubTests`, `LiveDispatchTests`, `LiveTimerTests`, `LivePerformanceTests`).
@@ -111,6 +118,14 @@ variable.
     filtered audit-log page, then exports: the match as xlsx, the stage as
     csv, the team as pdf and the audit log as csv, plus an unknown report
     type that **expects a 400**.
+18. **17 Buzzer** — plays the BuzzerAgent's heartbeat (with the agent key,
+    reporting devices 1–3), then capability, health, devices and the
+    rehearsal read, maps devices 1 and 2 to participants A and B of
+    `{{matchId}}`, and checks the refusals: arming on the finished match
+    (**409**), a press for an unknown session (**404**), a press without the
+    agent key (**401**) and an unknown session (**404**). The full arm → press
+    → collect flow, and the unplugged-mid-match fallback, are covered by
+    `tests/Quizware.Modules.Buzzer.Tests`.
 
 ## Notes
 
