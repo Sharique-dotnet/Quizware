@@ -60,7 +60,10 @@ public sealed class OutboxDispatcher : BackgroundService
         }
     }
 
-    /// <summary>One pass over the pending messages. Returns how many were delivered.</summary>
+    /// <summary>One pass over the pending messages. Returns how many were delivered.
+    /// Matches are pushed side by side (up to <see cref="LiveOptions.DispatchConcurrency"/>),
+    /// each in its own scope; within a match, strictly in order, stopping at
+    /// the first message that fails or is waiting for its retry (P15-06).</summary>
     public async Task<int> DispatchPendingAsync(CancellationToken cancellationToken)
     {
         await _gate.WaitAsync(cancellationToken);
@@ -68,7 +71,6 @@ public sealed class OutboxDispatcher : BackgroundService
         {
             using var scope = _scopes.CreateScope();
             var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-            var pusher = scope.ServiceProvider.GetRequiredService<ILivePusher>();
 
             var pending = await db.OutboxMessages
                 .Where(m => m.ProcessedAtUtc == null && m.RetryCount < _options.MaxRetries)
@@ -76,8 +78,8 @@ public sealed class OutboxDispatcher : BackgroundService
                 .Take(BatchSize)
                 .ToListAsync(cancellationToken);
 
-            var held = new HashSet<Guid>();
-            var delivered = 0;
+            var byMatch = new List<List<(OutboxMessage Message, LiveDispatch Dispatch)>>();
+            var index = new Dictionary<Guid, int>();
             foreach (var message in pending)
             {
                 if (!TryRead(message, out var dispatch))
@@ -87,29 +89,46 @@ public sealed class OutboxDispatcher : BackgroundService
                     continue;
                 }
 
-                var now = DateTime.UtcNow;
-                if (held.Contains(dispatch.MatchId) || (_notBefore.TryGetValue(message.Id, out var due) && due > now))
+                if (!index.TryGetValue(dispatch.MatchId, out var slot))
                 {
-                    held.Add(dispatch.MatchId);
-                    continue;
+                    index[dispatch.MatchId] = slot = byMatch.Count;
+                    byMatch.Add([]);
                 }
 
+                byMatch[slot].Add((message, dispatch));
+            }
+
+            var now = DateTime.UtcNow;
+            using var lanes = new SemaphoreSlim(Math.Max(_options.DispatchConcurrency, 1));
+            var outcomes = await Task.WhenAll(byMatch.Select(async group =>
+            {
+                await lanes.WaitAsync(cancellationToken);
                 try
                 {
-                    await pusher.PushAsync(dispatch, cancellationToken);
+                    return await PushInOrderAsync(group, now, cancellationToken);
+                }
+                finally
+                {
+                    lanes.Release();
+                }
+            }));
+
+            var delivered = 0;
+            foreach (var (message, error) in outcomes.SelectMany(o => o))
+            {
+                if (error is null)
+                {
                     message.ProcessedAtUtc = DateTime.UtcNow;
                     _notBefore.Remove(message.Id);
                     delivered++;
+                    continue;
                 }
-                catch (Exception ex) when (ex is not OperationCanceledException)
-                {
-                    message.RetryCount++;
-                    message.Error = ex.Message.Length > 2000 ? ex.Message[..2000] : ex.Message;
-                    _notBefore[message.Id] = now.AddMilliseconds(_options.RetryBaseDelayMs * Math.Pow(2, message.RetryCount - 1));
-                    held.Add(dispatch.MatchId);
-                    _logger.LogWarning(ex, "Live push of {Type} {MessageId} failed (attempt {Attempt} of {Max}).",
-                        message.Type, message.Id, message.RetryCount, _options.MaxRetries);
-                }
+
+                message.RetryCount++;
+                message.Error = error.Message.Length > 2000 ? error.Message[..2000] : error.Message;
+                _notBefore[message.Id] = now.AddMilliseconds(_options.RetryBaseDelayMs * Math.Pow(2, message.RetryCount - 1));
+                _logger.LogWarning(error, "Live push of {Type} {MessageId} failed (attempt {Attempt} of {Max}).",
+                    message.Type, message.Id, message.RetryCount, _options.MaxRetries);
             }
 
             await db.SaveChangesAsync(cancellationToken);
@@ -119,6 +138,37 @@ public sealed class OutboxDispatcher : BackgroundService
         {
             _gate.Release();
         }
+    }
+
+    /// <summary>Pushes one match's messages in order with its own scope (a
+    /// DbContext is not shared across threads). Stops at the first message
+    /// that is waiting for a retry or fails, so later ones never overtake it.</summary>
+    private async Task<List<(OutboxMessage Message, Exception? Error)>> PushInOrderAsync(
+        List<(OutboxMessage Message, LiveDispatch Dispatch)> group, DateTime now, CancellationToken cancellationToken)
+    {
+        var results = new List<(OutboxMessage, Exception?)>();
+        using var scope = _scopes.CreateScope();
+        var pusher = scope.ServiceProvider.GetRequiredService<ILivePusher>();
+        foreach (var (message, dispatch) in group)
+        {
+            if (_notBefore.TryGetValue(message.Id, out var due) && due > now)
+            {
+                break;
+            }
+
+            try
+            {
+                await pusher.PushAsync(dispatch, cancellationToken);
+                results.Add((message, null));
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                results.Add((message, ex));
+                break;
+            }
+        }
+
+        return results;
     }
 
     private static bool TryRead(OutboxMessage message, out LiveDispatch dispatch)

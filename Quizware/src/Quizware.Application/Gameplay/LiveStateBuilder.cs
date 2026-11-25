@@ -55,12 +55,22 @@ public sealed class LiveStateBuilder
     public async Task<LiveMatchStateDto> BuildAsync(Match match, LiveAudience audience, CancellationToken cancellationToken)
     {
         var stage = await _db.Stages.SingleAsync(s => s.Id == match.StageId, cancellationToken);
-        var participants = await MatchSetup.LoadParticipantsAsync(_db, match.Id, cancellationToken);
+        // P15-06: participants, their team names and their scores in one round
+        // trip — this runs for every live-state read and every pushed snapshot.
+        var roster = await (
+                from participant in _db.MatchParticipants
+                where participant.MatchId == match.Id
+                join team in _db.Teams on participant.TeamId equals team.Id into teams
+                from team in teams.DefaultIfEmpty()
+                join score in _db.TeamMatchScores on participant.Id equals score.MatchParticipantId into scoreRows
+                from score in scoreRows.DefaultIfEmpty()
+                orderby participant.SeatNumber
+                select new { Participant = participant, TeamName = team != null ? team.DisplayName : null, Points = score != null ? (int?)score.TotalPoints : null })
+            .ToListAsync(cancellationToken);
+        var participants = roster.Select(r => r.Participant).ToList();
+        var teamNames = roster.Where(r => r.TeamName != null).GroupBy(r => r.Participant.TeamId).ToDictionary(g => g.Key, g => g.First().TeamName!);
+        var scores = roster.Where(r => r.Points != null).ToDictionary(r => r.Participant.Id, r => r.Points!.Value);
         var segments = await MatchSetup.LoadSegmentsAsync(_db, match.Id, cancellationToken);
-        var teamNames = await MatchSetup.TeamNamesAsync(_db, participants.Select(p => p.TeamId), cancellationToken);
-        var scores = await _db.TeamMatchScores
-            .Where(s => s.MatchId == match.Id)
-            .ToDictionaryAsync(s => s.MatchParticipantId, s => s.TotalPoints, cancellationToken);
 
         var openSegment = segments.SingleOrDefault(s => s.State == MatchSegmentState.Open);
         var activeQuestion = await _db.MatchQuestions
