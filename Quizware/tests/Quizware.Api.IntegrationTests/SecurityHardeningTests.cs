@@ -76,6 +76,23 @@ public class SecurityHardeningTests : IClassFixture<CustomWebApplicationFactory>
         }
     }
 
+    /// <summary>NFR-S4: nothing is anonymous except sign-in and health — plus
+    /// token refresh, whose refresh token is itself the credential.</summary>
+    [Fact]
+    public void OnlySignInRefreshAndHealth_AreAnonymous()
+    {
+        var anonymous = _factory.Services.GetRequiredService<Microsoft.AspNetCore.Routing.EndpointDataSource>().Endpoints
+            .OfType<Microsoft.AspNetCore.Routing.RouteEndpoint>()
+            .Where(e => e.Metadata.GetMetadata<Microsoft.AspNetCore.Authorization.IAllowAnonymous>() is not null
+                || e.Metadata.GetMetadata<Microsoft.AspNetCore.Authorization.IAuthorizeData>() is null)
+            .Select(e => e.RoutePattern.RawText!.TrimStart('/'))
+            .Distinct()
+            .OrderBy(r => r)
+            .ToList();
+
+        anonymous.Should().BeEquivalentTo("api/v1/admin/health", "api/v1/auth/login", "api/v1/auth/refresh", "health/live", "health/ready");
+    }
+
     [Fact]
     public async Task ApiResponses_CarryTheSecurityHeaders()
     {

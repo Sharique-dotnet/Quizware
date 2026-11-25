@@ -4,7 +4,7 @@ using Microsoft.AspNetCore.RateLimiting;
 namespace Quizware.Api.Security;
 
 /// <summary>P15-02 (OWASP A07): sign-in and token refresh are limited per
-/// client address (<c>Security:AuthRequestsPerMinute</c>, default 10), on top
+/// client address (<c>Security:AuthRequestsPerMinute</c>, default 5 — NFR-S8), on top
 /// of the per-account lockout, so a password cannot be guessed at speed.
 /// Over the limit is a 429 <c>RATE_LIMITED</c>.</summary>
 public static class AuthRateLimiting
@@ -14,7 +14,7 @@ public static class AuthRateLimiting
 
     public static IServiceCollection AddAuthRateLimiting(this IServiceCollection services, IConfiguration configuration)
     {
-        var permitPerMinute = configuration.GetValue(ConfigurationKey, 10);
+        var permitPerMinute = configuration.GetValue(ConfigurationKey, 5);
         return services.AddRateLimiter(options =>
         {
             options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
