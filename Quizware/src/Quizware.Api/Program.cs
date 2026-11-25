@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using Quizware.Api;
 using Quizware.Api.Filters;
 using Quizware.Api.Middleware;
+using Quizware.Api.Security;
 using Quizware.Application;
 using Quizware.Infrastructure;
 using Quizware.Infrastructure.Identity;
@@ -15,6 +16,8 @@ using Scalar.AspNetCore;
 using Serilog;
 
 var builder = WebApplication.CreateBuilder(args);
+StartupSecurityChecks.Enforce(builder.Configuration, builder.Environment);
+builder.WebHost.ConfigureKestrel(options => options.AddServerHeader = false);
 
 builder.Host.UseSerilog((context, configuration) => configuration
     .ReadFrom.Configuration(context.Configuration)
@@ -71,6 +74,11 @@ using (var scope = app.Services.CreateScope())
 
 app.UseExceptionHandler();
 app.UseMiddleware<CorrelationIdMiddleware>();
+app.UseMiddleware<SecurityHeadersMiddleware>();
+if (!app.Environment.IsDevelopment() && !app.Environment.IsEnvironment("Testing"))
+{
+    app.UseHsts();
+}
 
 if (app.Environment.IsDevelopment())
 {
@@ -90,6 +98,7 @@ if (app.Environment.IsDevelopment())
 app.UseHttpsRedirection();
 
 app.UseRouting();
+app.UseRateLimiter();
 app.UseAuthentication();
 app.UseMiddleware<ProgramScopeMiddleware>();
 app.UseAuthorization();

@@ -33,6 +33,10 @@ public class CustomWebApplicationFactory : WebApplicationFactory<Program>
     {
         builder.UseEnvironment("Testing");
 
+        // Many tests sign in through /auth/login from the one in-process client
+        // address; the per-address limit has its own test (SecurityHardeningTests).
+        builder.UseSetting(Quizware.Api.Security.AuthRateLimiting.ConfigurationKey, "100000");
+
         builder.ConfigureServices(services =>
         {
             // The live-push background services poll the database; the shared

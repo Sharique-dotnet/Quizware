@@ -43,6 +43,11 @@ public static class DependencyInjection
             {
                 options.Password.RequiredLength = 8;
                 options.User.RequireUniqueEmail = true;
+
+                // P15-02 (OWASP A07): five wrong passwords lock the account for 15 minutes.
+                options.Lockout.AllowedForNewUsers = true;
+                options.Lockout.MaxFailedAccessAttempts = 5;
+                options.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(15);
             })
             .AddRoles<AppRole>()
             .AddEntityFrameworkStores<AppDbContext>()
