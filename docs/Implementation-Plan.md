@@ -29,14 +29,15 @@ decisions, known gaps — see [`context/CURRENT.md`](../context/CURRENT.md).*
 | 12 | Live push (SignalR) and display API | ✅ Done — see its status note |
 | 13 | Reporting and exports | ✅ Done — see its status note |
 | 14 | QuickBuzz integration module | ✅ Done in software — see its status note (a rehearsal on the real rig is still needed) |
-| **15** | **Hardening** | ⏭️ **Next** |
+| 15 | Hardening | ✅ Done in software — see its status note; **the dress rehearsal (`P15-07`) on venue hardware is still owed** |
 | 16 | Data migration *(optional)* | ⬜ Not started |
 | 17 | Angular 22 *(separate track)* | ⬜ Not started — the generated TypeScript client is ready for it |
 
-**Where the code stands:** the solution builds with 0 warnings; **515 tests
-pass** (17 Application, 142 Domain, 5 Architecture, 333 API integration, 18
+**Where the code stands:** the solution builds with 0 warnings; **529 tests
+pass** (17 Application, 142 Domain, 5 Architecture, 347 API integration, 18
 buzzer module). A second CI job deletes the buzzer module and proves the rest
-still builds and its 496 tests pass. CI
+still builds and its 510 tests pass, and a third scans the whole git history
+for secrets. CI
 runs on every push and pull request to `master`. All migrations apply cleanly
 to a real SQL Server 2022. The Postman collection plays a complete match, a
 stage qualification, the display API and every report and export end to end
@@ -46,7 +47,7 @@ pass when pointed at SQL Server. Endpoints for later phases already exist as
 `501 Not Implemented` stubs so the contract stays fixed: admin lookups, match
 preflight and live snapshot/restore.
 
-**Carried forward from finished phases** (not blocking Phase 15):
+**Carried forward from finished phases** (none blocks the dress rehearsal):
 
 | Item | From | Status |
 |---|---|---|
@@ -56,7 +57,8 @@ preflight and live snapshot/restore.
 | Target team for `OperatorChoice` passing — the pass request has no target field | `P9-08` | Needs a contract change; falls back to clockwise |
 | API endpoints for segment-template play settings and stage match-play settings (e.g. allowing live segment reordering) | `P9-08`, `P9-14` | Settable in the domain only |
 | Default *Incorrect* scoring rules for AudioVisual and Sequence | `P7-06` | Missing — the ready check blocks those segments until rules are added |
-| `<150 ms` live-state and `≤3 round trips` answer targets | `P9-16`, `P9-06` | Not yet measured — belongs with P15 load testing |
+| **NFR-P4:** recording an answer takes 17 database reads plus one write batch, not ≤ 3 round trips | `P9-06`, `P15-06` | Measured in P15 and guarded by `QueryBudgetTests`. The latency target it protects (NFR-P1) is met. Getting to 3 means redesigning the answer pipeline around one preloaded aggregate (see `docs/hardening/Load-Test.md`) |
+| **NFR-SC3:** the API assumes one instance (in-process outbox dispatcher, SignalR groups, agent heartbeat, rate limiter) | `P15-01` | Fine for one venue server (ADR-008). Scaling out needs a SignalR backplane, a single-dispatcher lock, and a shared store |
 | Qualification rule fields the API cannot set: `SeedingMode` (so it is Manual — commit records the qualifiers and auto-seed builds the matches), `ToStageId`, `MinScoreThreshold`, `TieBreakRuleId` | `P7-08`, `P11-07` | Settable in the domain only; contract change needed |
 | A tie-break rule's difficulty range is not passed to the question selector | `P11-04` | The selector has no difficulty-range input yet |
 | The TypeScript client is stale and cannot simply be regenerated: question responses are `oneOf` subtypes in the OpenAPI document (since commit `f6b7c61`), which NSwag reduces to `McqQuestionResponse` | `P5-07`, `P12-07` | `docs/openapi.v1.json` was refreshed in P12. Fix the Swagger polymorphism shape (discriminator on the base type) before regenerating the client for the Angular track |
@@ -856,19 +858,26 @@ All 18 buzzer-module tests also pass against SQL Server 2022.
 
 ---
 
-# Phase 15 — Hardening — **NEXT**
+# Phase 15 — Hardening — **DONE in software** (dress rehearsal owed)
 
 **Duration:** 2 weeks · **Depends on:** everything
 
-| Task | What | Target |
-|---|---|---|
-| `P15-01` | Load test: 100 display clients + 5 operators + a full match | p95 gameplay <200 ms; live state <150 ms |
-| `P15-02` | Security review: OWASP Top 10, dependency scan, secret scan | Zero criticals |
-| `P15-03` | **Tenant-isolation penetration test** | No cross-program leak under any forged input |
-| `P15-04` | Failure drills: kill the API mid-match, drop the DB connection, unplug the buzzer, disconnect a display | Recovery <30 s, zero data loss |
-| `P15-05` | Backup and restore drill | Restore verified, not assumed |
-| `P15-06` | Performance tuning against the NFR table | |
-| `P15-07` | **Full dress rehearsal — a complete 18-team tournament on real venue hardware with real operators** | **Mandatory. Do not skip.** |
+**Status:** `P15-01` to `P15-06` are done on the
+`claude/workflows-project-status-bsgu4d` branch. Each has a write-up under
+`docs/hardening/`, and its checks run as tests or as a CI job.
+**`P15-07`, the dress rehearsal, has not been run.** It needs the venue
+hardware and the real operators; `docs/hardening/Dress-Rehearsal-Checklist.md`
+is ready for the day.
+
+| Task | What | Target | Status |
+|---|---|---|---|
+| `P15-01` | Load test: 100 display clients + 5 operators + a full match | p95 gameplay <200 ms; live state <150 ms | Done (`LoadTests`, `Load-Test.md`). On SQL Server 2022, over six runs, p95 was: gameplay 141–183 ms, live state 56–75 ms, push to all 100 displays 307–365 ms |
+| `P15-02` | Security review: OWASP Top 10, dependency scan, secret scan | Zero criticals | Done (`Security-Review.md`): zero criticals. Fixed: two High (a cross-program read through `/programs/{id}`, and cross-program rule writes), a vulnerable dependency (GHSA-6527-9fp8-r4x6), no lockout or rate limit on sign-in (now lockout plus 5/min per IP, NFR-S8), placeholder secrets reaching production, missing security headers. New CI job `secret-scan` (gitleaks, full history) |
+| `P15-03` | **Tenant-isolation penetration test** | No cross-program leak under any forged input | Done (`TenantIsolationTests`): every routed endpoint, read from the running app, gets another program's ids forged into it (217 requests over 157 routes), plus 11 forged request bodies. No success, no crash, no leaked data, and the other program's data is unchanged |
+| `P15-04` | Failure drills: kill the API mid-match, drop the DB connection, unplug the buzzer, disconnect a display | Recovery <30 s, zero data loss | Done (`Failure-Drills.md`, `tools/drills/failure_drills.py`, `FailureDrillTests`). `kill -9`: back in about 5 s with nothing lost. Database paused or stopped: nothing lost; outages now answer **503 `DATABASE_UNAVAILABLE`** (they were a 500). Display reconnect and buzzer unplug both covered |
+| `P15-05` | Backup and restore drill | Restore verified, not assumed | Done (`Backup-Restore.md`, `tools/drills/backup_restore_drill.py`): row counts, live state and match report all identical after a restore. **NFR-A5 implemented:** a copy-only backup is taken automatically before each match starts |
+| `P15-06` | Performance tuning against the NFR table | | Done: state snapshots built once per dispatch pass, matches dispatched side by side, live state down from 12 round trips to 10, and `QueryBudgetTests` guards the counts. **Not met:** NFR-P4 (≤ 3 round trips per answer) and NFR-SC3 (scale-out); see the carried-forward table |
+| `P15-07` | **Full dress rehearsal — a complete 18-team tournament on real venue hardware with real operators** | **Mandatory. Do not skip.** | **Not run** — `Dress-Rehearsal-Checklist.md` |
 
 > Almost every defect in the current system would have been caught by one dress
 > rehearsal.
@@ -919,7 +928,7 @@ data** — do not try to make old matches replayable.
 | M6 | **Full tournament** | P11 | 18 → 9 → 3 → 1, including a real tie-break | ✅ Reached |
 | M7 | **Show-ready** | P12 | Live screens, server timers | ✅ Reached |
 | M8 | **Buzzer integrated** | P14 | Works with hardware, and works without it | ⚠️ Without it: reached (proven in CI). With it: verified only against a simulated serial port — rehearse on the real rig |
-| M9 | **Production ready** | P15 | Dress rehearsal passed | Pending |
+| M9 | **Production ready** | P15 | Dress rehearsal passed | ⏳ Hardening done in software; the dress rehearsal is still to run |
 
 ---
 
@@ -1000,8 +1009,13 @@ status.)*
    adapters, the BuzzerAgent worker, and a CI job that deletes the module;
    515 tests pass. **Owed:** a rehearsal on the real RS-485 rig, after
    confirming the serial command bytes.
-8. **Phase 15 — Hardening.** **Next.**
-9. Alongside it, clear the small carried-forward items in
+8. ~~**Phase 15** — hardening (`P15-01`–`P15-06`).~~ **Done in software:**
+   load test, security review, tenant-isolation penetration test, failure
+   drills, backup/restore drill and tuning; 529 tests pass.
+9. **Next: the dress rehearsal (`P15-07`)** on venue hardware, after
+   confirming the buzzer's serial command bytes. Then, if wanted, Phase 16
+   (data migration) and the Angular track.
+10. Alongside it, clear the small carried-forward items in
    [Progress at a glance](#progress-at-a-glance). The owner needs to decide on
    the pass target field, the settings endpoints, the qualification-rule
    fields and the default scoring rules.

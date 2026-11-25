@@ -10,13 +10,16 @@ competition in production for years. The rebuild is an ASP.NET Core Web API on
 .NET 10 with SQL Server. An Angular 22 front end will follow as a separate
 track.
 
-> **Status:** back end in active development. Phases 0–13 of the
-> [implementation plan](docs/Implementation-Plan.md) are done. That covers
-> configuration, the question bank, the live match engine, scoring and
-> standings, qualification and tie-breaking, live push to consoles and
-> projector screens, reports with Excel/CSV/PDF export, and the optional
-> QuickBuzz buzzer module (verified against a simulated serial port; a
-> rehearsal on the real rig is still owed). **Phase 15 (hardening) is next.**
+> **Status:** the back end is feature-complete and hardened. Phases 0–15 of
+> the [implementation plan](docs/Implementation-Plan.md) are done in
+> software. That covers configuration, the question bank, the live match
+> engine, scoring and standings, qualification and tie-breaking, live push to
+> consoles and projector screens, reports and exports, the optional QuickBuzz
+> buzzer module, and hardening: load test, security review, a tenant-isolation
+> penetration test, failure drills and a backup/restore drill. **Next: the
+> mandatory dress rehearsal on the venue hardware**
+> ([checklist](docs/hardening/Dress-Rehearsal-Checklist.md)), which also
+> confirms the buzzer's serial command bytes.
 
 ---
 
@@ -167,6 +170,7 @@ are recorded as ADRs in [`docs/adr/`](docs/adr):
 | `Quizware/src/` | Domain, Application, Infrastructure, Api and Modules.Buzzer projects. |
 | `Quizware/tests/` | Domain, Application, Architecture and API integration tests. |
 | `Quizware/tools/Quizware.BuzzerAgent/` | On-site buzzer agent. |
+| `Quizware/tools/drills/` | Failure and backup/restore drills to run against a real API and SQL Server (Phase 15). |
 | `Quizware/clients/typescript/` | Generated TypeScript API client. |
 | `Quizware/docs/openapi.v1.json` | The generated OpenAPI document. |
 | [`Quizware/postman/`](Quizware/postman) | Postman collection covering every implemented endpoint, and how to run it. |
@@ -258,8 +262,15 @@ dotnet test  Quizware.slnx -c Release --no-build
 ```
 
 The suite covers domain rules, application logic, architecture rules (layer
-dependencies) and end-to-end API behaviour. The integration tests use SQLite
-in-memory, so they need no database.
+dependencies) and end-to-end API behaviour. The integration tests use SQLite,
+so they need no database. They include a tenant-isolation penetration test
+that forges another program's ids into every route, a load test, query-count
+budgets and failure drills. To run the live-push tests and the load test
+against real SQL Server, with the NFR response-time targets enforced, set
+`QUIZWARE_TEST_SQLSERVER` to a connection string without a database name. The
+hard-kill, database-outage and backup/restore drills run against a real API
+and SQL Server from `Quizware/tools/drills/` (see
+[`docs/hardening/`](docs/hardening)).
 
 The **Postman collection** exercises the API against a running instance with a
 real database, from login through a complete live match to standings,
@@ -344,7 +355,7 @@ snapshot/restore.
 | 12 | Live push (SignalR) and display API | ✅ Done |
 | 13 | Reporting and exports | ✅ Done |
 | 14 | QuickBuzz integration module | ✅ Done (real-rig rehearsal pending) |
-| 15 | Hardening | ⏭️ Next |
+| 15 | Hardening | ✅ Done in software; the dress rehearsal on venue hardware is next |
 | 16 | Data migration from QuizApp-9AMM | Optional |
 | 17 | Angular 22 front end | Separate track |
 
@@ -362,6 +373,13 @@ Read the design documents in order:
 4. [Database schema](docs/new-system/04-Database-Schema.md)
 5. [API design](docs/new-system/05-API-Design.md)
 6. [Development roadmap](docs/new-system/06-Development-Roadmap.md)
+
+Phase 15's hardening write-ups are in [`docs/hardening/`](docs/hardening):
+the [security review](docs/hardening/Security-Review.md), the
+[load test](docs/hardening/Load-Test.md), the
+[failure drills](docs/hardening/Failure-Drills.md), the
+[backup and restore runbook](docs/hardening/Backup-Restore.md) and the
+[dress-rehearsal checklist](docs/hardening/Dress-Rehearsal-Checklist.md).
 
 The legacy audits are
 [QuizApp-9AMM](docs/QuizApp-9AMM-Technical-Analysis.md) and
