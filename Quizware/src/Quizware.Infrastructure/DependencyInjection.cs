@@ -5,6 +5,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Quizware.Application.Abstractions;
 using Quizware.Infrastructure.Auditing;
+using Quizware.Infrastructure.Backup;
 using Quizware.Infrastructure.Common;
 using Quizware.Infrastructure.Identity;
 using Quizware.Infrastructure.Idempotency;
@@ -36,6 +37,8 @@ public static class DependencyInjection
         services.AddScoped<IMatchNotifications, OutboxMatchNotifications>();
         services.AddScoped<IAuditLogReader, AuditLogReader>();
         services.AddSingleton<IReportExporter, ReportExporter>();
+        services.Configure<BackupOptions>(configuration.GetSection(BackupOptions.SectionName));
+        services.AddScoped<IDatabaseBackup, SqlServerDatabaseBackup>();
         services.AddSingleton<OutboxSignal>();
 
         services

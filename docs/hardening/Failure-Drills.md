@@ -65,6 +65,5 @@ are delivered, so a restart delivers whatever was still waiting.
 - **Restarting the API takes about 5 s** on this hardware, start-up migration
   check included. Consoles and displays reconnect and re-sync with
   `RequestFullState`.
-- **NFR-A5, an automatic database backup before each match starts, is not
-  implemented.** The backup and restore runbook covers backups taken by the
-  operator; see `Backup-Restore.md`.
+- **NFR-A5:** a database backup is now taken automatically as each match
+  starts. See `Backup-Restore.md` for the runbook and the restore drill.

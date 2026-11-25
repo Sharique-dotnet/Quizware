@@ -50,6 +50,7 @@ public static class DependencyInjection
         services.TryAddSingleton<IBuzzerProvider, NullBuzzerAdapter>();
         services.TryAddScoped<IBuzzerSessionService, UnavailableBuzzerSessionService>();
         services.TryAddSingleton<IBuzzerAgentLink, NoBuzzerAgentLink>();
+        services.TryAddScoped<Abstractions.IDatabaseBackup, Abstractions.NoDatabaseBackup>();
 
         // P9-07: every IQuestionFormatHandler in this assembly is picked up, so
         // a new format is one new class.

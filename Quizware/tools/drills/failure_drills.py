@@ -145,7 +145,7 @@ def build_match(api):
     api.ok("POST", f"{live}/start")
     segments = api.ok("GET", f"{p}/matches/{match['id']}/segments")["segments"]
     api.ok("POST", f"{live}/segments/{segments[0]['id']}/open")
-    return {"live": live, "segment": segments[0]["id"], "match": match["id"]}
+    return {"live": live, "segment": segments[0]["id"], "match": match["id"], "program": program["id"]}
 
 
 def serve(api, m):
