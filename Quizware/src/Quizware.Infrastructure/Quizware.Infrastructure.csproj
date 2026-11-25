@@ -7,9 +7,9 @@
 
   <ItemGroup>
     <PackageReference Include="ClosedXML" Version="0.105.1" />
-    <PackageReference Include="Microsoft.AspNetCore.Http" Version="2.3.12" />
-    <PackageReference Include="Microsoft.AspNetCore.Http.Abstractions" Version="2.3.12" />
-    <PackageReference Include="Microsoft.AspNetCore.Identity" Version="2.3.12" />
+    <PackageReference Include="Microsoft.AspNetCore.Http" Version="2.3.14" />
+    <PackageReference Include="Microsoft.AspNetCore.Http.Abstractions" Version="2.3.14" />
+    <PackageReference Include="Microsoft.AspNetCore.Identity" Version="2.3.14" />
     <PackageReference Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" Version="10.0.11" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.11">
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
@@ -23,6 +23,8 @@
          NuGet audit advisories; pinned to the patched 10.0 releases. -->
     <PackageReference Include="System.Security.Cryptography.Pkcs" Version="10.0.13" />
     <PackageReference Include="System.Security.Cryptography.Xml" Version="10.0.13" />
+    <!-- Transitive (via Microsoft.AspNetCore.Http 2.3.x) versions up to 2.3.13 carry GHSA-6527-9fp8-r4x6; pinned to the patched release. -->
+    <PackageReference Include="Microsoft.AspNetCore.WebUtilities" Version="2.3.14" />
   </ItemGroup>
 
   <PropertyGroup>
