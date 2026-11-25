@@ -34,6 +34,8 @@ public sealed class UpsertQualificationRulesCommandHandler : IRequestHandler<Ups
 
     public async Task<IReadOnlyList<QualificationRuleAppDto>> Handle(UpsertQualificationRulesCommand request, CancellationToken cancellationToken)
     {
+        await RuleStages.EnsureOwnedAsync(_db, request.ProgramId, request.Rules.Select(r => (Guid?)r.StageId), cancellationToken);
+
         var existing = await _db.QualificationRules
             .Where(r => r.ProgramId == request.ProgramId)
             .ToListAsync(cancellationToken);

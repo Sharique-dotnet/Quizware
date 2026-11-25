@@ -15,6 +15,8 @@ using Quizware.Domain.Enums;
 using Quizware.Infrastructure.Imports;
 using Quizware.Infrastructure.Persistence;
 
+using ValidationException = Quizware.Application.Common.Exceptions.ValidationException;
+
 namespace Quizware.Api.Controllers.v1;
 
 [ApiController]
@@ -462,11 +464,23 @@ public sealed class QuestionsController : ControllerBase
         return Ok(new QuestionDuplicatesResponse(pairs.Select(p => new DuplicateQuestionPair(p.QuestionId, p.DuplicateOfQuestionId, p.SimilarityScore)).ToList()));
     }
 
-    private static T Deserialize<T>(string json) =>
-        JsonSerializer.Deserialize<T>(json, new JsonSerializerOptions(JsonSerializerDefaults.Web))!;
+    /// <summary>A body that is not the format's shape is a 400, not a 500
+    /// (P15-03 found <c>{}</c> crashing the update).</summary>
+    private static T Deserialize<T>(string json)
+    {
+        try
+        {
+            return JsonSerializer.Deserialize<T>(json, new JsonSerializerOptions(JsonSerializerDefaults.Web))
+                ?? throw new JsonException("The body is empty.");
+        }
+        catch (JsonException ex)
+        {
+            throw new ValidationException(new Dictionary<string, string[]> { ["body"] = [ex.Message] });
+        }
+    }
 
-    private static IReadOnlyList<McqOptionInput> ToOptionInputs(List<OptionDto> options) =>
-        options.Select(o => new McqOptionInput(o.Text, o.IsCorrect, o.DisplayOrder, o.MediaAssetId)).ToList();
+    private static IReadOnlyList<McqOptionInput> ToOptionInputs(List<OptionDto>? options) =>
+        (options ?? []).Select(o => new McqOptionInput(o.Text, o.IsCorrect, o.DisplayOrder, o.MediaAssetId)).ToList();
 
     private static CreateMcqQuestionCommand ToCommand(Guid programId, CreateMcqQuestionRequest r, Guid? replacesQuestionId) => new(
         programId, r.QuestionText, r.DifficultyLevelId, r.TopicId, r.Language, r.TimeLimitSeconds, r.Source, r.TagIds,
@@ -498,7 +512,7 @@ public sealed class QuestionsController : ControllerBase
 
     private static CreateSequenceQuestionCommand ToCommand(Guid programId, CreateSequenceQuestionRequest r, Guid? replacesQuestionId) => new(
         programId, r.QuestionText, r.DifficultyLevelId, r.TopicId, r.Language, r.TimeLimitSeconds, r.Source, r.TagIds,
-        r.Items.Select(i => new SequenceItemInput(i.Text, i.MediaAssetId, i.CorrectPosition, i.DisplayOrder)).ToList(),
+        (r.Items ?? []).Select(i => new SequenceItemInput(i.Text, i.MediaAssetId, i.CorrectPosition, i.DisplayOrder)).ToList(),
         r.PartialCreditEnabled, r.PointsPerCorrectPosition, r.ItemKind, replacesQuestionId);
 
     private static CreateAudioVisualQuestionCommand ToCommand(Guid programId, CreateAudioVisualQuestionRequest r, Guid? replacesQuestionId) => new(
@@ -508,6 +522,6 @@ public sealed class QuestionsController : ControllerBase
 
     private static CreateVisualRapidFireQuestionCommand ToCommand(Guid programId, CreateVisualRapidFireQuestionRequest r, Guid? replacesQuestionId) => new(
         programId, r.DifficultyLevelId, r.TopicId, r.Language, r.TimeLimitSeconds, r.Source, r.TagIds,
-        r.Items.Select(i => new VrfItemInput(i.MediaAssetId, i.AnswerText, i.AcceptableAnswers, i.DisplayOrder)).ToList(),
+        (r.Items ?? []).Select(i => new VrfItemInput(i.MediaAssetId, i.AnswerText, i.AcceptableAnswers, i.DisplayOrder)).ToList(),
         r.RevealSecondsPerImage, r.GridColumns, r.ScorePerImage, replacesQuestionId);
 }

@@ -2,6 +2,7 @@ using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Quizware.Api.Contracts.V1.Programs;
+using Quizware.Api.Middleware;
 using Quizware.Application.Authorization;
 using Quizware.Application.Programs.Commands;
 using Quizware.Application.Programs.Dtos;
@@ -13,6 +14,7 @@ namespace Quizware.Api.Controllers.v1;
 [ApiController]
 [Route("api/v1/programs")]
 [Authorize]
+[ProgramRoute("id", AllowUnscopedSuperAdmin = true)]
 public sealed class ProgramsController : ControllerBase
 {
     private readonly ISender _sender;

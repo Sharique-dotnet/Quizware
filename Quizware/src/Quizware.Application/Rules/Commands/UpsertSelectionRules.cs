@@ -41,6 +41,8 @@ public sealed class UpsertSelectionRulesCommandHandler : IRequestHandler<UpsertS
 
     public async Task<IReadOnlyList<SelectionRuleAppDto>> Handle(UpsertSelectionRulesCommand request, CancellationToken cancellationToken)
     {
+        await RuleStages.EnsureOwnedAsync(_db, request.ProgramId, request.Rules.Select(r => r.StageId), cancellationToken);
+
         var existing = await _db.QuestionSelectionRules
             .Where(r => r.ProgramId == request.ProgramId)
             .ToListAsync(cancellationToken);

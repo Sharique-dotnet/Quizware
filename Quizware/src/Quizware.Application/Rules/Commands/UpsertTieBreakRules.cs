@@ -45,6 +45,8 @@ public sealed class UpsertTieBreakRulesCommandHandler : IRequestHandler<UpsertTi
 
     public async Task<IReadOnlyList<TieBreakRuleAppDto>> Handle(UpsertTieBreakRulesCommand request, CancellationToken cancellationToken)
     {
+        await RuleStages.EnsureOwnedAsync(_db, request.ProgramId, request.Rules.Select(r => (Guid?)r.StageId), cancellationToken);
+
         var existing = await _db.TieBreakRules
             .Where(r => r.ProgramId == request.ProgramId)
             .ToListAsync(cancellationToken);
