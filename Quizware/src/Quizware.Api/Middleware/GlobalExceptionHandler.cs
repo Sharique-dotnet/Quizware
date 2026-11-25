@@ -20,7 +20,9 @@ public sealed class GlobalExceptionHandler : IExceptionHandler
     public async ValueTask<bool> TryHandleAsync(
         HttpContext httpContext, Exception exception, CancellationToken cancellationToken)
     {
-        var (statusCode, errorCode, title) = Map(exception);
+        var (statusCode, errorCode, title) = Quizware.Infrastructure.Persistence.DatabaseFailures.IsUnavailable(exception)
+            ? (503, "DATABASE_UNAVAILABLE", "The database is not reachable right now; try again in a few seconds")
+            : Map(exception);
 
         if (statusCode >= 500)
         {
@@ -38,7 +40,9 @@ public sealed class GlobalExceptionHandler : IExceptionHandler
             Type = $"https://quizapp/errors/{errorCode.ToLowerInvariant().Replace('_', '-')}",
             Title = title,
             Status = statusCode,
-            Detail = statusCode >= 500 && exception is not BuzzerUnavailableException ? "An unexpected error occurred." : exception.Message,
+            Detail = errorCode == "DATABASE_UNAVAILABLE" ? "Nothing was saved. Retry the action once the database is back."
+                : statusCode >= 500 && exception is not BuzzerUnavailableException ? "An unexpected error occurred."
+                : exception.Message,
             Instance = httpContext.Request.Path,
         };
 
@@ -57,6 +61,11 @@ public sealed class GlobalExceptionHandler : IExceptionHandler
         }
 
         httpContext.Response.StatusCode = statusCode;
+        if (errorCode == "DATABASE_UNAVAILABLE")
+        {
+            httpContext.Response.Headers.RetryAfter = "5";
+        }
+
         httpContext.Response.ContentType = "application/problem+json";
         await httpContext.Response.WriteAsJsonAsync(problemDetails, cancellationToken);
 
