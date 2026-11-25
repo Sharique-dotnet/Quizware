@@ -290,6 +290,11 @@ public sealed class MatchTestHarness
 
     private int NextOrderIndex() => _nextOrderIndex++;
 
+    /// <summary>A SuperAdmin signed in through the login endpoint: no program
+    /// in the token, as when program management is done across programs.</summary>
+    public static Task<HttpClient> CreateUnscopedSuperAdminClientAsync(WebApplicationFactory<Program> factory) =>
+        CreateSuperAdminClientAsync(factory);
+
     private static async Task<HttpClient> CreateSuperAdminClientAsync(WebApplicationFactory<Program> factory)
     {
         var email = $"match-admin-{Guid.NewGuid():N}@quizapp.test";

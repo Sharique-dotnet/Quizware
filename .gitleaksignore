@@ -1,0 +1,6 @@
+# Secret-scan false positives (P15-02, reviewed 2026-11-25). Each matched
+# "secret" is a Postman collection variable *name*, not a credential.
+774264c365104f52c561e855a421745213573ef7:Quizware/postman/Quizware.postman_collection.json:generic-api-key:34
+774264c365104f52c561e855a421745213573ef7:Quizware/postman/Quizware.postman_collection.json:generic-api-key:35
+774264c365104f52c561e855a421745213573ef7:Quizware/postman/Quizware.postman_collection.json:generic-api-key:36
+d2b16cc30a417e7d20b9eb005c66e98dfed9ffd6:QuizApp/postman/QuizApp.postman_collection.json:generic-api-key:23

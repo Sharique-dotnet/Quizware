@@ -18,4 +18,8 @@ public sealed class LiveOptions
     public int MaxRetries { get; set; } = 5;
 
     public int TimerTickIntervalMs { get; set; } = 1000;
+
+    /// <summary>How many matches the dispatcher pushes for at once. Each
+    /// match's own events are always pushed one at a time, in order (P15-06).</summary>
+    public int DispatchConcurrency { get; set; } = 4;
 }

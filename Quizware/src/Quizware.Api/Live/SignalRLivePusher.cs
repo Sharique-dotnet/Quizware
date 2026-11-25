@@ -10,13 +10,17 @@ namespace Quizware.Api.Live;
 /// <summary>Pushes an event to the match's group on both hubs, each with a
 /// state snapshot built for its own audience at dispatch time: the console
 /// view on <c>/hubs/match</c>, the display view (answer withheld until
-/// revealed, event details sanitised) on <c>/hubs/display</c>.</summary>
+/// revealed, event details sanitised) on <c>/hubs/display</c>. The pusher
+/// lives for one dispatch pass, and a match's snapshots are built once per
+/// pass (P15-06): every event in the pass was committed before it began, so
+/// the first snapshot already includes them all.</summary>
 public sealed class SignalRLivePusher : ILivePusher
 {
     private readonly AppDbContext _db;
     private readonly LiveStateBuilder _state;
     private readonly IHubContext<MatchHub> _matchHub;
     private readonly IHubContext<DisplayHub> _displayHub;
+    private readonly Dictionary<Guid, (LiveMatchStateResponse? Console, LiveMatchStateResponse? Display)> _snapshots = [];
 
     public SignalRLivePusher(AppDbContext db, LiveStateBuilder state, IHubContext<MatchHub> matchHub, IHubContext<DisplayHub> displayHub)
     {
@@ -28,14 +32,17 @@ public sealed class SignalRLivePusher : ILivePusher
 
     public async Task PushAsync(LiveDispatch dispatch, CancellationToken cancellationToken)
     {
-        var match = await _db.Matches.SingleOrDefaultAsync(m => m.Id == dispatch.MatchId, cancellationToken);
-        LiveMatchStateResponse? consoleState = null;
-        LiveMatchStateResponse? displayState = null;
-        if (match is not null)
+        if (!_snapshots.TryGetValue(dispatch.MatchId, out var snapshot))
         {
-            consoleState = LiveMapper.ToResponse(await _state.BuildAsync(match, LiveAudience.Console, cancellationToken));
-            displayState = LiveMapper.ToResponse(await _state.BuildAsync(match, LiveAudience.Display, cancellationToken));
+            var match = await _db.Matches.SingleOrDefaultAsync(m => m.Id == dispatch.MatchId, cancellationToken);
+            snapshot = match is null
+                ? (null, null)
+                : (LiveMapper.ToResponse(await _state.BuildAsync(match, LiveAudience.Console, cancellationToken)),
+                   LiveMapper.ToResponse(await _state.BuildAsync(match, LiveAudience.Display, cancellationToken)));
+            _snapshots[dispatch.MatchId] = snapshot;
         }
+
+        var (consoleState, displayState) = snapshot;
 
         var group = LiveHubBase.GroupFor(dispatch.MatchId);
         await _matchHub.Clients.Group(group).SendAsync(

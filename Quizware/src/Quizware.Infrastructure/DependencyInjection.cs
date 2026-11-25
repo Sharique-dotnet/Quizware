@@ -5,6 +5,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Quizware.Application.Abstractions;
 using Quizware.Infrastructure.Auditing;
+using Quizware.Infrastructure.Backup;
 using Quizware.Infrastructure.Common;
 using Quizware.Infrastructure.Identity;
 using Quizware.Infrastructure.Idempotency;
@@ -36,6 +37,8 @@ public static class DependencyInjection
         services.AddScoped<IMatchNotifications, OutboxMatchNotifications>();
         services.AddScoped<IAuditLogReader, AuditLogReader>();
         services.AddSingleton<IReportExporter, ReportExporter>();
+        services.Configure<BackupOptions>(configuration.GetSection(BackupOptions.SectionName));
+        services.AddScoped<IDatabaseBackup, SqlServerDatabaseBackup>();
         services.AddSingleton<OutboxSignal>();
 
         services
@@ -43,6 +46,11 @@ public static class DependencyInjection
             {
                 options.Password.RequiredLength = 8;
                 options.User.RequireUniqueEmail = true;
+
+                // P15-02 (OWASP A07): five wrong passwords lock the account for 15 minutes.
+                options.Lockout.AllowedForNewUsers = true;
+                options.Lockout.MaxFailedAccessAttempts = 5;
+                options.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(15);
             })
             .AddRoles<AppRole>()
             .AddEntityFrameworkStores<AppDbContext>()

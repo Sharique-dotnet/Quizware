@@ -25,12 +25,14 @@ public sealed class StartMatchCommandHandler : IRequestHandler<StartMatchCommand
     private readonly IScoringEngine _scoring;
     private readonly IMatchNotifications _notifications;
     private readonly IBuzzerProvider _buzzer;
+    private readonly IDatabaseBackup _backup;
 
     public StartMatchCommandHandler(
         IAppDbContext db, ICurrentUser currentUser, IQuestionSelector selector, MatchEventLog eventLog, IScoringEngine scoring,
-        IMatchNotifications notifications, IBuzzerProvider buzzer)
+        IMatchNotifications notifications, IBuzzerProvider buzzer, IDatabaseBackup backup)
     {
         _buzzer = buzzer;
+        _backup = backup;
         _db = db;
         _currentUser = currentUser;
         _selector = selector;
@@ -47,6 +49,10 @@ public sealed class StartMatchCommandHandler : IRequestHandler<StartMatchCommand
         var active = participants.Where(p => p.Status == ParticipantStatus.Active).ToList();
 
         match.Start(active.Count);
+
+        // NFR-A5: nothing is saved yet, so the backup holds the match exactly
+        // as it stood ready to play. A failure is recorded, never fatal.
+        var backup = await _backup.BeforeMatchStartAsync(match, cancellationToken);
 
         var segments = await MatchSetup.LoadSegmentsAsync(_db, match.Id, cancellationToken);
         var reserved = 0;
@@ -73,6 +79,7 @@ public sealed class StartMatchCommandHandler : IRequestHandler<StartMatchCommand
             participantIds = active.Select(p => p.Id),
             segmentIds = segments.Select(s => s.Id),
             questionsReserved = reserved,
+            preMatchBackup = backup is null ? null : new { backup.Succeeded, backup.File, backup.Error },
         }, cancellationToken);
         _notifications.Publish(LiveEvents.MatchStateChanged, match.ProgramId, match.Id, new { cause = MatchEventTypes.MatchStarted, state = match.State.ToString(), questionsReserved = reserved });
         if (match.MatchKind == MatchKind.TieBreak)

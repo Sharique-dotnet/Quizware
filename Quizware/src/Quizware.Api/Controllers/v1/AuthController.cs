@@ -2,8 +2,10 @@ using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Quizware.Api.Contracts.V1.Auth;
+using Quizware.Api.Security;
 using Quizware.Application.Authorization;
 using Quizware.Infrastructure.Identity;
 using Quizware.Infrastructure.Persistence;
@@ -33,26 +35,40 @@ public sealed class AuthController : ControllerBase
 
     [HttpPost("login")]
     [AllowAnonymous]
+    [EnableRateLimiting(AuthRateLimiting.PolicyName)]
     public async Task<ActionResult<TokenResponse>> Login(LoginRequest request, CancellationToken cancellationToken)
     {
+        // P15-02 (OWASP A07): failed passwords count toward a lockout, and a
+        // locked-out account answers exactly like a wrong password, so the
+        // response never tells an attacker which accounts exist.
         var user = await _userManager.FindByEmailAsync(request.Email);
-        if (user is null || !user.IsActive || !await _userManager.CheckPasswordAsync(user, request.Password))
+        if (user is null || !user.IsActive || await _userManager.IsLockedOutAsync(user))
         {
-            return Unauthorized(new
-            {
-                type = "https://quizapp/errors/unauthenticated",
-                title = "Invalid email or password",
-                status = 401,
-                errorCode = "UNAUTHENTICATED",
-            });
+            return InvalidCredentials();
         }
 
+        if (!await _userManager.CheckPasswordAsync(user, request.Password))
+        {
+            await _userManager.AccessFailedAsync(user);
+            return InvalidCredentials();
+        }
+
+        await _userManager.ResetAccessFailedCountAsync(user);
         var roles = await _userManager.GetRolesAsync(user);
         return await IssueTokenPairAsync(user, roles, cancellationToken);
     }
 
+    private UnauthorizedObjectResult InvalidCredentials() => Unauthorized(new
+    {
+        type = "https://quizapp/errors/unauthenticated",
+        title = "Invalid email or password",
+        status = 401,
+        errorCode = "UNAUTHENTICATED",
+    });
+
     [HttpPost("refresh")]
     [AllowAnonymous]
+    [EnableRateLimiting(AuthRateLimiting.PolicyName)]
     public async Task<ActionResult<TokenResponse>> Refresh(RefreshRequest request, CancellationToken cancellationToken)
     {
         var tokenHash = _tokenService.HashRefreshToken(request.RefreshToken);

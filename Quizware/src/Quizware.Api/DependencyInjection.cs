@@ -20,6 +20,7 @@ public static class DependencyInjection
         AddJwtAuthentication(services, configuration);
         AddAuthorizationPolicies(services);
         AddSwagger(services);
+        services.AddAuthRateLimiting(configuration);
 
         // Per-format request validators (05-API-Design.md §5.8) — this
         // assembly only; MediatR command/query validators live in Application

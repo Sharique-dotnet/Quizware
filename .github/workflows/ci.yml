@@ -78,3 +78,20 @@ jobs:
 
       - name: Test
         run: dotnet test Quizware.slnx --no-build --configuration Release
+
+  secret-scan:
+    # P15-02: no credential may ever be committed. Scans every commit with
+    # gitleaks; reviewed false positives are listed in .gitleaksignore.
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: .
+
+    steps:
+      - name: Checkout (full history)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: gitleaks
+        run: docker run --rm -v "$PWD:/repo" ghcr.io/gitleaks/gitleaks:v8.24.3 git /repo --redact --no-banner --exit-code 1
