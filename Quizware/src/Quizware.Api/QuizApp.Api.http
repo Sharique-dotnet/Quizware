@@ -11,6 +11,7 @@
 #      KeepMeUpdated@123 (AdminUserSeeder); the seeder never touches an existing admin.
 #   3. Click "Send request" on each request, TOP TO BOTTOM, without skipping. A request that
 #      uses an id from an earlier one fails until that earlier one has been sent.
+#      (VS reports "HTTP0012: Unable to evaluate expression" for that request.)
 #   4. "# Expect:" is the status that means the step passed. Some steps are deliberate
 #      negative checks (409, 404, 403, 400) and pass when they get that status.
 #
@@ -60,15 +61,11 @@ Content-Type: application/json
   "password": "{{adminPassword}}"
 }
 
-###
-@accessToken = {{login.response.body.$.accessToken}}
-@refreshToken = {{login.response.body.$.refreshToken}}
-
 ### Me
 # Expect: 200
 # @name me
 GET {{host}}/api/v1/auth/me
-Authorization: Bearer {{accessToken}}
+Authorization: Bearer {{login.response.body.$.accessToken}}
 
 ### Refresh
 # Expect: 200
@@ -77,12 +74,8 @@ POST {{host}}/api/v1/auth/refresh
 Content-Type: application/json
 
 {
-  "refreshToken": "{{refreshToken}}"
+  "refreshToken": "{{login.response.body.$.refreshToken}}"
 }
-
-###
-@accessToken2 = {{refresh.response.body.$.accessToken}}
-@refreshToken2 = {{refresh.response.body.$.refreshToken}}
 
 
 ###
@@ -92,13 +85,13 @@ Content-Type: application/json
 # Expect: 200
 # @name listPrograms
 GET {{host}}/api/v1/programs
-Authorization: Bearer {{accessToken2}}
+Authorization: Bearer {{refresh.response.body.$.accessToken}}
 
 ### Create Program
 # Expect: 201
 # @name createProgram
 POST {{host}}/api/v1/programs
-Authorization: Bearer {{accessToken2}}
+Authorization: Bearer {{refresh.response.body.$.accessToken}}
 Content-Type: application/json
 
 {
@@ -107,20 +100,17 @@ Content-Type: application/json
   "description": "Created by the Quizware Postman collection"
 }
 
-###
-@programId = {{createProgram.response.body.$.id}}
-
 ### Get Program By Id
 # Expect: 200
 # @name getProgramById
-GET {{host}}/api/v1/programs/{{programId}}
-Authorization: Bearer {{accessToken2}}
+GET {{host}}/api/v1/programs/{{createProgram.response.body.$.id}}
+Authorization: Bearer {{refresh.response.body.$.accessToken}}
 
 ### Update Program
 # Expect: 200
 # @name updateProgram
-PUT {{host}}/api/v1/programs/{{programId}}
-Authorization: Bearer {{accessToken2}}
+PUT {{host}}/api/v1/programs/{{createProgram.response.body.$.id}}
+Authorization: Bearer {{refresh.response.body.$.accessToken}}
 Content-Type: application/json
 
 {
@@ -138,39 +128,36 @@ Content-Type: application/json
 # Expect: 200
 # @name selectProgram
 POST {{host}}/api/v1/auth/select-program
-Authorization: Bearer {{accessToken2}}
+Authorization: Bearer {{refresh.response.body.$.accessToken}}
 Content-Type: application/json
 
 {
-  "programId": "{{programId}}"
+  "programId": "{{createProgram.response.body.$.id}}"
 }
-
-###
-@scopedAccessToken = {{selectProgram.response.body.$.accessToken}}
 
 ### Display Token (read-only, cannot write)
 # Expect: 200
 # @name displayToken
 POST {{host}}/api/v1/auth/display-token
-Authorization: Bearer {{accessToken2}}
+Authorization: Bearer {{refresh.response.body.$.accessToken}}
 Content-Type: application/json
 
 {
-  "programId": "{{programId}}",
+  "programId": "{{createProgram.response.body.$.id}}",
   "expiresInMinutes": 60
 }
 
 ### Get Formats
 # Expect: 200
 # @name getFormats
-GET {{host}}/api/v1/programs/{{programId}}/formats
-Authorization: Bearer {{scopedAccessToken}}
+GET {{host}}/api/v1/programs/{{createProgram.response.body.$.id}}/formats
+Authorization: Bearer {{selectProgram.response.body.$.accessToken}}
 
 ### Update Formats
 # Expect: 200
 # @name updateFormats
-PUT {{host}}/api/v1/programs/{{programId}}/formats
-Authorization: Bearer {{scopedAccessToken}}
+PUT {{host}}/api/v1/programs/{{createProgram.response.body.$.id}}/formats
+Authorization: Bearer {{selectProgram.response.body.$.accessToken}}
 Content-Type: application/json
 
 {
@@ -183,14 +170,14 @@ Content-Type: application/json
 ### Get Settings
 # Expect: 200
 # @name getSettings
-GET {{host}}/api/v1/programs/{{programId}}/settings
-Authorization: Bearer {{scopedAccessToken}}
+GET {{host}}/api/v1/programs/{{createProgram.response.body.$.id}}/settings
+Authorization: Bearer {{selectProgram.response.body.$.accessToken}}
 
 ### Update Settings
 # Expect: 200
 # @name updateSettings
-PUT {{host}}/api/v1/programs/{{programId}}/settings
-Authorization: Bearer {{scopedAccessToken}}
+PUT {{host}}/api/v1/programs/{{createProgram.response.body.$.id}}/settings
+Authorization: Bearer {{selectProgram.response.body.$.accessToken}}
 Content-Type: application/json
 
 {
@@ -202,8 +189,8 @@ Content-Type: application/json
 ### Clone Program
 # Expect: 201
 # @name cloneProgram
-POST {{host}}/api/v1/programs/{{programId}}/clone
-Authorization: Bearer {{accessToken2}}
+POST {{host}}/api/v1/programs/{{createProgram.response.body.$.id}}/clone
+Authorization: Bearer {{refresh.response.body.$.accessToken}}
 Content-Type: application/json
 
 {
@@ -214,8 +201,8 @@ Content-Type: application/json
 ### Dashboard
 # Expect: 200
 # @name dashboard
-GET {{host}}/api/v1/programs/{{programId}}/dashboard
-Authorization: Bearer {{scopedAccessToken}}
+GET {{host}}/api/v1/programs/{{createProgram.response.body.$.id}}/dashboard
+Authorization: Bearer {{selectProgram.response.body.$.accessToken}}
 
 
 ###
@@ -225,13 +212,13 @@ Authorization: Bearer {{scopedAccessToken}}
 # Expect: 200
 # @name listUsers
 GET {{host}}/api/v1/admin/users
-Authorization: Bearer {{accessToken2}}
+Authorization: Bearer {{refresh.response.body.$.accessToken}}
 
 ### Invite User
 # Expect: 201
 # @name inviteUser
 POST {{host}}/api/v1/admin/users
-Authorization: Bearer {{accessToken2}}
+Authorization: Bearer {{refresh.response.body.$.accessToken}}
 Content-Type: application/json
 
 {
@@ -240,32 +227,29 @@ Content-Type: application/json
   "roles": ["ProgramAdmin"]
 }
 
-###
-@invitedUserId = {{inviteUser.response.body.$.user.id}}
-
 ### Assign Roles (uses {{programId}} from 02 Programs > Create Program)
 # Expect: 200
 # @name assignRoles
-PUT {{host}}/api/v1/admin/users/{{invitedUserId}}/roles
-Authorization: Bearer {{accessToken2}}
+PUT {{host}}/api/v1/admin/users/{{inviteUser.response.body.$.user.id}}/roles
+Authorization: Bearer {{refresh.response.body.$.accessToken}}
 Content-Type: application/json
 
 {
-  "programId": "{{programId}}",
+  "programId": "{{createProgram.response.body.$.id}}",
   "roles": ["ProgramAdmin"]
 }
 
 ### Reset Password
 # Expect: 200
 # @name resetPassword
-POST {{host}}/api/v1/admin/users/{{invitedUserId}}/reset-password
-Authorization: Bearer {{accessToken2}}
+POST {{host}}/api/v1/admin/users/{{inviteUser.response.body.$.user.id}}/reset-password
+Authorization: Bearer {{refresh.response.body.$.accessToken}}
 
 ### Deactivate User
 # Expect: 204
 # @name deactivateUser
-POST {{host}}/api/v1/admin/users/{{invitedUserId}}/deactivate
-Authorization: Bearer {{accessToken2}}
+POST {{host}}/api/v1/admin/users/{{inviteUser.response.body.$.user.id}}/deactivate
+Authorization: Bearer {{refresh.response.body.$.accessToken}}
 
 
 ###
@@ -274,14 +258,14 @@ Authorization: Bearer {{accessToken2}}
 ### List Teams
 # Expect: 200
 # @name listTeams
-GET {{host}}/api/v1/programs/{{programId}}/teams
-Authorization: Bearer {{scopedAccessToken}}
+GET {{host}}/api/v1/programs/{{createProgram.response.body.$.id}}/teams
+Authorization: Bearer {{selectProgram.response.body.$.accessToken}}
 
 ### Create Team
 # Expect: 201
 # @name createTeam
-POST {{host}}/api/v1/programs/{{programId}}/teams
-Authorization: Bearer {{scopedAccessToken}}
+POST {{host}}/api/v1/programs/{{createProgram.response.body.$.id}}/teams
+Authorization: Bearer {{selectProgram.response.body.$.accessToken}}
 Content-Type: application/json
 
 {
@@ -291,20 +275,17 @@ Content-Type: application/json
   "memberNames": ["Ali", "Sara"]
 }
 
-###
-@teamId = {{createTeam.response.body.$.id}}
-
 ### Get Team By Id
 # Expect: 200
 # @name getTeamById
-GET {{host}}/api/v1/programs/{{programId}}/teams/{{teamId}}
-Authorization: Bearer {{scopedAccessToken}}
+GET {{host}}/api/v1/programs/{{createProgram.response.body.$.id}}/teams/{{createTeam.response.body.$.id}}
+Authorization: Bearer {{selectProgram.response.body.$.accessToken}}
 
 ### Update Team
 # Expect: 200
 # @name updateTeam
-PUT {{host}}/api/v1/programs/{{programId}}/teams/{{teamId}}
-Authorization: Bearer {{scopedAccessToken}}
+PUT {{host}}/api/v1/programs/{{createProgram.response.body.$.id}}/teams/{{createTeam.response.body.$.id}}
+Authorization: Bearer {{selectProgram.response.body.$.accessToken}}
 Content-Type: application/json
 
 {
@@ -319,8 +300,8 @@ Content-Type: application/json
 ### Change Team Status
 # Expect: 200
 # @name changeTeamStatus
-POST {{host}}/api/v1/programs/{{programId}}/teams/{{teamId}}/status
-Authorization: Bearer {{scopedAccessToken}}
+POST {{host}}/api/v1/programs/{{createProgram.response.body.$.id}}/teams/{{createTeam.response.body.$.id}}/status
+Authorization: Bearer {{selectProgram.response.body.$.accessToken}}
 Content-Type: application/json
 
 {
@@ -331,8 +312,8 @@ Content-Type: application/json
 ### Set Team Images
 # Expect: 200
 # @name setTeamImages
-POST {{host}}/api/v1/programs/{{programId}}/teams/{{teamId}}/images
-Authorization: Bearer {{scopedAccessToken}}
+POST {{host}}/api/v1/programs/{{createProgram.response.body.$.id}}/teams/{{createTeam.response.body.$.id}}/images
+Authorization: Bearer {{selectProgram.response.body.$.accessToken}}
 Content-Type: application/json
 
 {
@@ -343,8 +324,8 @@ Content-Type: application/json
 ### Team History
 # Expect: 200
 # @name teamHistory
-GET {{host}}/api/v1/programs/{{programId}}/teams/{{teamId}}/history
-Authorization: Bearer {{scopedAccessToken}}
+GET {{host}}/api/v1/programs/{{createProgram.response.body.$.id}}/teams/{{createTeam.response.body.$.id}}/history
+Authorization: Bearer {{selectProgram.response.body.$.accessToken}}
 
 
 ###
@@ -353,14 +334,14 @@ Authorization: Bearer {{scopedAccessToken}}
 ### List Topics
 # Expect: 200
 # @name listTopics
-GET {{host}}/api/v1/programs/{{programId}}/topics
-Authorization: Bearer {{scopedAccessToken}}
+GET {{host}}/api/v1/programs/{{createProgram.response.body.$.id}}/topics
+Authorization: Bearer {{selectProgram.response.body.$.accessToken}}
 
 ### Create Topic
 # Expect: 201
 # @name createTopic
-POST {{host}}/api/v1/programs/{{programId}}/topics
-Authorization: Bearer {{scopedAccessToken}}
+POST {{host}}/api/v1/programs/{{createProgram.response.body.$.id}}/topics
+Authorization: Bearer {{selectProgram.response.body.$.accessToken}}
 Content-Type: application/json
 
 {
@@ -369,20 +350,17 @@ Content-Type: application/json
   "shared": false
 }
 
-###
-@topicId = {{createTopic.response.body.$.id}}
-
 ### Get Topic By Id
 # Expect: 200
 # @name getTopicById
-GET {{host}}/api/v1/programs/{{programId}}/topics/{{topicId}}
-Authorization: Bearer {{scopedAccessToken}}
+GET {{host}}/api/v1/programs/{{createProgram.response.body.$.id}}/topics/{{createTopic.response.body.$.id}}
+Authorization: Bearer {{selectProgram.response.body.$.accessToken}}
 
 ### Update Topic
 # Expect: 200
 # @name updateTopic
-PUT {{host}}/api/v1/programs/{{programId}}/topics/{{topicId}}
-Authorization: Bearer {{scopedAccessToken}}
+PUT {{host}}/api/v1/programs/{{createProgram.response.body.$.id}}/topics/{{createTopic.response.body.$.id}}
+Authorization: Bearer {{selectProgram.response.body.$.accessToken}}
 Content-Type: application/json
 
 {
@@ -393,14 +371,14 @@ Content-Type: application/json
 ### List Tags
 # Expect: 200
 # @name listTags
-GET {{host}}/api/v1/programs/{{programId}}/tags
-Authorization: Bearer {{scopedAccessToken}}
+GET {{host}}/api/v1/programs/{{createProgram.response.body.$.id}}/tags
+Authorization: Bearer {{selectProgram.response.body.$.accessToken}}
 
 ### Create Tag
 # Expect: 201
 # @name createTag
-POST {{host}}/api/v1/programs/{{programId}}/tags
-Authorization: Bearer {{scopedAccessToken}}
+POST {{host}}/api/v1/programs/{{createProgram.response.body.$.id}}/tags
+Authorization: Bearer {{selectProgram.response.body.$.accessToken}}
 Content-Type: application/json
 
 {
@@ -408,14 +386,11 @@ Content-Type: application/json
   "shared": false
 }
 
-###
-@tagId = {{createTag.response.body.$.id}}
-
 ### Update Tag
 # Expect: 200
 # @name updateTag
-PUT {{host}}/api/v1/programs/{{programId}}/tags/{{tagId}}
-Authorization: Bearer {{scopedAccessToken}}
+PUT {{host}}/api/v1/programs/{{createProgram.response.body.$.id}}/tags/{{createTag.response.body.$.id}}
+Authorization: Bearer {{selectProgram.response.body.$.accessToken}}
 Content-Type: application/json
 
 {
@@ -429,23 +404,23 @@ Content-Type: application/json
 ### List Questions
 # Expect: 200
 # @name listQuestions
-GET {{host}}/api/v1/programs/{{programId}}/questions?formatCode=Mcq
-Authorization: Bearer {{scopedAccessToken}}
+GET {{host}}/api/v1/programs/{{createProgram.response.body.$.id}}/questions?formatCode=Mcq
+Authorization: Bearer {{selectProgram.response.body.$.accessToken}}
 
 ### Create MCQ Question
 # Expect: 201
 # @name createMCQQuestion
-POST {{host}}/api/v1/programs/{{programId}}/questions/mcq
-Authorization: Bearer {{scopedAccessToken}}
+POST {{host}}/api/v1/programs/{{createProgram.response.body.$.id}}/questions/mcq
+Authorization: Bearer {{selectProgram.response.body.$.accessToken}}
 Content-Type: application/json
 
 {
   "formatCode": "Mcq",
   "questionText": "What is the capital of France?",
   "difficultyLevelId": 2,
-  "topicId": "{{topicId}}",
+  "topicId": "{{createTopic.response.body.$.id}}",
   "language": "en",
-  "tagIds": ["{{tagId}}"],
+  "tagIds": ["{{createTag.response.body.$.id}}"],
   "options": [
     { "text": "Paris", "isCorrect": true, "displayOrder": 1, "mediaAssetId": null },
     { "text": "Rome", "isCorrect": false, "displayOrder": 2, "mediaAssetId": null }
@@ -455,14 +430,11 @@ Content-Type: application/json
   "negativeMarkingEnabled": false
 }
 
-###
-@mcqQuestionId = {{createMCQQuestion.response.body.$.id}}
-
 ### Create Buzzer Question
 # Expect: 201
 # @name createBuzzerQuestion
-POST {{host}}/api/v1/programs/{{programId}}/questions/buzzer
-Authorization: Bearer {{scopedAccessToken}}
+POST {{host}}/api/v1/programs/{{createProgram.response.body.$.id}}/questions/buzzer
+Authorization: Bearer {{selectProgram.response.body.$.accessToken}}
 Content-Type: application/json
 
 {
@@ -483,23 +455,23 @@ Content-Type: application/json
 ### Get Question By Id
 # Expect: 200
 # @name getQuestionById
-GET {{host}}/api/v1/programs/{{programId}}/questions/{{mcqQuestionId}}
-Authorization: Bearer {{scopedAccessToken}}
+GET {{host}}/api/v1/programs/{{createProgram.response.body.$.id}}/questions/{{createMCQQuestion.response.body.$.id}}
+Authorization: Bearer {{selectProgram.response.body.$.accessToken}}
 
 ### Update Question (creates a new version, links SupersedesQuestionId)
 # Expect: 200
 # @name updateQuestion
-PUT {{host}}/api/v1/programs/{{programId}}/questions/mcq/{{mcqQuestionId}}
-Authorization: Bearer {{scopedAccessToken}}
+PUT {{host}}/api/v1/programs/{{createProgram.response.body.$.id}}/questions/mcq/{{createMCQQuestion.response.body.$.id}}
+Authorization: Bearer {{selectProgram.response.body.$.accessToken}}
 Content-Type: application/json
 
 {
   "formatCode": "Mcq",
   "questionText": "What is the capital city of France?",
   "difficultyLevelId": 2,
-  "topicId": "{{topicId}}",
+  "topicId": "{{createTopic.response.body.$.id}}",
   "language": "en",
-  "tagIds": ["{{tagId}}"],
+  "tagIds": ["{{createTag.response.body.$.id}}"],
   "options": [
     { "text": "Paris", "isCorrect": true, "displayOrder": 1, "mediaAssetId": null },
     { "text": "Rome", "isCorrect": false, "displayOrder": 2, "mediaAssetId": null }
@@ -509,14 +481,11 @@ Content-Type: application/json
   "negativeMarkingEnabled": false
 }
 
-###
-@mcqQuestionIdV2 = {{updateQuestion.response.body.$.id}}
-
 ### Approve Question (v2)
 # Expect: 200
 # @name approveQuestion
-POST {{host}}/api/v1/programs/{{programId}}/questions/{{mcqQuestionIdV2}}/approve
-Authorization: Bearer {{scopedAccessToken}}
+POST {{host}}/api/v1/programs/{{createProgram.response.body.$.id}}/questions/{{updateQuestion.response.body.$.id}}/approve
+Authorization: Bearer {{selectProgram.response.body.$.accessToken}}
 Content-Type: application/json
 
 {
@@ -526,26 +495,26 @@ Content-Type: application/json
 ### Question Usage
 # Expect: 200
 # @name questionUsage
-GET {{host}}/api/v1/programs/{{programId}}/questions/{{mcqQuestionIdV2}}/usage
-Authorization: Bearer {{scopedAccessToken}}
+GET {{host}}/api/v1/programs/{{createProgram.response.body.$.id}}/questions/{{updateQuestion.response.body.$.id}}/usage
+Authorization: Bearer {{selectProgram.response.body.$.accessToken}}
 
 ### Question Coverage
 # Expect: 200
 # @name questionCoverage
-GET {{host}}/api/v1/programs/{{programId}}/questions/coverage
-Authorization: Bearer {{scopedAccessToken}}
+GET {{host}}/api/v1/programs/{{createProgram.response.body.$.id}}/questions/coverage
+Authorization: Bearer {{selectProgram.response.body.$.accessToken}}
 
 ### Duplicate Questions
 # Expect: 200
 # @name duplicateQuestions
-GET {{host}}/api/v1/programs/{{programId}}/questions/duplicates
-Authorization: Bearer {{scopedAccessToken}}
+GET {{host}}/api/v1/programs/{{createProgram.response.body.$.id}}/questions/duplicates
+Authorization: Bearer {{selectProgram.response.body.$.accessToken}}
 
 ### Retire Question
 # Expect: 200
 # @name retireQuestion
-POST {{host}}/api/v1/programs/{{programId}}/questions/{{mcqQuestionIdV2}}/retire
-Authorization: Bearer {{scopedAccessToken}}
+POST {{host}}/api/v1/programs/{{createProgram.response.body.$.id}}/questions/{{updateQuestion.response.body.$.id}}/retire
+Authorization: Bearer {{selectProgram.response.body.$.accessToken}}
 Content-Type: application/json
 
 {
@@ -559,14 +528,14 @@ Content-Type: application/json
 ### List Stages
 # Expect: 200
 # @name listStages
-GET {{host}}/api/v1/programs/{{programId}}/stages
-Authorization: Bearer {{scopedAccessToken}}
+GET {{host}}/api/v1/programs/{{createProgram.response.body.$.id}}/stages
+Authorization: Bearer {{selectProgram.response.body.$.accessToken}}
 
 ### Create Stage (League)
 # Expect: 201
 # @name createStage
-POST {{host}}/api/v1/programs/{{programId}}/stages
-Authorization: Bearer {{scopedAccessToken}}
+POST {{host}}/api/v1/programs/{{createProgram.response.body.$.id}}/stages
+Authorization: Bearer {{selectProgram.response.body.$.accessToken}}
 Content-Type: application/json
 
 {
@@ -575,14 +544,11 @@ Content-Type: application/json
   "stageType": "League"
 }
 
-###
-@stageId = {{createStage.response.body.$.id}}
-
 ### Create Stage (Final)
 # Expect: 201
 # @name createStage2
-POST {{host}}/api/v1/programs/{{programId}}/stages
-Authorization: Bearer {{scopedAccessToken}}
+POST {{host}}/api/v1/programs/{{createProgram.response.body.$.id}}/stages
+Authorization: Bearer {{selectProgram.response.body.$.accessToken}}
 Content-Type: application/json
 
 {
@@ -591,20 +557,17 @@ Content-Type: application/json
   "stageType": "Final"
 }
 
-###
-@secondStageId = {{createStage2.response.body.$.id}}
-
 ### Get Stage By Id
 # Expect: 200
 # @name getStageById
-GET {{host}}/api/v1/programs/{{programId}}/stages/{{stageId}}
-Authorization: Bearer {{scopedAccessToken}}
+GET {{host}}/api/v1/programs/{{createProgram.response.body.$.id}}/stages/{{createStage.response.body.$.id}}
+Authorization: Bearer {{selectProgram.response.body.$.accessToken}}
 
 ### Update Stage
 # Expect: 200
 # @name updateStage
-PUT {{host}}/api/v1/programs/{{programId}}/stages/{{stageId}}
-Authorization: Bearer {{scopedAccessToken}}
+PUT {{host}}/api/v1/programs/{{createProgram.response.body.$.id}}/stages/{{createStage.response.body.$.id}}
+Authorization: Bearer {{selectProgram.response.body.$.accessToken}}
 Content-Type: application/json
 
 {
@@ -614,14 +577,14 @@ Content-Type: application/json
 ### Validate Stage (before segments — expect not runnable)
 # Expect: 200
 # @name validateStage
-POST {{host}}/api/v1/programs/{{programId}}/stages/{{stageId}}/validate
-Authorization: Bearer {{scopedAccessToken}}
+POST {{host}}/api/v1/programs/{{createProgram.response.body.$.id}}/stages/{{createStage.response.body.$.id}}/validate
+Authorization: Bearer {{selectProgram.response.body.$.accessToken}}
 
 ### Add Segment (MCQ)
 # Expect: 200
 # @name addSegment
-POST {{host}}/api/v1/programs/{{programId}}/stages/{{stageId}}/segments
-Authorization: Bearer {{scopedAccessToken}}
+POST {{host}}/api/v1/programs/{{createProgram.response.body.$.id}}/stages/{{createStage.response.body.$.id}}/segments
+Authorization: Bearer {{selectProgram.response.body.$.accessToken}}
 Content-Type: application/json
 
 {
@@ -630,14 +593,11 @@ Content-Type: application/json
   "isOrderLocked": true
 }
 
-###
-@segmentId = {{addSegment.response.body.$.id}}
-
 ### Add Segment (Buzzer)
 # Expect: 200
 # @name addSegment2
-POST {{host}}/api/v1/programs/{{programId}}/stages/{{stageId}}/segments
-Authorization: Bearer {{scopedAccessToken}}
+POST {{host}}/api/v1/programs/{{createProgram.response.body.$.id}}/stages/{{createStage.response.body.$.id}}/segments
+Authorization: Bearer {{selectProgram.response.body.$.accessToken}}
 Content-Type: application/json
 
 {
@@ -646,26 +606,23 @@ Content-Type: application/json
   "isOrderLocked": false
 }
 
-###
-@secondSegmentId = {{addSegment2.response.body.$.id}}
-
 ### Validate Stage (after segments — expect runnable)
 # Expect: 200
 # @name validateStage2
-POST {{host}}/api/v1/programs/{{programId}}/stages/{{stageId}}/validate
-Authorization: Bearer {{scopedAccessToken}}
+POST {{host}}/api/v1/programs/{{createProgram.response.body.$.id}}/stages/{{createStage.response.body.$.id}}/validate
+Authorization: Bearer {{selectProgram.response.body.$.accessToken}}
 
 ### Get Segments
 # Expect: 200
 # @name getSegments
-GET {{host}}/api/v1/programs/{{programId}}/stages/{{stageId}}/segments
-Authorization: Bearer {{scopedAccessToken}}
+GET {{host}}/api/v1/programs/{{createProgram.response.body.$.id}}/stages/{{createStage.response.body.$.id}}/segments
+Authorization: Bearer {{selectProgram.response.body.$.accessToken}}
 
 ### Update Segment
 # Expect: 200
 # @name updateSegment
-PUT {{host}}/api/v1/programs/{{programId}}/stages/{{stageId}}/segments/{{secondSegmentId}}
-Authorization: Bearer {{scopedAccessToken}}
+PUT {{host}}/api/v1/programs/{{createProgram.response.body.$.id}}/stages/{{createStage.response.body.$.id}}/segments/{{addSegment2.response.body.$.id}}
+Authorization: Bearer {{selectProgram.response.body.$.accessToken}}
 Content-Type: application/json
 
 {
@@ -676,19 +633,19 @@ Content-Type: application/json
 ### Reorder Segments (locked MCQ segment keeps its index)
 # Expect: 200
 # @name reorderSegments
-PUT {{host}}/api/v1/programs/{{programId}}/stages/{{stageId}}/segments/reorder
-Authorization: Bearer {{scopedAccessToken}}
+PUT {{host}}/api/v1/programs/{{createProgram.response.body.$.id}}/stages/{{createStage.response.body.$.id}}/segments/reorder
+Authorization: Bearer {{selectProgram.response.body.$.accessToken}}
 Content-Type: application/json
 
 {
-  "orderedSegmentTemplateIds": ["{{secondSegmentId}}", "{{segmentId}}"]
+  "orderedSegmentTemplateIds": ["{{addSegment2.response.body.$.id}}", "{{addSegment.response.body.$.id}}"]
 }
 
 ### Set Segment Order Mode
 # Expect: 200
 # @name setSegmentOrderMode
-PUT {{host}}/api/v1/programs/{{programId}}/stages/{{stageId}}/segment-order-mode
-Authorization: Bearer {{scopedAccessToken}}
+PUT {{host}}/api/v1/programs/{{createProgram.response.body.$.id}}/stages/{{createStage.response.body.$.id}}/segment-order-mode
+Authorization: Bearer {{selectProgram.response.body.$.accessToken}}
 Content-Type: application/json
 
 {
@@ -698,31 +655,31 @@ Content-Type: application/json
 ### Reorder Stages
 # Expect: 200
 # @name reorderStages
-PUT {{host}}/api/v1/programs/{{programId}}/stages/reorder
-Authorization: Bearer {{scopedAccessToken}}
+PUT {{host}}/api/v1/programs/{{createProgram.response.body.$.id}}/stages/reorder
+Authorization: Bearer {{selectProgram.response.body.$.accessToken}}
 Content-Type: application/json
 
 {
-  "orderedStageIds": ["{{secondStageId}}", "{{stageId}}"]
+  "orderedStageIds": ["{{createStage2.response.body.$.id}}", "{{createStage.response.body.$.id}}"]
 }
 
 ### Program Readiness Validate
 # Expect: 200
 # @name programReadinessValidate
-POST {{host}}/api/v1/programs/{{programId}}/validate
-Authorization: Bearer {{scopedAccessToken}}
+POST {{host}}/api/v1/programs/{{createProgram.response.body.$.id}}/validate
+Authorization: Bearer {{selectProgram.response.body.$.accessToken}}
 
 ### Remove Segment
 # Expect: 204
 # @name removeSegment
-DELETE {{host}}/api/v1/programs/{{programId}}/stages/{{stageId}}/segments/{{secondSegmentId}}
-Authorization: Bearer {{scopedAccessToken}}
+DELETE {{host}}/api/v1/programs/{{createProgram.response.body.$.id}}/stages/{{createStage.response.body.$.id}}/segments/{{addSegment2.response.body.$.id}}
+Authorization: Bearer {{selectProgram.response.body.$.accessToken}}
 
 ### Delete Stage (Final — no matches yet)
 # Expect: 204
 # @name deleteStage
-DELETE {{host}}/api/v1/programs/{{programId}}/stages/{{secondStageId}}
-Authorization: Bearer {{scopedAccessToken}}
+DELETE {{host}}/api/v1/programs/{{createProgram.response.body.$.id}}/stages/{{createStage2.response.body.$.id}}
+Authorization: Bearer {{selectProgram.response.body.$.accessToken}}
 
 
 ###
@@ -731,20 +688,20 @@ Authorization: Bearer {{scopedAccessToken}}
 ### Get Scoring Rules
 # Expect: 200
 # @name getScoringRules
-GET {{host}}/api/v1/programs/{{programId}}/rules/scoring
-Authorization: Bearer {{scopedAccessToken}}
+GET {{host}}/api/v1/programs/{{createProgram.response.body.$.id}}/rules/scoring
+Authorization: Bearer {{selectProgram.response.body.$.accessToken}}
 
 ### Reset Scoring Defaults
 # Expect: 200
 # @name resetScoringDefaults
-POST {{host}}/api/v1/programs/{{programId}}/rules/scoring/reset-defaults
-Authorization: Bearer {{scopedAccessToken}}
+POST {{host}}/api/v1/programs/{{createProgram.response.body.$.id}}/rules/scoring/reset-defaults
+Authorization: Bearer {{selectProgram.response.body.$.accessToken}}
 
 ### Upsert Scoring Rules
 # Expect: 200
 # @name upsertScoringRules
-PUT {{host}}/api/v1/programs/{{programId}}/rules/scoring
-Authorization: Bearer {{scopedAccessToken}}
+PUT {{host}}/api/v1/programs/{{createProgram.response.body.$.id}}/rules/scoring
+Authorization: Bearer {{selectProgram.response.body.$.accessToken}}
 Content-Type: application/json
 
 {
@@ -756,31 +713,31 @@ Content-Type: application/json
 ### Get Selection Rules
 # Expect: 200
 # @name getSelectionRules
-GET {{host}}/api/v1/programs/{{programId}}/rules/selection
-Authorization: Bearer {{scopedAccessToken}}
+GET {{host}}/api/v1/programs/{{createProgram.response.body.$.id}}/rules/selection
+Authorization: Bearer {{selectProgram.response.body.$.accessToken}}
 
 ### Upsert Selection Rules
 # Expect: 200
 # @name upsertSelectionRules
-PUT {{host}}/api/v1/programs/{{programId}}/rules/selection
-Authorization: Bearer {{scopedAccessToken}}
+PUT {{host}}/api/v1/programs/{{createProgram.response.body.$.id}}/rules/selection
+Authorization: Bearer {{selectProgram.response.body.$.accessToken}}
 Content-Type: application/json
 
 {
   "rules": [
-    { "id": "00000000-0000-0000-0000-000000000000", "formatCode": "Mcq", "stageId": "{{stageId}}", "difficultyMixJson": null, "repeatPolicy": "NeverInStage", "topicSpreadPolicy": "OnePerTopicIfPossible", "fallbackPolicy": "WidenThenFail" }
+    { "id": "00000000-0000-0000-0000-000000000000", "formatCode": "Mcq", "stageId": "{{createStage.response.body.$.id}}", "difficultyMixJson": null, "repeatPolicy": "NeverInStage", "topicSpreadPolicy": "OnePerTopicIfPossible", "fallbackPolicy": "WidenThenFail" }
   ]
 }
 
 ### Preview Selection
 # Expect: 200
 # @name previewSelection
-POST {{host}}/api/v1/programs/{{programId}}/rules/selection/preview
-Authorization: Bearer {{scopedAccessToken}}
+POST {{host}}/api/v1/programs/{{createProgram.response.body.$.id}}/rules/selection/preview
+Authorization: Bearer {{selectProgram.response.body.$.accessToken}}
 Content-Type: application/json
 
 {
-  "stageId": "{{stageId}}",
+  "stageId": "{{createStage.response.body.$.id}}",
   "formatCode": "Mcq",
   "questionCount": 5
 }
@@ -788,44 +745,44 @@ Content-Type: application/json
 ### Get Qualification Rules
 # Expect: 200
 # @name getQualificationRules
-GET {{host}}/api/v1/programs/{{programId}}/rules/qualification
-Authorization: Bearer {{scopedAccessToken}}
+GET {{host}}/api/v1/programs/{{createProgram.response.body.$.id}}/rules/qualification
+Authorization: Bearer {{selectProgram.response.body.$.accessToken}}
 
 ### Upsert Qualification Rules
 # Expect: 200
 # @name upsertQualificationRules
-PUT {{host}}/api/v1/programs/{{programId}}/rules/qualification
-Authorization: Bearer {{scopedAccessToken}}
+PUT {{host}}/api/v1/programs/{{createProgram.response.body.$.id}}/rules/qualification
+Authorization: Bearer {{selectProgram.response.body.$.accessToken}}
 Content-Type: application/json
 
 {
   "rules": [
-    { "id": "00000000-0000-0000-0000-000000000000", "stageId": "{{stageId}}", "winnersPerMatch": 1, "bestRemainingAcrossStage": 2, "manualWildcardSlots": 0 }
+    { "id": "00000000-0000-0000-0000-000000000000", "stageId": "{{createStage.response.body.$.id}}", "winnersPerMatch": 1, "bestRemainingAcrossStage": 2, "manualWildcardSlots": 0 }
   ]
 }
 
 ### Get Tie-Break Rules
 # Expect: 200
 # @name getTieBreakRules
-GET {{host}}/api/v1/programs/{{programId}}/rules/tie-break
-Authorization: Bearer {{scopedAccessToken}}
+GET {{host}}/api/v1/programs/{{createProgram.response.body.$.id}}/rules/tie-break
+Authorization: Bearer {{selectProgram.response.body.$.accessToken}}
 
 ### Reset Tie-Break Defaults
 # Expect: 200
 # @name resetTieBreakDefaults
-POST {{host}}/api/v1/programs/{{programId}}/rules/tie-break/reset-defaults
-Authorization: Bearer {{scopedAccessToken}}
+POST {{host}}/api/v1/programs/{{createProgram.response.body.$.id}}/rules/tie-break/reset-defaults
+Authorization: Bearer {{selectProgram.response.body.$.accessToken}}
 
 ### Upsert Tie-Break Rules
 # Expect: 200
 # @name upsertTieBreakRules
-PUT {{host}}/api/v1/programs/{{programId}}/rules/tie-break
-Authorization: Bearer {{scopedAccessToken}}
+PUT {{host}}/api/v1/programs/{{createProgram.response.body.$.id}}/rules/tie-break
+Authorization: Bearer {{selectProgram.response.body.$.accessToken}}
 Content-Type: application/json
 
 {
   "rules": [
-    { "id": "00000000-0000-0000-0000-000000000000", "stageId": "{{stageId}}", "criteria": ["HeadToHead", "HigherDifficultyCorrect"], "tieBreakFormat": "Mcq", "questionCount": 3, "suddenDeath": false, "maxExtraRounds": 3, "scoreCountsTowardStage": false, "onStillTied": "ManualDecision" }
+    { "id": "00000000-0000-0000-0000-000000000000", "stageId": "{{createStage.response.body.$.id}}", "criteria": ["HeadToHead", "HigherDifficultyCorrect"], "tieBreakFormat": "Mcq", "questionCount": 3, "suddenDeath": false, "maxExtraRounds": 3, "scoreCountsTowardStage": false, "onStillTied": "ManualDecision" }
   ]
 }
 
@@ -837,16 +794,13 @@ Content-Type: application/json
 # Expect: 200
 # @name me2
 GET {{host}}/api/v1/auth/me
-Authorization: Bearer {{scopedAccessToken}}
-
-###
-@adminUserId = {{me2.response.body.$.userId}}
+Authorization: Bearer {{selectProgram.response.body.$.accessToken}}
 
 ### Setup — Create Team B
 # Expect: 201
 # @name createTeamB
-POST {{host}}/api/v1/programs/{{programId}}/teams
-Authorization: Bearer {{scopedAccessToken}}
+POST {{host}}/api/v1/programs/{{createProgram.response.body.$.id}}/teams
+Authorization: Bearer {{selectProgram.response.body.$.accessToken}}
 Content-Type: application/json
 
 {
@@ -859,14 +813,11 @@ Content-Type: application/json
   ]
 }
 
-###
-@teamBId = {{createTeamB.response.body.$.id}}
-
 ### Setup — Create Team C
 # Expect: 201
 # @name createTeamC
-POST {{host}}/api/v1/programs/{{programId}}/teams
-Authorization: Bearer {{scopedAccessToken}}
+POST {{host}}/api/v1/programs/{{createProgram.response.body.$.id}}/teams
+Authorization: Bearer {{selectProgram.response.body.$.accessToken}}
 Content-Type: application/json
 
 {
@@ -879,14 +830,11 @@ Content-Type: application/json
   ]
 }
 
-###
-@teamCId = {{createTeamC.response.body.$.id}}
-
 ### Setup — Create Team D
 # Expect: 201
 # @name createTeamD
-POST {{host}}/api/v1/programs/{{programId}}/teams
-Authorization: Bearer {{scopedAccessToken}}
+POST {{host}}/api/v1/programs/{{createProgram.response.body.$.id}}/teams
+Authorization: Bearer {{selectProgram.response.body.$.accessToken}}
 Content-Type: application/json
 
 {
@@ -899,14 +847,11 @@ Content-Type: application/json
   ]
 }
 
-###
-@teamDId = {{createTeamD.response.body.$.id}}
-
 ### Setup — Create Team E
 # Expect: 201
 # @name createTeamE
-POST {{host}}/api/v1/programs/{{programId}}/teams
-Authorization: Bearer {{scopedAccessToken}}
+POST {{host}}/api/v1/programs/{{createProgram.response.body.$.id}}/teams
+Authorization: Bearer {{selectProgram.response.body.$.accessToken}}
 Content-Type: application/json
 
 {
@@ -919,14 +864,11 @@ Content-Type: application/json
   ]
 }
 
-###
-@teamEId = {{createTeamE.response.body.$.id}}
-
 ### Setup — Update Segment (MCQ → 2 questions)
 # Expect: 200
 # @name updateSegment2
-PUT {{host}}/api/v1/programs/{{programId}}/stages/{{stageId}}/segments/{{segmentId}}
-Authorization: Bearer {{scopedAccessToken}}
+PUT {{host}}/api/v1/programs/{{createProgram.response.body.$.id}}/stages/{{createStage.response.body.$.id}}/segments/{{addSegment.response.body.$.id}}
+Authorization: Bearer {{selectProgram.response.body.$.accessToken}}
 Content-Type: application/json
 
 {
@@ -937,8 +879,8 @@ Content-Type: application/json
 ### Setup — Add Stage Segment (Passing)
 # Expect: 200
 # @name addStageSegment
-POST {{host}}/api/v1/programs/{{programId}}/stages/{{stageId}}/segments
-Authorization: Bearer {{scopedAccessToken}}
+POST {{host}}/api/v1/programs/{{createProgram.response.body.$.id}}/stages/{{createStage.response.body.$.id}}/segments
+Authorization: Bearer {{selectProgram.response.body.$.accessToken}}
 Content-Type: application/json
 
 {
@@ -947,21 +889,18 @@ Content-Type: application/json
   "isOrderLocked": false
 }
 
-###
-@passingTemplateId = {{addStageSegment.response.body.$.id}}
-
 ### Setup — Create MCQ Question 1
 # Expect: 201
 # @name createMCQQuestion1
-POST {{host}}/api/v1/programs/{{programId}}/questions/mcq
-Authorization: Bearer {{scopedAccessToken}}
+POST {{host}}/api/v1/programs/{{createProgram.response.body.$.id}}/questions/mcq
+Authorization: Bearer {{selectProgram.response.body.$.accessToken}}
 Content-Type: application/json
 
 {
   "formatCode": "Mcq",
   "questionText": "Which planet is known as the Red Planet?",
   "difficultyLevelId": 2,
-  "topicId": "{{topicId}}",
+  "topicId": "{{createTopic.response.body.$.id}}",
   "language": "en",
   "options": [
     {
@@ -982,14 +921,11 @@ Content-Type: application/json
   "negativeMarkingEnabled": false
 }
 
-###
-@matchMcqQuestionId1 = {{createMCQQuestion1.response.body.$.id}}
-
 ### Setup — Approve MCQ Question 1
 # Expect: 200
 # @name approveMCQQuestion1
-POST {{host}}/api/v1/programs/{{programId}}/questions/{{matchMcqQuestionId1}}/approve
-Authorization: Bearer {{scopedAccessToken}}
+POST {{host}}/api/v1/programs/{{createProgram.response.body.$.id}}/questions/{{createMCQQuestion1.response.body.$.id}}/approve
+Authorization: Bearer {{selectProgram.response.body.$.accessToken}}
 Content-Type: application/json
 
 {
@@ -999,15 +935,15 @@ Content-Type: application/json
 ### Setup — Create MCQ Question 2
 # Expect: 201
 # @name createMCQQuestion2
-POST {{host}}/api/v1/programs/{{programId}}/questions/mcq
-Authorization: Bearer {{scopedAccessToken}}
+POST {{host}}/api/v1/programs/{{createProgram.response.body.$.id}}/questions/mcq
+Authorization: Bearer {{selectProgram.response.body.$.accessToken}}
 Content-Type: application/json
 
 {
   "formatCode": "Mcq",
   "questionText": "How many continents are there?",
   "difficultyLevelId": 2,
-  "topicId": "{{topicId}}",
+  "topicId": "{{createTopic.response.body.$.id}}",
   "language": "en",
   "options": [
     {
@@ -1028,14 +964,11 @@ Content-Type: application/json
   "negativeMarkingEnabled": false
 }
 
-###
-@matchMcqQuestionId2 = {{createMCQQuestion2.response.body.$.id}}
-
 ### Setup — Approve MCQ Question 2
 # Expect: 200
 # @name approveMCQQuestion2
-POST {{host}}/api/v1/programs/{{programId}}/questions/{{matchMcqQuestionId2}}/approve
-Authorization: Bearer {{scopedAccessToken}}
+POST {{host}}/api/v1/programs/{{createProgram.response.body.$.id}}/questions/{{createMCQQuestion2.response.body.$.id}}/approve
+Authorization: Bearer {{selectProgram.response.body.$.accessToken}}
 Content-Type: application/json
 
 {
@@ -1045,15 +978,15 @@ Content-Type: application/json
 ### Setup — Create MCQ Question 3
 # Expect: 201
 # @name createMCQQuestion3
-POST {{host}}/api/v1/programs/{{programId}}/questions/mcq
-Authorization: Bearer {{scopedAccessToken}}
+POST {{host}}/api/v1/programs/{{createProgram.response.body.$.id}}/questions/mcq
+Authorization: Bearer {{selectProgram.response.body.$.accessToken}}
 Content-Type: application/json
 
 {
   "formatCode": "Mcq",
   "questionText": "What is the boiling point of water at sea level in °C?",
   "difficultyLevelId": 2,
-  "topicId": "{{topicId}}",
+  "topicId": "{{createTopic.response.body.$.id}}",
   "language": "en",
   "options": [
     {
@@ -1074,14 +1007,11 @@ Content-Type: application/json
   "negativeMarkingEnabled": false
 }
 
-###
-@matchMcqQuestionId3 = {{createMCQQuestion3.response.body.$.id}}
-
 ### Setup — Approve MCQ Question 3
 # Expect: 200
 # @name approveMCQQuestion3
-POST {{host}}/api/v1/programs/{{programId}}/questions/{{matchMcqQuestionId3}}/approve
-Authorization: Bearer {{scopedAccessToken}}
+POST {{host}}/api/v1/programs/{{createProgram.response.body.$.id}}/questions/{{createMCQQuestion3.response.body.$.id}}/approve
+Authorization: Bearer {{selectProgram.response.body.$.accessToken}}
 Content-Type: application/json
 
 {
@@ -1091,15 +1021,15 @@ Content-Type: application/json
 ### Setup — Create Passing Question
 # Expect: 201
 # @name createPassingQuestion
-POST {{host}}/api/v1/programs/{{programId}}/questions/passing
-Authorization: Bearer {{scopedAccessToken}}
+POST {{host}}/api/v1/programs/{{createProgram.response.body.$.id}}/questions/passing
+Authorization: Bearer {{selectProgram.response.body.$.accessToken}}
 Content-Type: application/json
 
 {
   "formatCode": "Passing",
   "questionText": "Which ocean is the largest?",
   "difficultyLevelId": 2,
-  "topicId": "{{topicId}}",
+  "topicId": "{{createTopic.response.body.$.id}}",
   "language": "en",
   "options": [
     {
@@ -1120,14 +1050,11 @@ Content-Type: application/json
   "revealAnswerIfAllPass": true
 }
 
-###
-@passingQuestionId = {{createPassingQuestion.response.body.$.id}}
-
 ### Setup — Approve Passing Question
 # Expect: 200
 # @name approvePassingQuestion
-POST {{host}}/api/v1/programs/{{programId}}/questions/{{passingQuestionId}}/approve
-Authorization: Bearer {{scopedAccessToken}}
+POST {{host}}/api/v1/programs/{{createProgram.response.body.$.id}}/questions/{{createPassingQuestion.response.body.$.id}}/approve
+Authorization: Bearer {{selectProgram.response.body.$.accessToken}}
 Content-Type: application/json
 
 {
@@ -1137,36 +1064,33 @@ Content-Type: application/json
 ### Create Match
 # Expect: 201
 # @name createMatch
-POST {{host}}/api/v1/programs/{{programId}}/matches
-Authorization: Bearer {{scopedAccessToken}}
+POST {{host}}/api/v1/programs/{{createProgram.response.body.$.id}}/matches
+Authorization: Bearer {{selectProgram.response.body.$.accessToken}}
 Content-Type: application/json
 
 {
-  "stageId": "{{stageId}}",
+  "stageId": "{{createStage.response.body.$.id}}",
   "name": "League Match 1",
   "matchNumber": 1
 }
 
-###
-@matchId = {{createMatch.response.body.$.id}}
-
 ### List Matches (by stage)
 # Expect: 200
 # @name listMatches
-GET {{host}}/api/v1/programs/{{programId}}/matches?stageId={{stageId}}
-Authorization: Bearer {{scopedAccessToken}}
+GET {{host}}/api/v1/programs/{{createProgram.response.body.$.id}}/matches?stageId={{createStage.response.body.$.id}}
+Authorization: Bearer {{selectProgram.response.body.$.accessToken}}
 
 ### Get Match By Id
 # Expect: 200
 # @name getMatchById
-GET {{host}}/api/v1/programs/{{programId}}/matches/{{matchId}}
-Authorization: Bearer {{scopedAccessToken}}
+GET {{host}}/api/v1/programs/{{createProgram.response.body.$.id}}/matches/{{createMatch.response.body.$.id}}
+Authorization: Bearer {{selectProgram.response.body.$.accessToken}}
 
 ### Update Match
 # Expect: 200
 # @name updateMatch
-PUT {{host}}/api/v1/programs/{{programId}}/matches/{{matchId}}
-Authorization: Bearer {{scopedAccessToken}}
+PUT {{host}}/api/v1/programs/{{createProgram.response.body.$.id}}/matches/{{createMatch.response.body.$.id}}
+Authorization: Bearer {{selectProgram.response.body.$.accessToken}}
 Content-Type: application/json
 
 {
@@ -1177,69 +1101,60 @@ Content-Type: application/json
 ### Add Participant (seat 1)
 # Expect: 200
 # @name addParticipant
-POST {{host}}/api/v1/programs/{{programId}}/matches/{{matchId}}/participants
-Authorization: Bearer {{scopedAccessToken}}
+POST {{host}}/api/v1/programs/{{createProgram.response.body.$.id}}/matches/{{createMatch.response.body.$.id}}/participants
+Authorization: Bearer {{selectProgram.response.body.$.accessToken}}
 Content-Type: application/json
 
 {
-  "teamId": "{{teamId}}",
+  "teamId": "{{createTeam.response.body.$.id}}",
   "seatNumber": 1
 }
-
-###
-@participantAId = {{addParticipant.response.body.$.id}}
 
 ### Add Participant (seat 2)
 # Expect: 200
 # @name addParticipant2
-POST {{host}}/api/v1/programs/{{programId}}/matches/{{matchId}}/participants
-Authorization: Bearer {{scopedAccessToken}}
+POST {{host}}/api/v1/programs/{{createProgram.response.body.$.id}}/matches/{{createMatch.response.body.$.id}}/participants
+Authorization: Bearer {{selectProgram.response.body.$.accessToken}}
 Content-Type: application/json
 
 {
-  "teamId": "{{teamBId}}",
+  "teamId": "{{createTeamB.response.body.$.id}}",
   "seatNumber": 2
 }
-
-###
-@participantBId = {{addParticipant2.response.body.$.id}}
 
 ### Add Participant (seat 3)
 # Expect: 200
 # @name addParticipant3
-POST {{host}}/api/v1/programs/{{programId}}/matches/{{matchId}}/participants
-Authorization: Bearer {{scopedAccessToken}}
+POST {{host}}/api/v1/programs/{{createProgram.response.body.$.id}}/matches/{{createMatch.response.body.$.id}}/participants
+Authorization: Bearer {{selectProgram.response.body.$.accessToken}}
 Content-Type: application/json
 
 {
-  "teamId": "{{teamCId}}",
+  "teamId": "{{createTeamC.response.body.$.id}}",
   "seatNumber": 3
 }
-
-###
-@participantCId = {{addParticipant3.response.body.$.id}}
 
 ### Order Participants (seats and turn order)
 # Expect: 200
 # @name orderParticipants
-PUT {{host}}/api/v1/programs/{{programId}}/matches/{{matchId}}/participants/order
-Authorization: Bearer {{scopedAccessToken}}
+PUT {{host}}/api/v1/programs/{{createProgram.response.body.$.id}}/matches/{{createMatch.response.body.$.id}}/participants/order
+Authorization: Bearer {{selectProgram.response.body.$.accessToken}}
 Content-Type: application/json
 
 {
   "participants": [
     {
-      "participantId": "{{participantAId}}",
+      "participantId": "{{addParticipant.response.body.$.id}}",
       "seatNumber": 1,
       "turnOrder": 1
     },
     {
-      "participantId": "{{participantBId}}",
+      "participantId": "{{addParticipant2.response.body.$.id}}",
       "seatNumber": 2,
       "turnOrder": 2
     },
     {
-      "participantId": "{{participantCId}}",
+      "participantId": "{{addParticipant3.response.body.$.id}}",
       "seatNumber": 3,
       "turnOrder": 3
     }
@@ -1249,45 +1164,38 @@ Content-Type: application/json
 ### Get Segments
 # Expect: 200
 # @name getSegments2
-GET {{host}}/api/v1/programs/{{programId}}/matches/{{matchId}}/segments
-Authorization: Bearer {{scopedAccessToken}}
+GET {{host}}/api/v1/programs/{{createProgram.response.body.$.id}}/matches/{{createMatch.response.body.$.id}}/segments
+Authorization: Bearer {{selectProgram.response.body.$.accessToken}}
 
 ### Add Segment (MCQ — removed next)
 # Expect: 200
 # @name addSegment3
-POST {{host}}/api/v1/programs/{{programId}}/matches/{{matchId}}/segments
-Authorization: Bearer {{scopedAccessToken}}
+POST {{host}}/api/v1/programs/{{createProgram.response.body.$.id}}/matches/{{createMatch.response.body.$.id}}/segments
+Authorization: Bearer {{selectProgram.response.body.$.accessToken}}
 Content-Type: application/json
 
 {
   "formatCode": "Mcq",
   "questionCount": 1
 }
-
-###
-@extraMatchSegmentId = {{addSegment3.response.body.$.id}}
 
 ### Remove Segment
 # Expect: 204
 # @name removeSegment2
-DELETE {{host}}/api/v1/programs/{{programId}}/matches/{{matchId}}/segments/{{extraMatchSegmentId}}
-Authorization: Bearer {{scopedAccessToken}}
+DELETE {{host}}/api/v1/programs/{{createProgram.response.body.$.id}}/matches/{{createMatch.response.body.$.id}}/segments/{{addSegment3.response.body.$.id}}
+Authorization: Bearer {{selectProgram.response.body.$.accessToken}}
 
 ### Reset Segments To Template
 # Expect: 200
 # @name resetSegmentsToTemplate
-POST {{host}}/api/v1/programs/{{programId}}/matches/{{matchId}}/segments/reset-to-template
-Authorization: Bearer {{scopedAccessToken}}
-
-###
-@matchSegmentId = {{resetSegmentsToTemplate.response.body.$.segments[0].id}}
-@passingSegmentId = {{resetSegmentsToTemplate.response.body.$.segments[1].id}}
+POST {{host}}/api/v1/programs/{{createProgram.response.body.$.id}}/matches/{{createMatch.response.body.$.id}}/segments/reset-to-template
+Authorization: Bearer {{selectProgram.response.body.$.accessToken}}
 
 ### Add Segment (MCQ — skipped during play)
 # Expect: 200
 # @name addSegment4
-POST {{host}}/api/v1/programs/{{programId}}/matches/{{matchId}}/segments
-Authorization: Bearer {{scopedAccessToken}}
+POST {{host}}/api/v1/programs/{{createProgram.response.body.$.id}}/matches/{{createMatch.response.body.$.id}}/segments
+Authorization: Bearer {{selectProgram.response.body.$.accessToken}}
 Content-Type: application/json
 
 {
@@ -1295,21 +1203,18 @@ Content-Type: application/json
   "questionCount": 1
 }
 
-###
-@skippedSegmentId = {{addSegment4.response.body.$.id}}
-
 ### Reorder Segments
 # Expect: 200
 # @name reorderSegments2
-PUT {{host}}/api/v1/programs/{{programId}}/matches/{{matchId}}/segments/reorder
-Authorization: Bearer {{scopedAccessToken}}
+PUT {{host}}/api/v1/programs/{{createProgram.response.body.$.id}}/matches/{{createMatch.response.body.$.id}}/segments/reorder
+Authorization: Bearer {{selectProgram.response.body.$.accessToken}}
 Content-Type: application/json
 
 {
   "orderedSegmentIds": [
-    "{{matchSegmentId}}",
-    "{{skippedSegmentId}}",
-    "{{passingSegmentId}}"
+    "{{resetSegmentsToTemplate.response.body.$.segments[0].id}}",
+    "{{addSegment4.response.body.$.id}}",
+    "{{resetSegmentsToTemplate.response.body.$.segments[1].id}}"
   ],
   "reason": "Passing round last"
 }
@@ -1317,51 +1222,45 @@ Content-Type: application/json
 ### Mark Match Ready
 # Expect: 200
 # @name markMatchReady
-POST {{host}}/api/v1/programs/{{programId}}/matches/{{matchId}}/ready
-Authorization: Bearer {{scopedAccessToken}}
+POST {{host}}/api/v1/programs/{{createProgram.response.body.$.id}}/matches/{{createMatch.response.body.$.id}}/ready
+Authorization: Bearer {{selectProgram.response.body.$.accessToken}}
 
 ### Create Match (to delete)
 # Expect: 201
 # @name createMatch2
-POST {{host}}/api/v1/programs/{{programId}}/matches
-Authorization: Bearer {{scopedAccessToken}}
+POST {{host}}/api/v1/programs/{{createProgram.response.body.$.id}}/matches
+Authorization: Bearer {{selectProgram.response.body.$.accessToken}}
 Content-Type: application/json
 
 {
-  "stageId": "{{stageId}}",
+  "stageId": "{{createStage.response.body.$.id}}",
   "name": "Scratch match",
   "matchNumber": 99
 }
 
-###
-@scratchMatchId = {{createMatch2.response.body.$.id}}
-
 ### Delete Match
 # Expect: 204
 # @name deleteMatch
-DELETE {{host}}/api/v1/programs/{{programId}}/matches/{{scratchMatchId}}
-Authorization: Bearer {{scopedAccessToken}}
+DELETE {{host}}/api/v1/programs/{{createProgram.response.body.$.id}}/matches/{{createMatch2.response.body.$.id}}
+Authorization: Bearer {{selectProgram.response.body.$.accessToken}}
 
 ### Auto-Seed Matches
 # Expect: 200
 # @name autoSeedMatches
-POST {{host}}/api/v1/programs/{{programId}}/matches/auto-seed
-Authorization: Bearer {{scopedAccessToken}}
+POST {{host}}/api/v1/programs/{{createProgram.response.body.$.id}}/matches/auto-seed
+Authorization: Bearer {{selectProgram.response.body.$.accessToken}}
 Content-Type: application/json
 
 {
-  "stageId": "{{stageId}}",
+  "stageId": "{{createStage.response.body.$.id}}",
   "seedingMode": "Snake"
 }
 
 ### List Matches (Draft — capture the auto-seeded one)
 # Expect: 200
 # @name listMatches2
-GET {{host}}/api/v1/programs/{{programId}}/matches?stageId={{stageId}}&state=Draft
-Authorization: Bearer {{scopedAccessToken}}
-
-###
-@seededMatchId = {{listMatches2.response.body.$[0].id}}
+GET {{host}}/api/v1/programs/{{createProgram.response.body.$.id}}/matches?stageId={{createStage.response.body.$.id}}&state=Draft
+Authorization: Bearer {{selectProgram.response.body.$.accessToken}}
 
 
 ###
@@ -1370,33 +1269,33 @@ Authorization: Bearer {{scopedAccessToken}}
 ### Start Match
 # Expect: 200
 # @name startMatch
-POST {{host}}/api/v1/matches/{{matchId}}/live/start
-Authorization: Bearer {{scopedAccessToken}}
+POST {{host}}/api/v1/matches/{{createMatch.response.body.$.id}}/live/start
+Authorization: Bearer {{selectProgram.response.body.$.accessToken}}
 
 ### Get State
 # Expect: 200
 # @name getState
-GET {{host}}/api/v1/matches/{{matchId}}/live/state
-Authorization: Bearer {{scopedAccessToken}}
+GET {{host}}/api/v1/matches/{{createMatch.response.body.$.id}}/live/state
+Authorization: Bearer {{selectProgram.response.body.$.accessToken}}
 
 ### Next Segment Options
 # Expect: 200
 # @name nextSegmentOptions
-GET {{host}}/api/v1/matches/{{matchId}}/live/segments/next-options
-Authorization: Bearer {{scopedAccessToken}}
+GET {{host}}/api/v1/matches/{{createMatch.response.body.$.id}}/live/segments/next-options
+Authorization: Bearer {{selectProgram.response.body.$.accessToken}}
 
 ### Reorder Segments (live — stage disallows, expect 409)
 # Expect: 409
 # @name reorderSegments3
-PUT {{host}}/api/v1/matches/{{matchId}}/live/segments/reorder
-Authorization: Bearer {{scopedAccessToken}}
+PUT {{host}}/api/v1/matches/{{createMatch.response.body.$.id}}/live/segments/reorder
+Authorization: Bearer {{selectProgram.response.body.$.accessToken}}
 Content-Type: application/json
 
 {
   "orderedSegmentIds": [
-    "{{matchSegmentId}}",
-    "{{skippedSegmentId}}",
-    "{{passingSegmentId}}"
+    "{{resetSegmentsToTemplate.response.body.$.segments[0].id}}",
+    "{{addSegment4.response.body.$.id}}",
+    "{{resetSegmentsToTemplate.response.body.$.segments[1].id}}"
   ],
   "reason": "Confirmed on the day"
 }
@@ -1404,82 +1303,75 @@ Content-Type: application/json
 ### Open Segment (MCQ)
 # Expect: 200
 # @name openSegment
-POST {{host}}/api/v1/matches/{{matchId}}/live/segments/{{matchSegmentId}}/open
-Authorization: Bearer {{scopedAccessToken}}
+POST {{host}}/api/v1/matches/{{createMatch.response.body.$.id}}/live/segments/{{resetSegmentsToTemplate.response.body.$.segments[0].id}}/open
+Authorization: Bearer {{selectProgram.response.body.$.accessToken}}
 
 ### Next Question (preview)
 # Expect: 200
 # @name nextQuestion
-GET {{host}}/api/v1/matches/{{matchId}}/live/next-question
-Authorization: Bearer {{scopedAccessToken}}
+GET {{host}}/api/v1/matches/{{createMatch.response.body.$.id}}/live/next-question
+Authorization: Bearer {{selectProgram.response.body.$.accessToken}}
 
 ### Serve Question (MCQ 1)
 # Expect: 200
 # @name serveQuestion
-POST {{host}}/api/v1/matches/{{matchId}}/live/questions/serve
-Authorization: Bearer {{scopedAccessToken}}
+POST {{host}}/api/v1/matches/{{createMatch.response.body.$.id}}/live/questions/serve
+Authorization: Bearer {{selectProgram.response.body.$.accessToken}}
 Content-Type: application/json
 
 {
-  "segmentId": "{{matchSegmentId}}"
+  "segmentId": "{{resetSegmentsToTemplate.response.body.$.segments[0].id}}"
 }
-
-###
-@matchQuestionId = {{serveQuestion.response.body.$.matchQuestionId}}
-@correctOptionId = {{serveQuestion.response.body.$.correctOptionId}}
 
 ### Get Question
 # Expect: 200
 # @name getQuestion
-GET {{host}}/api/v1/matches/{{matchId}}/live/questions/{{matchQuestionId}}
-Authorization: Bearer {{scopedAccessToken}}
+GET {{host}}/api/v1/matches/{{createMatch.response.body.$.id}}/live/questions/{{serveQuestion.response.body.$.matchQuestionId}}
+Authorization: Bearer {{selectProgram.response.body.$.accessToken}}
 
 ### Pause
 # Expect: 200
 # @name pause
-POST {{host}}/api/v1/matches/{{matchId}}/live/pause
-Authorization: Bearer {{scopedAccessToken}}
+POST {{host}}/api/v1/matches/{{createMatch.response.body.$.id}}/live/pause
+Authorization: Bearer {{selectProgram.response.body.$.accessToken}}
 
 ### Resume
 # Expect: 200
 # @name resume
-POST {{host}}/api/v1/matches/{{matchId}}/live/resume
-Authorization: Bearer {{scopedAccessToken}}
+POST {{host}}/api/v1/matches/{{createMatch.response.body.$.id}}/live/resume
+Authorization: Bearer {{selectProgram.response.body.$.accessToken}}
 
 ### Get State (capture holder)
 # Expect: 200
 # @name getState2
-GET {{host}}/api/v1/matches/{{matchId}}/live/state
-Authorization: Bearer {{scopedAccessToken}}
-
-###
-@activeParticipantId = {{getState2.response.body.$.activeParticipant.participantId}}
+GET {{host}}/api/v1/matches/{{createMatch.response.body.$.id}}/live/state
+Authorization: Bearer {{selectProgram.response.body.$.accessToken}}
 
 ### Pass Question (MCQ does not pass — expect 409)
 # Expect: 409
 # @name passQuestion
-POST {{host}}/api/v1/matches/{{matchId}}/live/pass
-Authorization: Bearer {{scopedAccessToken}}
+POST {{host}}/api/v1/matches/{{createMatch.response.body.$.id}}/live/pass
+Authorization: Bearer {{selectProgram.response.body.$.accessToken}}
 Content-Type: application/json
 
 {
-  "matchQuestionId": "{{matchQuestionId}}",
-  "fromParticipantId": "{{activeParticipantId}}"
+  "matchQuestionId": "{{serveQuestion.response.body.$.matchQuestionId}}",
+  "fromParticipantId": "{{getState2.response.body.$.activeParticipant.participantId}}"
 }
 
 ### Record Answer (Correct)
 # Expect: 200
 # @name recordAnswer
-POST {{host}}/api/v1/matches/{{matchId}}/live/answers
-Authorization: Bearer {{scopedAccessToken}}
+POST {{host}}/api/v1/matches/{{createMatch.response.body.$.id}}/live/answers
+Authorization: Bearer {{selectProgram.response.body.$.accessToken}}
 Content-Type: application/json
 Idempotency-Key: {{$guid}}
 
 {
-  "matchQuestionId": "{{matchQuestionId}}",
-  "matchParticipantId": "{{activeParticipantId}}",
+  "matchQuestionId": "{{serveQuestion.response.body.$.matchQuestionId}}",
+  "matchParticipantId": "{{getState2.response.body.$.activeParticipant.participantId}}",
   "outcome": "Correct",
-  "selectedOptionId": "{{correctOptionId}}",
+  "selectedOptionId": "{{serveQuestion.response.body.$.correctOptionId}}",
   "selectedOptionIds": null,
   "freeTextAnswer": null,
   "passNumber": 0,
@@ -1488,14 +1380,11 @@ Idempotency-Key: {{$guid}}
   "responseTimeMs": 4200
 }
 
-###
-@answerRecordId = {{recordAnswer.response.body.$.answerRecordId}}
-
 ### Reverse Answer
 # Expect: 200
 # @name reverseAnswer
-POST {{host}}/api/v1/matches/{{matchId}}/live/answers/{{answerRecordId}}/reverse
-Authorization: Bearer {{scopedAccessToken}}
+POST {{host}}/api/v1/matches/{{createMatch.response.body.$.id}}/live/answers/{{recordAnswer.response.body.$.answerRecordId}}/reverse
+Authorization: Bearer {{selectProgram.response.body.$.accessToken}}
 Content-Type: application/json
 
 {
@@ -1505,25 +1394,22 @@ Content-Type: application/json
 ### Get State (after reversal)
 # Expect: 200
 # @name getState3
-GET {{host}}/api/v1/matches/{{matchId}}/live/state
-Authorization: Bearer {{scopedAccessToken}}
-
-###
-@activeParticipantId2 = {{getState3.response.body.$.activeParticipant.participantId}}
+GET {{host}}/api/v1/matches/{{createMatch.response.body.$.id}}/live/state
+Authorization: Bearer {{selectProgram.response.body.$.accessToken}}
 
 ### Record Answer (Correct, re-recorded)
 # Expect: 200
 # @name recordAnswer2
-POST {{host}}/api/v1/matches/{{matchId}}/live/answers
-Authorization: Bearer {{scopedAccessToken}}
+POST {{host}}/api/v1/matches/{{createMatch.response.body.$.id}}/live/answers
+Authorization: Bearer {{selectProgram.response.body.$.accessToken}}
 Content-Type: application/json
 Idempotency-Key: {{$guid}}
 
 {
-  "matchQuestionId": "{{matchQuestionId}}",
-  "matchParticipantId": "{{activeParticipantId2}}",
+  "matchQuestionId": "{{serveQuestion.response.body.$.matchQuestionId}}",
+  "matchParticipantId": "{{getState3.response.body.$.activeParticipant.participantId}}",
   "outcome": "Correct",
-  "selectedOptionId": "{{correctOptionId}}",
+  "selectedOptionId": "{{serveQuestion.response.body.$.correctOptionId}}",
   "selectedOptionIds": null,
   "freeTextAnswer": null,
   "passNumber": 0,
@@ -1532,35 +1418,28 @@ Idempotency-Key: {{$guid}}
   "responseTimeMs": 4200
 }
 
-###
-@answerRecordId2 = {{recordAnswer2.response.body.$.answerRecordId}}
-
 ### Serve Question (MCQ 2)
 # Expect: 200
 # @name serveQuestion2
-POST {{host}}/api/v1/matches/{{matchId}}/live/questions/serve
-Authorization: Bearer {{scopedAccessToken}}
+POST {{host}}/api/v1/matches/{{createMatch.response.body.$.id}}/live/questions/serve
+Authorization: Bearer {{selectProgram.response.body.$.accessToken}}
 Content-Type: application/json
 
 {
-  "segmentId": "{{matchSegmentId}}"
+  "segmentId": "{{resetSegmentsToTemplate.response.body.$.segments[0].id}}"
 }
-
-###
-@matchQuestionId2 = {{serveQuestion2.response.body.$.matchQuestionId}}
-@correctOptionId2 = {{serveQuestion2.response.body.$.correctOptionId}}
 
 ### Reveal Question
 # Expect: 200
 # @name revealQuestion
-POST {{host}}/api/v1/matches/{{matchId}}/live/questions/{{matchQuestionId2}}/reveal
-Authorization: Bearer {{scopedAccessToken}}
+POST {{host}}/api/v1/matches/{{createMatch.response.body.$.id}}/live/questions/{{serveQuestion2.response.body.$.matchQuestionId}}/reveal
+Authorization: Bearer {{selectProgram.response.body.$.accessToken}}
 
 ### Skip Question
 # Expect: 200
 # @name skipQuestion
-POST {{host}}/api/v1/matches/{{matchId}}/live/questions/{{matchQuestionId2}}/skip
-Authorization: Bearer {{scopedAccessToken}}
+POST {{host}}/api/v1/matches/{{createMatch.response.body.$.id}}/live/questions/{{serveQuestion2.response.body.$.matchQuestionId}}/skip
+Authorization: Bearer {{selectProgram.response.body.$.accessToken}}
 Content-Type: application/json
 
 {
@@ -1570,14 +1449,14 @@ Content-Type: application/json
 ### Close Segment (MCQ)
 # Expect: 200
 # @name closeSegment
-POST {{host}}/api/v1/matches/{{matchId}}/live/segments/{{matchSegmentId}}/close
-Authorization: Bearer {{scopedAccessToken}}
+POST {{host}}/api/v1/matches/{{createMatch.response.body.$.id}}/live/segments/{{resetSegmentsToTemplate.response.body.$.segments[0].id}}/close
+Authorization: Bearer {{selectProgram.response.body.$.accessToken}}
 
 ### Skip Segment
 # Expect: 200
 # @name skipSegment
-POST {{host}}/api/v1/matches/{{matchId}}/live/segments/{{skippedSegmentId}}/skip
-Authorization: Bearer {{scopedAccessToken}}
+POST {{host}}/api/v1/matches/{{createMatch.response.body.$.id}}/live/segments/{{addSegment4.response.body.$.id}}/skip
+Authorization: Bearer {{selectProgram.response.body.$.accessToken}}
 Content-Type: application/json
 
 {
@@ -1587,85 +1466,75 @@ Content-Type: application/json
 ### Open Segment (Passing)
 # Expect: 200
 # @name openSegment2
-POST {{host}}/api/v1/matches/{{matchId}}/live/segments/{{passingSegmentId}}/open
-Authorization: Bearer {{scopedAccessToken}}
+POST {{host}}/api/v1/matches/{{createMatch.response.body.$.id}}/live/segments/{{resetSegmentsToTemplate.response.body.$.segments[1].id}}/open
+Authorization: Bearer {{selectProgram.response.body.$.accessToken}}
 
 ### Serve Question (Passing)
 # Expect: 200
 # @name serveQuestion3
-POST {{host}}/api/v1/matches/{{matchId}}/live/questions/serve
-Authorization: Bearer {{scopedAccessToken}}
+POST {{host}}/api/v1/matches/{{createMatch.response.body.$.id}}/live/questions/serve
+Authorization: Bearer {{selectProgram.response.body.$.accessToken}}
 Content-Type: application/json
 
 {
-  "segmentId": "{{passingSegmentId}}"
+  "segmentId": "{{resetSegmentsToTemplate.response.body.$.segments[1].id}}"
 }
-
-###
-@matchQuestionId3 = {{serveQuestion3.response.body.$.matchQuestionId}}
-@correctOptionId3 = {{serveQuestion3.response.body.$.correctOptionId}}
 
 ### Get State (capture holder)
 # Expect: 200
 # @name getState4
-GET {{host}}/api/v1/matches/{{matchId}}/live/state
-Authorization: Bearer {{scopedAccessToken}}
-
-###
-@activeParticipantId3 = {{getState4.response.body.$.activeParticipant.participantId}}
+GET {{host}}/api/v1/matches/{{createMatch.response.body.$.id}}/live/state
+Authorization: Bearer {{selectProgram.response.body.$.accessToken}}
 
 ### Pass Question
 # Expect: 200
 # @name passQuestion2
-POST {{host}}/api/v1/matches/{{matchId}}/live/pass
-Authorization: Bearer {{scopedAccessToken}}
+POST {{host}}/api/v1/matches/{{createMatch.response.body.$.id}}/live/pass
+Authorization: Bearer {{selectProgram.response.body.$.accessToken}}
 Content-Type: application/json
 
 {
-  "matchQuestionId": "{{matchQuestionId3}}",
-  "fromParticipantId": "{{activeParticipantId3}}"
+  "matchQuestionId": "{{serveQuestion3.response.body.$.matchQuestionId}}",
+  "fromParticipantId": "{{getState4.response.body.$.activeParticipant.participantId}}"
 }
 
 ### Get State (after pass)
 # Expect: 200
 # @name getState5
-GET {{host}}/api/v1/matches/{{matchId}}/live/state
-Authorization: Bearer {{scopedAccessToken}}
-
-###
-@activeParticipantId4 = {{getState5.response.body.$.activeParticipant.participantId}}
+GET {{host}}/api/v1/matches/{{createMatch.response.body.$.id}}/live/state
+Authorization: Bearer {{selectProgram.response.body.$.accessToken}}
 
 ### Available Topics
 # Expect: 200
 # @name availableTopics
-GET {{host}}/api/v1/matches/{{matchId}}/live/topics/available
-Authorization: Bearer {{scopedAccessToken}}
+GET {{host}}/api/v1/matches/{{createMatch.response.body.$.id}}/live/topics/available
+Authorization: Bearer {{selectProgram.response.body.$.accessToken}}
 
 ### Select Topic (not a Choice segment — expect 409)
 # Expect: 409
 # @name selectTopic
-POST {{host}}/api/v1/matches/{{matchId}}/live/topics/select
-Authorization: Bearer {{scopedAccessToken}}
+POST {{host}}/api/v1/matches/{{createMatch.response.body.$.id}}/live/topics/select
+Authorization: Bearer {{selectProgram.response.body.$.accessToken}}
 Content-Type: application/json
 
 {
-  "participantId": "{{activeParticipantId4}}",
+  "participantId": "{{getState5.response.body.$.activeParticipant.participantId}}",
   "topicName": "Geography"
 }
 
 ### Record Answer (Correct, after pass)
 # Expect: 200
 # @name recordAnswer3
-POST {{host}}/api/v1/matches/{{matchId}}/live/answers
-Authorization: Bearer {{scopedAccessToken}}
+POST {{host}}/api/v1/matches/{{createMatch.response.body.$.id}}/live/answers
+Authorization: Bearer {{selectProgram.response.body.$.accessToken}}
 Content-Type: application/json
 Idempotency-Key: {{$guid}}
 
 {
-  "matchQuestionId": "{{matchQuestionId3}}",
-  "matchParticipantId": "{{activeParticipantId4}}",
+  "matchQuestionId": "{{serveQuestion3.response.body.$.matchQuestionId}}",
+  "matchParticipantId": "{{getState5.response.body.$.activeParticipant.participantId}}",
   "outcome": "Correct",
-  "selectedOptionId": "{{correctOptionId3}}",
+  "selectedOptionId": "{{serveQuestion3.response.body.$.correctOptionId}}",
   "selectedOptionIds": null,
   "freeTextAnswer": null,
   "passNumber": 1,
@@ -1674,27 +1543,24 @@ Idempotency-Key: {{$guid}}
   "responseTimeMs": 4200
 }
 
-###
-@answerRecordId3 = {{recordAnswer3.response.body.$.answerRecordId}}
-
 ### Disqualify Participant
 # Expect: 200
 # @name disqualifyParticipant
-POST {{host}}/api/v1/matches/{{matchId}}/live/participants/{{participantCId}}/disqualify
-Authorization: Bearer {{scopedAccessToken}}
+POST {{host}}/api/v1/matches/{{createMatch.response.body.$.id}}/live/participants/{{addParticipant3.response.body.$.id}}/disqualify
+Authorization: Bearer {{selectProgram.response.body.$.accessToken}}
 Content-Type: application/json
 
 {
   "reason": "Rule breach",
-  "approvedByUserId": "{{adminUserId}}",
+  "approvedByUserId": "{{me2.response.body.$.userId}}",
   "excludeFromStandings": false
 }
 
 ### Reinstate Participant
 # Expect: 200
 # @name reinstateParticipant
-POST {{host}}/api/v1/matches/{{matchId}}/live/participants/{{participantCId}}/reinstate
-Authorization: Bearer {{scopedAccessToken}}
+POST {{host}}/api/v1/matches/{{createMatch.response.body.$.id}}/live/participants/{{addParticipant3.response.body.$.id}}/reinstate
+Authorization: Bearer {{selectProgram.response.body.$.accessToken}}
 Content-Type: application/json
 
 {
@@ -1704,20 +1570,20 @@ Content-Type: application/json
 ### Timeline
 # Expect: 200
 # @name timeline
-GET {{host}}/api/v1/matches/{{matchId}}/live/timeline
-Authorization: Bearer {{scopedAccessToken}}
+GET {{host}}/api/v1/matches/{{createMatch.response.body.$.id}}/live/timeline
+Authorization: Bearer {{selectProgram.response.body.$.accessToken}}
 
 ### End Match
 # Expect: 200
 # @name endMatch
-POST {{host}}/api/v1/matches/{{matchId}}/live/end
-Authorization: Bearer {{scopedAccessToken}}
+POST {{host}}/api/v1/matches/{{createMatch.response.body.$.id}}/live/end
+Authorization: Bearer {{selectProgram.response.body.$.accessToken}}
 
 ### Abandon Match (auto-seeded)
 # Expect: 200
 # @name abandonMatch
-POST {{host}}/api/v1/matches/{{seededMatchId}}/live/abandon
-Authorization: Bearer {{scopedAccessToken}}
+POST {{host}}/api/v1/matches/{{listMatches2.response.body.$[0].id}}/live/abandon
+Authorization: Bearer {{selectProgram.response.body.$.accessToken}}
 Content-Type: application/json
 
 {
@@ -1731,24 +1597,24 @@ Content-Type: application/json
 ### Get Match Scores
 # Expect: 200
 # @name getMatchScores
-GET {{host}}/api/v1/matches/{{matchId}}/scores
-Authorization: Bearer {{scopedAccessToken}}
+GET {{host}}/api/v1/matches/{{createMatch.response.body.$.id}}/scores
+Authorization: Bearer {{selectProgram.response.body.$.accessToken}}
 
 ### Score Events
 # Expect: 200
 # @name scoreEvents
-GET {{host}}/api/v1/matches/{{matchId}}/scores/events
-Authorization: Bearer {{scopedAccessToken}}
+GET {{host}}/api/v1/matches/{{createMatch.response.body.$.id}}/scores/events
+Authorization: Bearer {{selectProgram.response.body.$.accessToken}}
 
 ### Adjust Score
 # Expect: 200
 # @name adjustScore
-POST {{host}}/api/v1/matches/{{matchId}}/scores/adjust
-Authorization: Bearer {{scopedAccessToken}}
+POST {{host}}/api/v1/matches/{{createMatch.response.body.$.id}}/scores/adjust
+Authorization: Bearer {{selectProgram.response.body.$.accessToken}}
 Content-Type: application/json
 
 {
-  "teamId": "{{teamBId}}",
+  "teamId": "{{createTeamB.response.body.$.id}}",
   "pointsDelta": 5,
   "reason": "Judges' review"
 }
@@ -1756,8 +1622,8 @@ Content-Type: application/json
 ### Recalculate Scores
 # Expect: 200
 # @name recalculateScores
-POST {{host}}/api/v1/matches/{{matchId}}/scores/recalculate
-Authorization: Bearer {{scopedAccessToken}}
+POST {{host}}/api/v1/matches/{{createMatch.response.body.$.id}}/scores/recalculate
+Authorization: Bearer {{selectProgram.response.body.$.accessToken}}
 
 
 ###
@@ -1766,26 +1632,26 @@ Authorization: Bearer {{scopedAccessToken}}
 ### Overall Standings
 # Expect: 200
 # @name overallStandings
-GET {{host}}/api/v1/programs/{{programId}}/standings/overall
-Authorization: Bearer {{scopedAccessToken}}
+GET {{host}}/api/v1/programs/{{createProgram.response.body.$.id}}/standings/overall
+Authorization: Bearer {{selectProgram.response.body.$.accessToken}}
 
 ### Stage Standings
 # Expect: 200
 # @name stageStandings
-GET {{host}}/api/v1/programs/{{programId}}/standings/stages/{{stageId}}
-Authorization: Bearer {{scopedAccessToken}}
+GET {{host}}/api/v1/programs/{{createProgram.response.body.$.id}}/standings/stages/{{createStage.response.body.$.id}}
+Authorization: Bearer {{selectProgram.response.body.$.accessToken}}
 
 ### Stage Standings (stages route)
 # Expect: 200
 # @name stageStandings2
-GET {{host}}/api/v1/programs/{{programId}}/stages/{{stageId}}/standings
-Authorization: Bearer {{scopedAccessToken}}
+GET {{host}}/api/v1/programs/{{createProgram.response.body.$.id}}/stages/{{createStage.response.body.$.id}}/standings
+Authorization: Bearer {{selectProgram.response.body.$.accessToken}}
 
 ### Team Standing
 # Expect: 200
 # @name teamStanding
-GET {{host}}/api/v1/programs/{{programId}}/standings/teams/{{teamId}}
-Authorization: Bearer {{scopedAccessToken}}
+GET {{host}}/api/v1/programs/{{createProgram.response.body.$.id}}/standings/teams/{{createTeam.response.body.$.id}}
+Authorization: Bearer {{selectProgram.response.body.$.accessToken}}
 
 
 ###
@@ -1794,8 +1660,8 @@ Authorization: Bearer {{scopedAccessToken}}
 ### Setup — Create Stage (Semi-Final)
 # Expect: 201
 # @name createStage3
-POST {{host}}/api/v1/programs/{{programId}}/stages
-Authorization: Bearer {{scopedAccessToken}}
+POST {{host}}/api/v1/programs/{{createProgram.response.body.$.id}}/stages
+Authorization: Bearer {{selectProgram.response.body.$.accessToken}}
 Content-Type: application/json
 
 {
@@ -1804,14 +1670,11 @@ Content-Type: application/json
   "stageType": "Knockout"
 }
 
-###
-@semiStageId = {{createStage3.response.body.$.id}}
-
 ### Setup — Add Segment to Semi-Final (MCQ)
 # Expect: 200
 # @name addSegmentToSemiFinal
-POST {{host}}/api/v1/programs/{{programId}}/stages/{{semiStageId}}/segments
-Authorization: Bearer {{scopedAccessToken}}
+POST {{host}}/api/v1/programs/{{createProgram.response.body.$.id}}/stages/{{createStage3.response.body.$.id}}/segments
+Authorization: Bearer {{selectProgram.response.body.$.accessToken}}
 Content-Type: application/json
 
 {
@@ -1823,14 +1686,14 @@ Content-Type: application/json
 ### Qualification Preview
 # Expect: 200
 # @name qualificationPreview
-GET {{host}}/api/v1/programs/{{programId}}/qualification/stages/{{stageId}}/preview
-Authorization: Bearer {{scopedAccessToken}}
+GET {{host}}/api/v1/programs/{{createProgram.response.body.$.id}}/qualification/stages/{{createStage.response.body.$.id}}/preview
+Authorization: Bearer {{selectProgram.response.body.$.accessToken}}
 
 ### Set Wildcards
 # Expect: 200
 # @name setWildcards
-POST {{host}}/api/v1/programs/{{programId}}/qualification/stages/{{stageId}}/wildcards
-Authorization: Bearer {{scopedAccessToken}}
+POST {{host}}/api/v1/programs/{{createProgram.response.body.$.id}}/qualification/stages/{{createStage.response.body.$.id}}/wildcards
+Authorization: Bearer {{selectProgram.response.body.$.accessToken}}
 Content-Type: application/json
 
 {
@@ -1840,26 +1703,26 @@ Content-Type: application/json
 ### Detect Ties
 # Expect: 200
 # @name detectTies
-POST {{host}}/api/v1/programs/{{programId}}/qualification/stages/{{stageId}}/ties/detect
-Authorization: Bearer {{scopedAccessToken}}
+POST {{host}}/api/v1/programs/{{createProgram.response.body.$.id}}/qualification/stages/{{createStage.response.body.$.id}}/ties/detect
+Authorization: Bearer {{selectProgram.response.body.$.accessToken}}
 
 ### Get Ties
 # Expect: 200
 # @name getTies
-GET {{host}}/api/v1/programs/{{programId}}/qualification/stages/{{stageId}}/ties
-Authorization: Bearer {{scopedAccessToken}}
+GET {{host}}/api/v1/programs/{{createProgram.response.body.$.id}}/qualification/stages/{{createStage.response.body.$.id}}/ties
+Authorization: Bearer {{selectProgram.response.body.$.accessToken}}
 
 ### Get Tie (unknown id — expect 404)
 # Expect: 404
 # @name getTie
-GET {{host}}/api/v1/programs/{{programId}}/qualification/ties/00000000-0000-0000-0000-000000000001
-Authorization: Bearer {{scopedAccessToken}}
+GET {{host}}/api/v1/programs/{{createProgram.response.body.$.id}}/qualification/ties/00000000-0000-0000-0000-000000000001
+Authorization: Bearer {{selectProgram.response.body.$.accessToken}}
 
 ### Create Tie-Break Match (unknown tie — expect 404)
 # Expect: 404
 # @name createTieBreakMatch
-POST {{host}}/api/v1/programs/{{programId}}/qualification/ties/00000000-0000-0000-0000-000000000001/tie-break-match
-Authorization: Bearer {{scopedAccessToken}}
+POST {{host}}/api/v1/programs/{{createProgram.response.body.$.id}}/qualification/ties/00000000-0000-0000-0000-000000000001/tie-break-match
+Authorization: Bearer {{selectProgram.response.body.$.accessToken}}
 Content-Type: application/json
 
 {
@@ -1872,24 +1735,24 @@ Content-Type: application/json
 ### Resolve Tie Manually (unknown tie — expect 404)
 # Expect: 404
 # @name resolveTieManually
-POST {{host}}/api/v1/programs/{{programId}}/qualification/ties/00000000-0000-0000-0000-000000000001/resolve-manually
-Authorization: Bearer {{scopedAccessToken}}
+POST {{host}}/api/v1/programs/{{createProgram.response.body.$.id}}/qualification/ties/00000000-0000-0000-0000-000000000001/resolve-manually
+Authorization: Bearer {{selectProgram.response.body.$.accessToken}}
 Content-Type: application/json
 
 {
   "rankedTeamIds": [
-    "{{teamId}}"
+    "{{createTeam.response.body.$.id}}"
   ],
   "method": "ManualDecision",
   "reason": "Example",
-  "approvedByUserId": "{{adminUserId}}"
+  "approvedByUserId": "{{me2.response.body.$.userId}}"
 }
 
 ### Abandon Tie (unknown tie — expect 404)
 # Expect: 404
 # @name abandonTie
-POST {{host}}/api/v1/programs/{{programId}}/qualification/ties/00000000-0000-0000-0000-000000000001/abandon
-Authorization: Bearer {{scopedAccessToken}}
+POST {{host}}/api/v1/programs/{{createProgram.response.body.$.id}}/qualification/ties/00000000-0000-0000-0000-000000000001/abandon
+Authorization: Bearer {{selectProgram.response.body.$.accessToken}}
 Content-Type: application/json
 
 {
@@ -1899,36 +1762,36 @@ Content-Type: application/json
 ### Commit Qualification
 # Expect: 200
 # @name commitQualification
-POST {{host}}/api/v1/programs/{{programId}}/qualification/stages/{{stageId}}/commit
-Authorization: Bearer {{scopedAccessToken}}
+POST {{host}}/api/v1/programs/{{createProgram.response.body.$.id}}/qualification/stages/{{createStage.response.body.$.id}}/commit
+Authorization: Bearer {{selectProgram.response.body.$.accessToken}}
 
 ### Qualification Preview (after commit)
 # Expect: 200
 # @name qualificationPreview2
-GET {{host}}/api/v1/programs/{{programId}}/qualification/stages/{{stageId}}/preview
-Authorization: Bearer {{scopedAccessToken}}
+GET {{host}}/api/v1/programs/{{createProgram.response.body.$.id}}/qualification/stages/{{createStage.response.body.$.id}}/preview
+Authorization: Bearer {{selectProgram.response.body.$.accessToken}}
 
 ### Rollback Qualification
 # Expect: 204
 # @name rollbackQualification
-POST {{host}}/api/v1/programs/{{programId}}/qualification/stages/{{stageId}}/rollback
-Authorization: Bearer {{scopedAccessToken}}
+POST {{host}}/api/v1/programs/{{createProgram.response.body.$.id}}/qualification/stages/{{createStage.response.body.$.id}}/rollback
+Authorization: Bearer {{selectProgram.response.body.$.accessToken}}
 
 ### Commit Qualification (again)
 # Expect: 200
 # @name commitQualification2
-POST {{host}}/api/v1/programs/{{programId}}/qualification/stages/{{stageId}}/commit
-Authorization: Bearer {{scopedAccessToken}}
+POST {{host}}/api/v1/programs/{{createProgram.response.body.$.id}}/qualification/stages/{{createStage.response.body.$.id}}/commit
+Authorization: Bearer {{selectProgram.response.body.$.accessToken}}
 
 ### Auto-Seed Semi-Final (from the committed teams)
 # Expect: 200
 # @name autoSeedSemiFinal
-POST {{host}}/api/v1/programs/{{programId}}/matches/auto-seed
-Authorization: Bearer {{scopedAccessToken}}
+POST {{host}}/api/v1/programs/{{createProgram.response.body.$.id}}/matches/auto-seed
+Authorization: Bearer {{selectProgram.response.body.$.accessToken}}
 Content-Type: application/json
 
 {
-  "stageId": "{{semiStageId}}",
+  "stageId": "{{createStage3.response.body.$.id}}",
   "seedingMode": "ByRank"
 }
 
@@ -1940,46 +1803,43 @@ Content-Type: application/json
 # Expect: 200
 # @name mintDisplayToken
 POST {{host}}/api/v1/auth/display-token
-Authorization: Bearer {{accessToken2}}
+Authorization: Bearer {{refresh.response.body.$.accessToken}}
 Content-Type: application/json
 
 {
-  "programId": "{{programId}}",
+  "programId": "{{createProgram.response.body.$.id}}",
   "expiresInMinutes": 60
 }
-
-###
-@displayToken = {{mintDisplayToken.response.body.$.displayToken}}
 
 ### Display Match State
 # Expect: 200
 # @name displayMatchState
-GET {{host}}/api/v1/display/matches/{{matchId}}/state
-Authorization: Bearer {{displayToken}}
+GET {{host}}/api/v1/display/matches/{{createMatch.response.body.$.id}}/state
+Authorization: Bearer {{mintDisplayToken.response.body.$.displayToken}}
 
 ### Display Match Scores
 # Expect: 200
 # @name displayMatchScores
-GET {{host}}/api/v1/display/matches/{{matchId}}/scores
-Authorization: Bearer {{displayToken}}
+GET {{host}}/api/v1/display/matches/{{createMatch.response.body.$.id}}/scores
+Authorization: Bearer {{mintDisplayToken.response.body.$.displayToken}}
 
 ### Display Standings
 # Expect: 200
 # @name displayStandings
-GET {{host}}/api/v1/display/programs/{{programId}}/standings
-Authorization: Bearer {{displayToken}}
+GET {{host}}/api/v1/display/programs/{{createProgram.response.body.$.id}}/standings
+Authorization: Bearer {{mintDisplayToken.response.body.$.displayToken}}
 
 ### Display Branding
 # Expect: 200
 # @name displayBranding
-GET {{host}}/api/v1/display/programs/{{programId}}/branding
-Authorization: Bearer {{displayToken}}
+GET {{host}}/api/v1/display/programs/{{createProgram.response.body.$.id}}/branding
+Authorization: Bearer {{mintDisplayToken.response.body.$.displayToken}}
 
 ### Display Match State (operator token — expect 403)
 # Expect: 403
 # @name displayMatchState2
-GET {{host}}/api/v1/display/matches/{{matchId}}/state
-Authorization: Bearer {{scopedAccessToken}}
+GET {{host}}/api/v1/display/matches/{{createMatch.response.body.$.id}}/state
+Authorization: Bearer {{selectProgram.response.body.$.accessToken}}
 
 
 ###
@@ -1988,69 +1848,65 @@ Authorization: Bearer {{scopedAccessToken}}
 ### Match Report
 # Expect: 200
 # @name matchReport
-GET {{host}}/api/v1/programs/{{programId}}/reports/matches/{{matchId}}
-Authorization: Bearer {{scopedAccessToken}}
-
-###
-@reportStageId = {{matchReport.response.body.$.stageId}}
-@reportTeamId = {{matchReport.response.body.$.teams[0].teamId}}
+GET {{host}}/api/v1/programs/{{createProgram.response.body.$.id}}/reports/matches/{{createMatch.response.body.$.id}}
+Authorization: Bearer {{selectProgram.response.body.$.accessToken}}
 
 ### Stage Summary
 # Expect: 200
 # @name stageSummary
-GET {{host}}/api/v1/programs/{{programId}}/reports/stages/{{reportStageId}}
-Authorization: Bearer {{scopedAccessToken}}
+GET {{host}}/api/v1/programs/{{createProgram.response.body.$.id}}/reports/stages/{{matchReport.response.body.$.stageId}}
+Authorization: Bearer {{selectProgram.response.body.$.accessToken}}
 
 ### Team Performance
 # Expect: 200
 # @name teamPerformance
-GET {{host}}/api/v1/programs/{{programId}}/reports/teams/{{reportTeamId}}
-Authorization: Bearer {{scopedAccessToken}}
+GET {{host}}/api/v1/programs/{{createProgram.response.body.$.id}}/reports/teams/{{matchReport.response.body.$.teams[0].teamId}}
+Authorization: Bearer {{selectProgram.response.body.$.accessToken}}
 
 ### Question Usage
 # Expect: 200
 # @name questionUsage2
-GET {{host}}/api/v1/programs/{{programId}}/reports/questions/usage
-Authorization: Bearer {{scopedAccessToken}}
+GET {{host}}/api/v1/programs/{{createProgram.response.body.$.id}}/reports/questions/usage
+Authorization: Bearer {{selectProgram.response.body.$.accessToken}}
 
 ### Question Usage (flagged only)
 # Expect: 200
 # @name questionUsage3
-GET {{host}}/api/v1/programs/{{programId}}/reports/questions/usage?flaggedOnly=true
-Authorization: Bearer {{scopedAccessToken}}
+GET {{host}}/api/v1/programs/{{createProgram.response.body.$.id}}/reports/questions/usage?flaggedOnly=true
+Authorization: Bearer {{selectProgram.response.body.$.accessToken}}
 
 ### Audit Log (team inserts)
 # Expect: 200
 # @name auditLog
-GET {{host}}/api/v1/programs/{{programId}}/reports/audit?entityName=Team&action=Insert&pageSize=5
-Authorization: Bearer {{scopedAccessToken}}
+GET {{host}}/api/v1/programs/{{createProgram.response.body.$.id}}/reports/audit?entityName=Team&action=Insert&pageSize=5
+Authorization: Bearer {{selectProgram.response.body.$.accessToken}}
 
 ### Export Match Report (xlsx)
 # Expect: 200
 # @name exportMatchReport
-GET {{host}}/api/v1/programs/{{programId}}/reports/export/match?id={{matchId}}&format=xlsx
-Authorization: Bearer {{scopedAccessToken}}
+GET {{host}}/api/v1/programs/{{createProgram.response.body.$.id}}/reports/export/match?id={{createMatch.response.body.$.id}}&format=xlsx
+Authorization: Bearer {{selectProgram.response.body.$.accessToken}}
 
 ### Export Stage Summary (csv)
 # Expect: 200
 # @name exportStageSummary
-GET {{host}}/api/v1/programs/{{programId}}/reports/export/stage?id={{reportStageId}}&format=csv
-Authorization: Bearer {{scopedAccessToken}}
+GET {{host}}/api/v1/programs/{{createProgram.response.body.$.id}}/reports/export/stage?id={{matchReport.response.body.$.stageId}}&format=csv
+Authorization: Bearer {{selectProgram.response.body.$.accessToken}}
 
 ### Export Team Performance (pdf)
 # Expect: 200
 # @name exportTeamPerformance
-GET {{host}}/api/v1/programs/{{programId}}/reports/export/team?id={{reportTeamId}}&format=pdf
-Authorization: Bearer {{scopedAccessToken}}
+GET {{host}}/api/v1/programs/{{createProgram.response.body.$.id}}/reports/export/team?id={{matchReport.response.body.$.teams[0].teamId}}&format=pdf
+Authorization: Bearer {{selectProgram.response.body.$.accessToken}}
 
 ### Export Audit Log (csv)
 # Expect: 200
 # @name exportAuditLog
-GET {{host}}/api/v1/programs/{{programId}}/reports/export/audit?format=csv&entityName=Team
-Authorization: Bearer {{scopedAccessToken}}
+GET {{host}}/api/v1/programs/{{createProgram.response.body.$.id}}/reports/export/audit?format=csv&entityName=Team
+Authorization: Bearer {{selectProgram.response.body.$.accessToken}}
 
 ### Export Unknown Report (expect 400)
 # Expect: 400
 # @name exportUnknownReport
-GET {{host}}/api/v1/programs/{{programId}}/reports/export/scores?format=csv
-Authorization: Bearer {{scopedAccessToken}}
+GET {{host}}/api/v1/programs/{{createProgram.response.body.$.id}}/reports/export/scores?format=csv
+Authorization: Bearer {{selectProgram.response.body.$.accessToken}}
