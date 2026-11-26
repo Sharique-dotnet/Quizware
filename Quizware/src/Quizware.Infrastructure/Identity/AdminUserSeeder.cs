@@ -9,7 +9,7 @@ namespace Quizware.Infrastructure.Identity;
 public static class AdminUserSeeder
 {
     public const string DefaultEmail = "admin@quizapp.local";
-    public const string DefaultPassword = "KeepMeUpdated@123";
+    public const string DefaultPassword = "Admin@@123";
 
     public static async Task SeedAsync(UserManager<AppUser> userManager)
     {
